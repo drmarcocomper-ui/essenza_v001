@@ -6,7 +6,7 @@
 
   // ✅ COLE AQUI SEU /exec (use o mesmo que você está testando no navegador)
   const SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycbwPmF0ebcKJJi3S-2qTyWUIjEVQKDK607ptKxsj8jNNXDVJ_-tdr9pCyehQSuAR9Q1pEw/exec";
+    "https://script.google.com/macros/s/AKfycbwL9Z1Q0evnkgzL9cNCL9wOY2EO3HL5wkWdxcv_hOg3NkEA62fQunJtyg2ZUlMd1TzK/exec";
 
   const SHEET_NAME = "Cadastro";
 

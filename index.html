@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cadastro de Clientes | Salão</title>
 
-  <!-- CSS externo -->
   <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -14,6 +13,12 @@
     <div class="app-header__inner">
       <h1 class="app-title">Cadastro de Clientes</h1>
       <p class="app-subtitle">Salão (1 cabeleireira) • Google Planilhas + Apps Script</p>
+
+      <!-- ✅ Navegação -->
+      <nav class="app-nav" aria-label="Navegação principal">
+        <a class="app-nav__link app-nav__link--active" href="index.html">Cadastro</a>
+        <a class="app-nav__link" href="lancamentos.html">Lançamentos</a>
+      </nav>
     </div>
   </header>
 
@@ -94,16 +99,11 @@
             </div>
           </div>
 
-          <!-- DataCadastro (auto) / Profissão -->
+          <!-- DataCadastro / Profissão -->
           <div class="form-row">
             <div class="field">
               <label class="label" for="dataCadastro">DataCadastro</label>
-              <input
-                class="input"
-                type="date"
-                id="dataCadastro"
-                name="DataCadastro"
-              />
+              <input class="input" type="date" id="dataCadastro" name="DataCadastro" />
               <small class="hint">Pode preencher automaticamente no JS (hoje) e/ou no Apps Script.</small>
             </div>
 
@@ -156,15 +156,10 @@
 
           <!-- Ações -->
           <div class="actions">
-            <button type="submit" id="btnSalvar" class="btn btn--primary">
-              Salvar cadastro
-            </button>
-            <button type="reset" id="btnLimpar" class="btn">
-              Limpar
-            </button>
+            <button type="submit" id="btnSalvar" class="btn btn--primary">Salvar cadastro</button>
+            <button type="reset" id="btnLimpar" class="btn">Limpar</button>
           </div>
 
-          <!-- Feedback -->
           <div id="feedback" class="feedback" aria-live="polite" role="status"></div>
         </form>
       </div>
@@ -173,7 +168,7 @@
     <section class="card">
       <div class="card__header">
         <h2 class="card__title">Busca rápida</h2>
-        <p class="card__desc">Opcional: localizar cliente por nome/telefone (implementa no JS depois).</p>
+        <p class="card__desc">Localizar cliente por nome/telefone.</p>
       </div>
 
       <div class="card__body">
@@ -199,9 +194,7 @@
                   <th>Bairro</th>
                 </tr>
               </thead>
-              <tbody>
-                <!-- Preencher via JS -->
-              </tbody>
+              <tbody></tbody>
             </table>
           </div>
         </form>
@@ -213,7 +206,6 @@
     <small>Cadastro • Google Planilhas + Apps Script</small>
   </footer>
 
-  <!-- JS específico da página -->
   <script src="cadastro.js" defer></script>
 </body>
 </html>
