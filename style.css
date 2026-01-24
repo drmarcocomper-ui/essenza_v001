@@ -1,0 +1,288 @@
+/* =========================================================
+   RESET BÁSICO
+   ========================================================= */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: #f5f6f8;
+  color: #2b2b2b;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   VARIÁVEIS
+   ========================================================= */
+:root {
+  --cor-primaria: #7b4b94;   /* roxo elegante (salão) */
+  --cor-secundaria: #e6d8ee;
+  --cor-texto: #2b2b2b;
+  --cor-muted: #6b6b6b;
+  --cor-bg: #ffffff;
+  --cor-borda: #e0e0e0;
+
+  --raio: 10px;
+  --sombra: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+/* =========================================================
+   TOPO / HEADER
+   ========================================================= */
+.app-header {
+  background: var(--cor-primaria);
+  color: #fff;
+  padding: 1.2rem 1rem;
+}
+
+.app-header__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.app-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.app-subtitle {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  margin-top: 0.2rem;
+}
+
+/* =========================================================
+   BANNER (CASO QUEIRA DESTACAR INFORMAÇÃO)
+   ========================================================= */
+.banner {
+  background: linear-gradient(
+    135deg,
+    var(--cor-primaria),
+    #9a6fb3
+  );
+  color: #fff;
+  padding: 2rem 1rem;
+}
+
+.banner__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.banner__title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.banner__text {
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+/* =========================================================
+   CONTEÚDO PRINCIPAL
+   ========================================================= */
+.app-main {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+/* =========================================================
+   CARD
+   ========================================================= */
+.card {
+  background: var(--cor-bg);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+.card__header {
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid var(--cor-borda);
+}
+
+.card__title {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.card__desc {
+  font-size: 0.9rem;
+  color: var(--cor-muted);
+  margin-top: 0.3rem;
+}
+
+.card__body {
+  padding: 1.5rem;
+}
+
+/* =========================================================
+   FORMULÁRIOS
+   ========================================================= */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.field--full {
+  grid-column: 1 / -1;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+}
+
+.input,
+.select,
+.textarea {
+  border: 1px solid var(--cor-borda);
+  border-radius: 6px;
+  padding: 0.55rem 0.6rem;
+  font-size: 0.95rem;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--cor-primaria);
+}
+
+.textarea {
+  resize: vertical;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--cor-muted);
+  margin-top: 0.2rem;
+}
+
+/* =========================================================
+   INPUT GROUP
+   ========================================================= */
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.input-group .input {
+  flex: 1;
+}
+
+/* =========================================================
+   BOTÕES
+   ========================================================= */
+.btn {
+  border: 1px solid var(--cor-borda);
+  background: #f0f0f0;
+  color: var(--cor-texto);
+  padding: 0.55rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #e8e8e8;
+}
+
+.btn--primary {
+  background: var(--cor-primaria);
+  border-color: var(--cor-primaria);
+  color: #fff;
+}
+
+.btn--primary:hover {
+  opacity: 0.9;
+}
+
+.btn--secondary {
+  background: var(--cor-secundaria);
+  border-color: var(--cor-secundaria);
+}
+
+.actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+}
+
+/* =========================================================
+   TABELA
+   ========================================================= */
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.table th,
+.table td {
+  padding: 0.6rem;
+  border-bottom: 1px solid var(--cor-borda);
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.table th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+/* =========================================================
+   FEEDBACK
+   ========================================================= */
+.feedback {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+.app-footer {
+  background: #fafafa;
+  border-top: 1px solid var(--cor-borda);
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--cor-muted);
+}
+
+/* =========================================================
+   RESPONSIVO
+   ========================================================= */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .app-title {
+    font-size: 1.3rem;
+  }
+}
