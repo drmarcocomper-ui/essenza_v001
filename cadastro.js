@@ -1,21 +1,14 @@
-// cadastro.js
-// Página: index.html (Cadastro)
-// Backend: Google Apps Script (Google Planilhas)
-// Observação: defina a constante SCRIPT_URL com a URL do seu Web App publicado.
+// cadastro.js (JSONP - sem CORS)
+// Requer Code.gs com doGet que responde JSONP (callback)
 
 (() => {
   "use strict";
 
-  // =========================
-  // CONFIG
-  // =========================
-  // cadastro.js
+  // ✅ COLE AQUI SEU /exec (use o mesmo que você está testando no navegador)
+  const SCRIPT_URL =
+    "https://script.google.com/macros/s/AKfycbwPmF0ebcKJJi3S-2qTyWUIjEVQKDK607ptKxsj8jNNXDVJ_-tdr9pCyehQSuAR9Q1pEw/exec";
 
-const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbwES8ixA7sDUQhj4-OdjvZvnIgPoBuyol7dHAyX4O4WENNiBdKOv6Iq_fBGOX8zFJpSVQ/exec";
-
-
-  const SHEET_NAME = "Cadastro"; // nome da aba no Google Sheets (ajuste se quiser)
+  const SHEET_NAME = "Cadastro";
 
   // =========================
   // DOM
@@ -46,13 +39,12 @@ const SCRIPT_URL =
   const tbodyResultados = tabelaResultados ? tabelaResultados.querySelector("tbody") : null;
 
   // =========================
-  // HELPERS UI
+  // UI helpers
   // =========================
   function setFeedback(msg, type = "info") {
     if (!feedback) return;
     feedback.textContent = msg || "";
     feedback.dataset.type = type;
-    // Se quiser, estilize via CSS usando .feedback[data-type="success"] etc.
   }
 
   function hojeISO() {
@@ -60,7 +52,7 @@ const SCRIPT_URL =
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+    return `${y}-${m}-${day}`; // value do input[type=date] deve ser YYYY-MM-DD
   }
 
   function sanitizePhone(v) {
@@ -72,43 +64,87 @@ const SCRIPT_URL =
   }
 
   function requireScriptUrl() {
-    if (!SCRIPT_URL) {
-      setFeedback(
-        "Defina SCRIPT_URL no cadastro.js (URL do Web App do Apps Script) antes de usar.",
-        "error"
-      );
+    if (!SCRIPT_URL || !SCRIPT_URL.includes("/exec")) {
+      setFeedback("SCRIPT_URL inválida. Cole a URL do Web App terminando em /exec.", "error");
       return false;
     }
     return true;
   }
 
-  async function postJSON(payload) {
-    const res = await fetch(SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+  // =========================
+  // JSONP (sem CORS)
+  // =========================
+  function jsonpRequest(params) {
+    return new Promise((resolve, reject) => {
+      const cb = "cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error("Timeout na chamada ao Apps Script."));
+      }, 20000);
+
+      let script;
+
+      function cleanup() {
+        clearTimeout(timeout);
+        try {
+          delete window[cb];
+        } catch (_) {}
+        if (script && script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[cb] = (data) => {
+        cleanup();
+        resolve(data);
+      };
+
+      const qs = new URLSearchParams({ ...params, callback: cb }).toString();
+      const url = `${SCRIPT_URL}?${qs}`;
+
+      script = document.createElement("script");
+      script.src = url;
+      script.onerror = () => {
+        cleanup();
+        reject(new Error("Falha ao carregar JSONP (script)."));
+      };
+      document.head.appendChild(script);
     });
-
-    // Apps Script às vezes responde como text/plain
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (_) {
-      data = { ok: res.ok, raw: text };
-    }
-
-    if (!res.ok) {
-      const msg = data && (data.message || data.error) ? (data.message || data.error) : "Falha na requisição.";
-      throw new Error(msg);
-    }
-
-    return data;
   }
 
+  // =========================
+  // Payload (colunas)
+  // =========================
+  function buildCadastroPayload() {
+    return {
+      ID_Cliente: normalizeText(elIdCliente.value),
+      NomeCliente: normalizeText(elNome.value),
+      Telefone: sanitizePhone(elTelefone.value),
+      "E-mail": normalizeText(elEmail.value),
+      DataNascimento: normalizeText(elDataNascimento.value),
+      Municipio: normalizeText(elMunicipio.value),
+      Bairro: normalizeText(elBairro.value),
+      DataCadastro: normalizeText(elDataCadastro.value),
+      "Profissão": normalizeText(elProfissao.value),
+      "Preferências": normalizeText(elPreferencias.value),
+      Origem: normalizeText(elOrigem.value),
+      "Observação": normalizeText(elObservacao.value),
+    };
+  }
+
+  // =========================
+  // Results table
+  // =========================
   function clearResults() {
     if (!tbodyResultados) return;
     tbodyResultados.innerHTML = "";
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
   }
 
   function renderResults(items) {
@@ -133,7 +169,6 @@ const SCRIPT_URL =
       `;
       tbodyResultados.appendChild(tr);
 
-      // Clique na linha -> carregar no formulário (opcional)
       tr.addEventListener("click", () => fillFormFromItem(it));
     });
   }
@@ -154,57 +189,26 @@ const SCRIPT_URL =
     elOrigem.value = it.Origem ?? "";
     elObservacao.value = it["Observação"] ?? it.Observacao ?? "";
 
-    setFeedback("Cliente carregado no formulário. Edite e salve para atualizar (se implementar update).", "info");
-  }
-
-  function escapeHtml(str) {
-    return String(str ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+    setFeedback("Cliente carregado no formulário (clique em salvar para gravar um novo).", "info");
   }
 
   // =========================
-  // PAYLOADS (colunas exatamente como você pediu)
-  // =========================
-  function buildCadastroPayload() {
-    return {
-      ID_Cliente: normalizeText(elIdCliente.value),
-      NomeCliente: normalizeText(elNome.value),
-      Telefone: sanitizePhone(elTelefone.value),
-      "E-mail": normalizeText(elEmail.value),
-      DataNascimento: normalizeText(elDataNascimento.value),
-      Municipio: normalizeText(elMunicipio.value),
-      Bairro: normalizeText(elBairro.value),
-      DataCadastro: normalizeText(elDataCadastro.value),
-      "Profissão": normalizeText(elProfissao.value),
-      "Preferências": normalizeText(elPreferencias.value),
-      Origem: normalizeText(elOrigem.value),
-      "Observação": normalizeText(elObservacao.value),
-    };
-  }
-
-  // =========================
-  // ACTIONS
+  // Actions
   // =========================
   async function gerarIdNoBackend() {
     if (!requireScriptUrl()) return;
 
     setFeedback("Gerando ID...", "info");
-
     try {
-      const data = await postJSON({
+      const data = await jsonpRequest({
         action: "Clientes.GerarID",
         sheet: SHEET_NAME,
       });
 
-      // Esperado: { ok: true, id: "CL-..." }
-      const id = data.id || data.ID_Cliente || "";
-      if (!id) throw new Error("Backend não retornou ID.");
+      if (!data || data.ok !== true) throw new Error((data && data.message) || "Falha ao gerar ID.");
+      if (!data.id) throw new Error("Backend não retornou 'id'.");
 
-      elIdCliente.value = id;
+      elIdCliente.value = data.id;
       setFeedback("ID gerado.", "success");
     } catch (err) {
       setFeedback(err.message || "Erro ao gerar ID.", "error");
@@ -214,7 +218,6 @@ const SCRIPT_URL =
   async function salvarCadastro() {
     if (!requireScriptUrl()) return;
 
-    // validações mínimas
     const nome = normalizeText(elNome.value);
     const tel = sanitizePhone(elTelefone.value);
 
@@ -223,32 +226,24 @@ const SCRIPT_URL =
       return;
     }
 
-    // DataCadastro default hoje
     if (!elDataCadastro.value) elDataCadastro.value = hojeISO();
 
-    // Se não tiver ID, tenta gerar localmente (fallback)
-    if (!elIdCliente.value) {
-      elIdCliente.value = gerarIdLocal();
-    }
-
     setFeedback("Salvando...", "info");
-
     try {
       const payload = buildCadastroPayload();
 
-      const data = await postJSON({
+      const data = await jsonpRequest({
         action: "Clientes.Criar",
         sheet: SHEET_NAME,
-        payload,
+        payload: JSON.stringify(payload),
       });
 
-      // Esperado: { ok: true, message: "...", rowId: ... }
-      if (data.ok === false) throw new Error(data.message || "Erro ao salvar.");
+      if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao salvar.");
 
-      setFeedback(data.message || "Cadastro salvo com sucesso.", "success");
-      // opcional: limpar form após salvar
-      // formCadastro.reset();
-      // elDataCadastro.value = hojeISO();
+      // se backend gerou ID, refletir
+      if (data.id) elIdCliente.value = data.id;
+
+      setFeedback(data.message || "Cadastro salvo.", "success");
     } catch (err) {
       setFeedback(err.message || "Erro ao salvar cadastro.", "error");
     }
@@ -259,76 +254,38 @@ const SCRIPT_URL =
 
     const q = normalizeText(elQuery.value);
     if (!q) {
-      setFeedback("Digite algo para buscar (nome ou telefone).", "error");
+      setFeedback("Digite algo para buscar (nome/telefone/email).", "error");
       return;
     }
 
     setFeedback("Buscando...", "info");
-
     try {
-      const data = await postJSON({
+      const data = await jsonpRequest({
         action: "Clientes.Buscar",
         sheet: SHEET_NAME,
         q,
       });
 
-      // Esperado: { ok: true, items: [ {..} ] }
-      const items = data.items || data.result || [];
-      renderResults(items);
-      setFeedback(`Resultados: ${Array.isArray(items) ? items.length : 0}`, "success");
+      if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro na busca.");
+      renderResults(data.items || []);
+      setFeedback(`Resultados: ${(data.items || []).length}`, "success");
     } catch (err) {
       setFeedback(err.message || "Erro na busca.", "error");
     }
   }
 
   // =========================
-  // FALLBACK ID LOCAL (caso ainda não tenha endpoint pronto)
-  // =========================
-  function gerarIdLocal() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const rand = String(Math.floor(Math.random() * 9000) + 1000); // 1000-9999
-    return `CL-${y}${m}${day}-${rand}`;
-  }
-
-  // =========================
-  // INIT
+  // Init
   // =========================
   function initDefaults() {
-    // DataCadastro default: hoje
     if (elDataCadastro && !elDataCadastro.value) elDataCadastro.value = hojeISO();
   }
 
   function bindEvents() {
-    if (btnGerarId) {
-      btnGerarId.addEventListener("click", (e) => {
-        e.preventDefault();
-        gerarIdNoBackend();
-      });
-    }
-
-    if (formCadastro) {
-      formCadastro.addEventListener("submit", (e) => {
-        e.preventDefault();
-        salvarCadastro();
-      });
-    }
-
-    if (btnBuscar) {
-      btnBuscar.addEventListener("click", (e) => {
-        e.preventDefault();
-        buscarClientes();
-      });
-    }
-
-    if (formBusca) {
-      formBusca.addEventListener("submit", (e) => {
-        e.preventDefault();
-        buscarClientes();
-      });
-    }
+    if (btnGerarId) btnGerarId.addEventListener("click", (e) => (e.preventDefault(), gerarIdNoBackend()));
+    if (formCadastro) formCadastro.addEventListener("submit", (e) => (e.preventDefault(), salvarCadastro()));
+    if (btnBuscar) btnBuscar.addEventListener("click", (e) => (e.preventDefault(), buscarClientes()));
+    if (formBusca) formBusca.addEventListener("submit", (e) => (e.preventDefault(), buscarClientes()));
   }
 
   initDefaults();
