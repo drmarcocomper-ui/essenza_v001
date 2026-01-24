@@ -1,13 +1,11 @@
 // cadastro.js (JSONP - sem CORS)
-// Requer Code.gs com doGet que responde JSONP (callback)
+// Requer: config.js (window.APP_CONFIG.SCRIPT_URL)
 
 (() => {
   "use strict";
 
-  // ✅ COLE AQUI SEU /exec (use o mesmo que você está testando no navegador)
-  const SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycbwL9Z1Q0evnkgzL9cNCL9wOY2EO3HL5wkWdxcv_hOg3NkEA62fQunJtyg2ZUlMd1TzK/exec";
-
+  // ✅ Agora vem do config.js
+  const SCRIPT_URL = window.APP_CONFIG?.SCRIPT_URL || "";
   const SHEET_NAME = "Cadastro";
 
   // =========================
@@ -52,7 +50,7 @@
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`; // value do input[type=date] deve ser YYYY-MM-DD
+    return `${y}-${m}-${day}`;
   }
 
   function sanitizePhone(v) {
@@ -65,7 +63,7 @@
 
   function requireScriptUrl() {
     if (!SCRIPT_URL || !SCRIPT_URL.includes("/exec")) {
-      setFeedback("SCRIPT_URL inválida. Cole a URL do Web App terminando em /exec.", "error");
+      setFeedback("SCRIPT_URL inválida. Ajuste no config.js (precisa terminar em /exec).", "error");
       return false;
     }
     return true;
@@ -86,9 +84,7 @@
 
       function cleanup() {
         clearTimeout(timeout);
-        try {
-          delete window[cb];
-        } catch (_) {}
+        try { delete window[cb]; } catch (_) {}
         if (script && script.parentNode) script.parentNode.removeChild(script);
       }
 
@@ -189,7 +185,7 @@
     elOrigem.value = it.Origem ?? "";
     elObservacao.value = it["Observação"] ?? it.Observacao ?? "";
 
-    setFeedback("Cliente carregado no formulário (clique em salvar para gravar um novo).", "info");
+    setFeedback("Cliente carregado no formulário (salvar grava um novo).", "info");
   }
 
   // =========================
@@ -200,10 +196,7 @@
 
     setFeedback("Gerando ID...", "info");
     try {
-      const data = await jsonpRequest({
-        action: "Clientes.GerarID",
-        sheet: SHEET_NAME,
-      });
+      const data = await jsonpRequest({ action: "Clientes.GerarID", sheet: SHEET_NAME });
 
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Falha ao gerar ID.");
       if (!data.id) throw new Error("Backend não retornou 'id'.");
@@ -239,8 +232,6 @@
       });
 
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao salvar.");
-
-      // se backend gerou ID, refletir
       if (data.id) elIdCliente.value = data.id;
 
       setFeedback(data.message || "Cadastro salvo.", "success");

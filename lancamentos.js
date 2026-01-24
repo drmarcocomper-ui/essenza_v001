@@ -1,14 +1,14 @@
 // lancamentos.js (JSONP - sem CORS)
-// Requer Code.gs (router JSONP) + Lacamentos.gs (handlers Lancamentos_dispatch_)
+// Requer: config.js (window.APP_CONFIG.SCRIPT_URL)
+// Backend: Code.gs (router) + Lacamentos.gs (Lancamentos_dispatch_)
 
 (() => {
   "use strict";
 
-  const SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycbxTTcmIdMlm4ywn3vsazO2ocnsjz5b275abzExOCzA1VwCqQ8GnXQaXwfNRGMh4T70OEw/exec";
+  // ✅ Agora vem do config.js
+  const SCRIPT_URL = window.APP_CONFIG?.SCRIPT_URL || "";
 
-  // ✅ Deve bater com o nome da aba real.
-  // Se sua aba for "Lacamentos" (sem N), deixe "Lacamentos".
+  // ✅ Deve bater com o nome da aba real
   const SHEET_NAME = "Lancamentos";
 
   // ---------- DOM ----------
@@ -65,7 +65,7 @@
 
   function requireScriptUrl() {
     if (!SCRIPT_URL || !SCRIPT_URL.includes("/exec")) {
-      setFeedback(feedbackLanc, "SCRIPT_URL inválida (precisa terminar em /exec).", "error");
+      setFeedback(feedbackLanc, "SCRIPT_URL inválida. Ajuste no config.js (precisa terminar em /exec).", "error");
       return false;
     }
     return true;
@@ -81,7 +81,6 @@
   }
 
   function formatMoneyBR(v) {
-    // aceita número ou string "1.234,56"
     const s = String(v ?? "").trim();
     if (!s) return "";
     const num = Number(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s.replace(",", "."));
@@ -190,7 +189,7 @@
     };
   }
 
-  // ✅ nomes que o Lacamentos.gs já lê:
+  // ✅ nomes que o Lacamentos.gs lê:
   // filtros.fDataIni, filtros.fDataFim, filtros.fTipo, filtros.fStatus, filtros.q
   function buildFiltros() {
     return {
@@ -213,7 +212,7 @@
       const data = await jsonpRequest({
         action: "Lancamentos.Listar",
         sheet: SHEET_NAME,
-        filtros: JSON.stringify(filtros), // ✅ em Lacamentos.gs é "filtros" (plural)
+        filtros: JSON.stringify(filtros),
       });
 
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao listar.");
@@ -247,7 +246,6 @@
 
       setFeedback(feedbackSalvar, data.message || "Lançamento salvo.", "success");
 
-      // recarrega lista após salvar
       await listar();
     } catch (err) {
       setFeedback(feedbackSalvar, err.message || "Erro ao salvar.", "error");
