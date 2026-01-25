@@ -1,10 +1,9 @@
 // cadastro.js (JSONP - sem CORS)
-// Requer: config.js (window.APP_CONFIG.SCRIPT_URL)
+// Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
 
 (() => {
   "use strict";
 
-  // ✅ Agora vem do config.js
   const SCRIPT_URL = window.APP_CONFIG?.SCRIPT_URL || "";
   const SHEET_NAME = "Cadastro";
 
@@ -37,7 +36,7 @@
   const tbodyResultados = tabelaResultados ? tabelaResultados.querySelector("tbody") : null;
 
   // =========================
-  // UI helpers
+  // Helpers
   // =========================
   function setFeedback(msg, type = "info") {
     if (!feedback) return;
@@ -63,14 +62,23 @@
 
   function requireScriptUrl() {
     if (!SCRIPT_URL || !SCRIPT_URL.includes("/exec")) {
-      setFeedback("SCRIPT_URL inválida. Ajuste no config.js (precisa terminar em /exec).", "error");
+      setFeedback("SCRIPT_URL inválida. Ajuste no assets/js/config.js (precisa terminar em /exec).", "error");
       return false;
     }
     return true;
   }
 
+  function escapeHtml(str) {
+    return String(str ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
   // =========================
-  // JSONP (sem CORS)
+  // JSONP
   // =========================
   function jsonpRequest(params) {
     return new Promise((resolve, reject) => {
@@ -107,22 +115,22 @@
   }
 
   // =========================
-  // Payload (colunas)
+  // Payload
   // =========================
   function buildCadastroPayload() {
     return {
-      ID_Cliente: normalizeText(elIdCliente.value),
-      NomeCliente: normalizeText(elNome.value),
-      Telefone: sanitizePhone(elTelefone.value),
-      "E-mail": normalizeText(elEmail.value),
-      DataNascimento: normalizeText(elDataNascimento.value),
-      Municipio: normalizeText(elMunicipio.value),
-      Bairro: normalizeText(elBairro.value),
-      DataCadastro: normalizeText(elDataCadastro.value),
-      "Profissão": normalizeText(elProfissao.value),
-      "Preferências": normalizeText(elPreferencias.value),
-      Origem: normalizeText(elOrigem.value),
-      "Observação": normalizeText(elObservacao.value),
+      ID_Cliente: normalizeText(elIdCliente?.value),
+      NomeCliente: normalizeText(elNome?.value),
+      Telefone: sanitizePhone(elTelefone?.value),
+      "E-mail": normalizeText(elEmail?.value),
+      DataNascimento: normalizeText(elDataNascimento?.value),
+      Municipio: normalizeText(elMunicipio?.value),
+      Bairro: normalizeText(elBairro?.value),
+      DataCadastro: normalizeText(elDataCadastro?.value),
+      "Profissão": normalizeText(elProfissao?.value),
+      "Preferências": normalizeText(elPreferencias?.value),
+      Origem: normalizeText(elOrigem?.value),
+      "Observação": normalizeText(elObservacao?.value),
     };
   }
 
@@ -132,15 +140,6 @@
   function clearResults() {
     if (!tbodyResultados) return;
     tbodyResultados.innerHTML = "";
-  }
-
-  function escapeHtml(str) {
-    return String(str ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
   }
 
   function renderResults(items) {
@@ -164,7 +163,6 @@
         <td>${escapeHtml(it.Bairro ?? "")}</td>
       `;
       tbodyResultados.appendChild(tr);
-
       tr.addEventListener("click", () => fillFormFromItem(it));
     });
   }
@@ -172,20 +170,20 @@
   function fillFormFromItem(it) {
     if (!it) return;
 
-    elIdCliente.value = it.ID_Cliente ?? "";
-    elNome.value = it.NomeCliente ?? "";
-    elTelefone.value = it.Telefone ?? "";
-    elEmail.value = it["E-mail"] ?? it.Email ?? "";
-    elDataNascimento.value = it.DataNascimento ?? "";
-    elMunicipio.value = it.Municipio ?? "";
-    elBairro.value = it.Bairro ?? "";
-    elDataCadastro.value = it.DataCadastro ?? "";
-    elProfissao.value = it["Profissão"] ?? it.Profissao ?? "";
-    elPreferencias.value = it["Preferências"] ?? it.Preferencias ?? "";
-    elOrigem.value = it.Origem ?? "";
-    elObservacao.value = it["Observação"] ?? it.Observacao ?? "";
+    if (elIdCliente) elIdCliente.value = it.ID_Cliente ?? "";
+    if (elNome) elNome.value = it.NomeCliente ?? "";
+    if (elTelefone) elTelefone.value = it.Telefone ?? "";
+    if (elEmail) elEmail.value = it["E-mail"] ?? it.Email ?? "";
+    if (elDataNascimento) elDataNascimento.value = it.DataNascimento ?? "";
+    if (elMunicipio) elMunicipio.value = it.Municipio ?? "";
+    if (elBairro) elBairro.value = it.Bairro ?? "";
+    if (elDataCadastro) elDataCadastro.value = it.DataCadastro ?? "";
+    if (elProfissao) elProfissao.value = it["Profissão"] ?? it.Profissao ?? "";
+    if (elPreferencias) elPreferencias.value = it["Preferências"] ?? it.Preferencias ?? "";
+    if (elOrigem) elOrigem.value = it.Origem ?? "";
+    if (elObservacao) elObservacao.value = it["Observação"] ?? it.Observacao ?? "";
 
-    setFeedback("Cliente carregado no formulário (salvar grava um novo).", "info");
+    setFeedback("Cliente carregado no formulário (Salvar grava um novo).", "info");
   }
 
   // =========================
@@ -201,7 +199,7 @@
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Falha ao gerar ID.");
       if (!data.id) throw new Error("Backend não retornou 'id'.");
 
-      elIdCliente.value = data.id;
+      if (elIdCliente) elIdCliente.value = data.id;
       setFeedback("ID gerado.", "success");
     } catch (err) {
       setFeedback(err.message || "Erro ao gerar ID.", "error");
@@ -211,15 +209,15 @@
   async function salvarCadastro() {
     if (!requireScriptUrl()) return;
 
-    const nome = normalizeText(elNome.value);
-    const tel = sanitizePhone(elTelefone.value);
+    const nome = normalizeText(elNome?.value);
+    const tel = sanitizePhone(elTelefone?.value);
 
     if (!nome || !tel) {
       setFeedback("Preencha Nome e Telefone.", "error");
       return;
     }
 
-    if (!elDataCadastro.value) elDataCadastro.value = hojeISO();
+    if (elDataCadastro && !elDataCadastro.value) elDataCadastro.value = hojeISO();
 
     setFeedback("Salvando...", "info");
     try {
@@ -232,7 +230,7 @@
       });
 
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao salvar.");
-      if (data.id) elIdCliente.value = data.id;
+      if (data.id && elIdCliente) elIdCliente.value = data.id;
 
       setFeedback(data.message || "Cadastro salvo.", "success");
     } catch (err) {
@@ -243,7 +241,7 @@
   async function buscarClientes() {
     if (!requireScriptUrl()) return;
 
-    const q = normalizeText(elQuery.value);
+    const q = normalizeText(elQuery?.value);
     if (!q) {
       setFeedback("Digite algo para buscar (nome/telefone/email).", "error");
       return;

@@ -1,14 +1,11 @@
 // lancamentos.js (JSONP - sem CORS)
-// Requer: config.js (window.APP_CONFIG.SCRIPT_URL)
+// Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
 // Backend: Code.gs (router) + Lacamentos.gs (Lancamentos_dispatch_)
 
 (() => {
   "use strict";
 
-  // ✅ Agora vem do config.js
   const SCRIPT_URL = window.APP_CONFIG?.SCRIPT_URL || "";
-
-  // ✅ Deve bater com o nome da aba real
   const SHEET_NAME = "Lancamentos";
 
   // ---------- DOM ----------
@@ -65,7 +62,7 @@
 
   function requireScriptUrl() {
     if (!SCRIPT_URL || !SCRIPT_URL.includes("/exec")) {
-      setFeedback(feedbackLanc, "SCRIPT_URL inválida. Ajuste no config.js (precisa terminar em /exec).", "error");
+      setFeedback(feedbackLanc, "SCRIPT_URL inválida. Ajuste no assets/js/config.js (precisa terminar em /exec).", "error");
       return false;
     }
     return true;
@@ -189,8 +186,6 @@
     };
   }
 
-  // ✅ nomes que o Lacamentos.gs lê:
-  // filtros.fDataIni, filtros.fDataFim, filtros.fTipo, filtros.fStatus, filtros.q
   function buildFiltros() {
     return {
       fDataIni: (fDataIni?.value || "").trim(),
@@ -245,7 +240,6 @@
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao salvar.");
 
       setFeedback(feedbackSalvar, data.message || "Lançamento salvo.", "success");
-
       await listar();
     } catch (err) {
       setFeedback(feedbackSalvar, err.message || "Erro ao salvar.", "error");
@@ -260,6 +254,15 @@
 
   function initDefaults() {
     if (el.Data_Competencia && !el.Data_Competencia.value) el.Data_Competencia.value = hojeISO();
+
+    // ✅ Se marcar Status=Pago e Data_Caixa estiver vazia, preenche hoje
+    if (el.Status && el.Data_Caixa) {
+      el.Status.addEventListener("change", () => {
+        if (String(el.Status.value || "").trim() === "Pago" && !el.Data_Caixa.value) {
+          el.Data_Caixa.value = hojeISO();
+        }
+      });
+    }
   }
 
   function bind() {
