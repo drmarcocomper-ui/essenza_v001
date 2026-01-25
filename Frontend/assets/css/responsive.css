@@ -1,0 +1,4 @@
+@media (max-width: 768px){
+  .form-row{ grid-template-columns:1fr; }
+  .app-title{ font-size:1.3rem; }
+}

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Resumo Mensal | Salão</title>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header class="app-header">
+    <div class="app-header__inner">
+      <h1 class="app-title">Resumo Mensal</h1>
+      <p class="app-subtitle">Aba: Resumo_Mensal • Base: Lancamentos (Data_Caixa)</p>
+
+      <nav class="app-nav" aria-label="Navegação principal">
+        <a class="app-nav__link" href="index.html">Cadastro</a>
+        <a class="app-nav__link" href="lancamentos.html">Lançamentos</a>
+        <a class="app-nav__link app-nav__link--active" href="resumo.html">Resumo</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="card">
+      <div class="card__header">
+        <h2 class="card__title">Ações</h2>
+        <p class="card__desc">Recalcula o Resumo_Mensal a partir de Lancamentos usando Data_Caixa.</p>
+      </div>
+
+      <div class="card__body">
+        <div class="actions">
+          <button type="button" id="btnRecalcularTudo" class="btn btn--primary">Recalcular tudo</button>
+          <button type="button" id="btnAtualizarLista" class="btn btn--secondary">Atualizar lista</button>
+        </div>
+
+        <div class="form-row" style="margin-top:1rem;">
+          <div class="field">
+            <label class="label" for="mes">Recalcular mês (YYYY-MM)</label>
+            <input class="input" type="month" id="mes" name="mes" />
+          </div>
+
+          <div class="field" style="align-self:end;">
+            <button type="button" id="btnRecalcularMes" class="btn">Recalcular mês</button>
+          </div>
+        </div>
+
+        <div id="feedbackResumo" class="feedback" aria-live="polite" role="status"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card__header">
+        <h2 class="card__title">Tabela</h2>
+        <p class="card__desc">Leitura direta da aba Resumo_Mensal.</p>
+      </div>
+
+      <div class="card__body">
+        <div class="table-wrap" aria-label="Tabela de resumo mensal">
+          <table class="table" id="tabelaResumo">
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th>Entradas Pagas</th>
+                <th>Entradas Pendentes</th>
+                <th>Total Entradas</th>
+                <th>Saidas</th>
+                <th>Resultado (Caixa)</th>
+                <th>Resultado (Caixa Real)</th>
+                <th>Ent. SumUp PJ</th>
+                <th>Entrada Nubank PJ</th>
+                <th>Entrada Nubank PF</th>
+                <th>Entrada PicPay PF</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <small>Resumo Mensal • Google Planilhas + Apps Script</small>
+  </footer>
+
+  <!-- ✅ Ordem importa -->
+  <script src="config.js"></script>
+  <script src="resumo.js" defer></script>
+</body>
+</html>

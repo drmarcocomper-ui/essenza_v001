@@ -1,0 +1,11 @@
+:root{
+  --cor-primaria:#7b4b94;
+  --cor-secundaria:#e6d8ee;
+  --cor-texto:#2b2b2b;
+  --cor-muted:#6b6b6b;
+  --cor-bg:#ffffff;
+  --cor-borda:#e0e0e0;
+
+  --raio:10px;
+  --sombra:0 8px 20px rgba(0,0,0,.06);
+}
