@@ -6,15 +6,12 @@
  * Actions (via Registry):
  * - Clientes.GerarID
  * - Clientes.Criar   (payload JSON em p.payload)
- * - Clientes.Buscar  (q em p.q)
+ * - Clientes.Buscar  (q em p.q)  ✅ agora retorna lista mesmo com q vazio
  *
  * Dependências:
  * - Clientes.Utils.gs (Clientes_* helpers)
  */
 
-// ============================================================
-// CONFIG
-// ============================================================
 var CLIENTES_SHEET_NAME = "Cadastro";
 
 var CLIENTES_HEADERS = [
@@ -96,7 +93,7 @@ function Clientes_criar_(sheet, payload) {
     "Profissão": Clientes_safeStr_(payload["Profissão"]),
     "Preferências": Clientes_safeStr_(payload["Preferências"]),
     "Origem": Clientes_safeStr_(payload.Origem),
-    "Observação": Clientes_safeStr_(payload["Observação"]),
+    "Observação": Clientes_safe_attachObs_(payload),
   };
 
   var values = CLIENTES_HEADERS.map(function (h) { return rowObj[h] || ""; });
@@ -105,30 +102,55 @@ function Clientes_criar_(sheet, payload) {
   return { id: id, message: "Cadastro salvo." };
 }
 
+function Clientes_safe_attachObs_(payload) {
+  // mantém compat caso venha "Observacoes" ou variações
+  return Clientes_safeStr_(payload["Observação"] || payload.Observacao || payload.Observacoes || "");
+}
+
+/**
+ * ✅ Buscar clientes:
+ * - Se q vazio: retorna até 50 clientes (NomeCliente preenchido)
+ * - Se q preenchido: filtra por NomeCliente/Telefone/E-mail
+ */
 function Clientes_buscar_(sheet, q) {
   q = Clientes_safeStr_(q);
-  if (!q) return [];
 
   var data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
 
   var header = data[0];
   var idx = Clientes_indexMap_(header);
+
+  // ✅ se q vazio, retorna lista padrão (até 50)
+  if (!q) {
+    var outAll = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var nome = String(row[idx["NomeCliente"]] || "").trim();
+      if (!nome) continue;
+
+      outAll.push(Clientes_rowToObj_(header, row));
+      if (outAll.length >= 50) break;
+    }
+    return outAll;
+  }
+
   var qNorm = Clientes_normalize_(q);
-
   var out = [];
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
 
-    var nome = Clientes_normalize_(row[idx["NomeCliente"]] || "");
-    var tel = Clientes_normalize_(row[idx["Telefone"]] || "");
-    var email = Clientes_normalize_(row[idx["E-mail"]] || "");
+  for (var j = 1; j < data.length; j++) {
+    var r = data[j];
 
-    if (nome.indexOf(qNorm) !== -1 || tel.indexOf(qNorm) !== -1 || email.indexOf(qNorm) !== -1) {
-      out.push(Clientes_rowToObj_(header, row));
+    var nome2 = Clientes_normalize_(r[idx["NomeCliente"]] || "");
+    var tel = Clientes_normalize_(r[idx["Telefone"]] || "");
+    var email = Clientes_normalize_(r[idx["E-mail"]] || "");
+
+    if (nome2.indexOf(qNorm) !== -1 || tel.indexOf(qNorm) !== -1 || email.indexOf(qNorm) !== -1) {
+      out.push(Clientes_rowToObj_(header, r));
       if (out.length >= 50) break;
     }
   }
+
   return out;
 }
 

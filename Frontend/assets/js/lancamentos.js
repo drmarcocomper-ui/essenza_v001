@@ -1,7 +1,7 @@
 // lancamentos.js (JSONP - sem CORS)
 // Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
 // Backend: Api.gs (Registry) + Clientes.gs + Lancamentos.gs
-// ✅ Suporta: Criar (com parcelas), Listar (rowIndex), Editar (rowIndex), Autocomplete de clientes (Clientes.Buscar)
+// ✅ Suporta: Criar (parcelas), Listar (rowIndex), Editar (rowIndex), Autocomplete (NomeCliente -> Cliente_Fornecedor)
 
 (() => {
   "use strict";
@@ -29,11 +29,11 @@
 
   const btnNovo = document.getElementById("btnNovoLancamento");
 
-  // Clientes (datalist)
+  // datalist clientes
   const inputCliente = document.getElementById("Cliente_Fornecedor");
   const datalistClientes = document.getElementById("listaClientes");
 
-  // Campos do formulário de lançamento
+  // Campos do formulário
   const el = {
     Data_Competencia: document.getElementById("Data_Competencia"),
     Data_Caixa: document.getElementById("Data_Caixa"),
@@ -54,6 +54,7 @@
 
   // ---------- Estado ----------
   let selectedRowIndex = null;
+  let clientesDebounce = null;
 
   // ---------- Helpers ----------
   function setFeedback(node, msg, type = "info") {
@@ -147,9 +148,7 @@
     });
   }
 
-  // ---------- Clientes (Autocomplete) ----------
-  let clientesDebounce = null;
-
+  // ---------- Clientes (autocomplete) ----------
   function isTipoEntrada() {
     return String(el.Tipo?.value || "").trim() === "Entrada";
   }
@@ -165,24 +164,22 @@
 
     const nomes = new Set();
     (items || []).forEach((it) => {
-      const nome = String(it?.NomeCliente || "").trim();
+      const nome = String(it?.NomeCliente || "").trim(); // ✅ vem do Cadastro
       if (nome) nomes.add(nome);
     });
 
     [...nomes].slice(0, 50).forEach((nome) => {
       const opt = document.createElement("option");
-      opt.value = nome;
+      opt.value = nome; // ✅ preenche Cliente_Fornecedor
       datalistClientes.appendChild(opt);
     });
   }
 
   async function buscarClientes(q) {
     if (!requireScriptUrl()) return;
-    const query = String(q || "").trim();
-    if (!query) {
-      clearDatalist();
-      return;
-    }
+
+    // ✅ permite vazio: retorna lista padrão
+    const query = String(q ?? "");
 
     const data = await jsonpRequest({
       action: "Clientes.Buscar",
@@ -196,29 +193,25 @@
   function bindAutocompleteClientes() {
     if (!inputCliente) return;
 
-    // Só faz sentido quando Tipo = Entrada
-    const schedule = (q) => {
+    // Foco: carrega lista padrão (se Tipo=Entrada)
+    inputCliente.addEventListener("focus", () => {
+      if (!isTipoEntrada()) return;
+      buscarClientes(inputCliente.value || "").catch(() => {});
+    });
+
+    // Digitação: filtra com debounce
+    inputCliente.addEventListener("input", () => {
       if (!isTipoEntrada()) return;
 
       clearTimeout(clientesDebounce);
       clientesDebounce = setTimeout(() => {
-        buscarClientes(q).catch(() => {});
+        buscarClientes(inputCliente.value || "").catch(() => {});
       }, 250);
-    };
-
-    inputCliente.addEventListener("focus", () => {
-      if (!isTipoEntrada()) return;
-      schedule(inputCliente.value || "");
     });
 
-    inputCliente.addEventListener("input", () => {
-      if (!isTipoEntrada()) return;
-      schedule(inputCliente.value || "");
-    });
-
+    // Mudou tipo: limpa sugestões se não for Entrada
     if (el.Tipo) {
       el.Tipo.addEventListener("change", () => {
-        // Se não for Entrada, limpa sugestões
         if (!isTipoEntrada()) clearDatalist();
       });
     }
@@ -257,7 +250,6 @@
       setFeedback(feedbackSalvar, "Este item não possui rowIndex. Atualize o backend para retornar rowIndex no Listar.", "error");
     }
 
-    // Ajuste: se não for Entrada, não precisa sugestões
     if (!isTipoEntrada()) clearDatalist();
   }
 
