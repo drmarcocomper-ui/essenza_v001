@@ -156,7 +156,11 @@
 
             <div class="field">
               <label class="label" for="Origem">Origem</label>
-              <input class="input" type="text" id="Origem" name="Origem" placeholder="Ex.: Cartão, Pix, Caixa..." />
+              <select class="select" id="Origem" name="Origem">
+                <option value="">Selecione</option>
+                <option value="Servico">Serviço</option>
+                <option value="Produto">Produto</option>
+              </select>
             </div>
           </div>
 
@@ -175,28 +179,55 @@
           <div class="form-row">
             <div class="field">
               <label class="label" for="Cliente_Fornecedor">Cliente_Fornecedor</label>
-              <input class="input" type="text" id="Cliente_Fornecedor" name="Cliente_Fornecedor" />
+              <input
+                class="input"
+                type="text"
+                id="Cliente_Fornecedor"
+                name="Cliente_Fornecedor"
+                list="listaClientes"
+                placeholder="(Entrada) comece a digitar o nome..."
+              />
+              <datalist id="listaClientes"></datalist>
+              <small class="hint">Quando Tipo = Entrada, sugere clientes cadastrados (Cadastro → NomeCliente).</small>
             </div>
 
             <div class="field">
               <label class="label" for="Forma_Pagamento">Forma_Pagamento</label>
-              <input class="input" type="text" id="Forma_Pagamento" name="Forma_Pagamento" placeholder="Ex.: Crédito, Débito, Pix" />
+              <select class="select" id="Forma_Pagamento" name="Forma_Pagamento">
+                <option value="">Selecione</option>
+                <option value="Pix">Pix</option>
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Cartao_Debito">Cartão Débito</option>
+                <option value="Cartao_Credito">Cartão Crédito</option>
+                <option value="Boleto">Boleto</option>
+                <option value="Transferencia">Transferência</option>
+                <option value="Confianca">Confiança</option>
+                <option value="Cortesia">Cortesia</option>
+              </select>
             </div>
           </div>
 
           <div class="form-row">
             <div class="field">
               <label class="label" for="Instituicao_Financeira">Instituicao_Financeira</label>
-              <input class="input" type="text" id="Instituicao_Financeira" name="Instituicao_Financeira" placeholder="Ex.: Nubank, Itaú..." />
+              <select class="select" id="Instituicao_Financeira" name="Instituicao_Financeira">
+                <option value="">Selecione</option>
+                <option value="Cortesia">Cortesia</option>
+                <option value="Nubank">Nubank</option>
+                <option value="PicPay">PicPay</option>
+                <option value="SumUp">SumUp</option>
+                <option value="Terceiro">Terceiro</option>
+                <option value="Dinheiro">Dinheiro</option>
+              </select>
             </div>
 
             <div class="field">
               <label class="label" for="Titularidade">Titularidade</label>
               <select class="select" id="Titularidade" name="Titularidade">
                 <option value="">Selecione</option>
-                <option value="Cabeleireira">Cabeleireira</option>
-                <option value="Salão">Salão</option>
-                <option value="Outro">Outro</option>
+                <option value="Cortesia">Cortesia</option>
+                <option value="PF">PF</option>
+                <option value="PJ">PJ</option>
               </select>
             </div>
           </div>

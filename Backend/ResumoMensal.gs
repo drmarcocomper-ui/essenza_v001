@@ -2,60 +2,31 @@
  * ResumoMensal.gs — OPÇÃO A (sem aba Resumo_Mensal)
  * ------------------------------------------------------------
  * Fonte: aba "Lancamentos"
- * Saída: calcula e RETORNA (não escreve em nenhuma aba)
- *
- * ✅ Regra: agrupar por mês usando Data_Caixa
- *    - Mês = YYYY-MM derivado de Data_Caixa
- *    - Se Data_Caixa vazio -> ignora no resumo
- *
- * Retorno por mês:
- * Mês | Entradas Pagas | Entradas Pendentes | Total Entradas | Saidas |
- * Resultado (Caixa) | Resultado (Caixa Real) |
- * Entrada. SumUp PJ | Entrada Nubank PJ | Entrada Nubank PF | Entrada PicPay PF
+ * ✅ Agrupa por mês usando Data_Caixa (padrão)
+ * ✅ Separa Entradas Pagas por Forma_Pagamento e Instituicao_Financeira
  *
  * Dependência:
- * - ResumoMensal.Utils.gs (RM_* helpers)
+ * - ResumoMensal.Utils.gs (RM_*)
  */
 
 var RM_SHEET_LANC = "Lancamentos";
 
-/**
- * ✅ Wrapper para o Registry/Api (lê e.parameter.mes opcional)
- * Action: "ResumoMensal.Calcular"
- */
 function ResumoMensal_CalcularApi_(e) {
   var mes = "";
-  try {
-    mes = e && e.parameter && e.parameter.mes ? String(e.parameter.mes).trim() : "";
-  } catch (_) {}
+  try { mes = e && e.parameter && e.parameter.mes ? String(e.parameter.mes).trim() : ""; } catch (_) {}
   return ResumoMensal_Calcular(mes);
 }
 
-/**
- * ✅ Wrapper para o Registry/Api (lê e.parameter.mes obrigatório)
- * Action: "ResumoMensal.DetalharMes"
- */
 function ResumoMensal_DetalharMesApi_(e) {
   var mes = "";
-  try {
-    mes = e && e.parameter && e.parameter.mes ? String(e.parameter.mes).trim() : "";
-  } catch (_) {}
-
-  if (!mes || !/^\d{4}-\d{2}$/.test(mes)) {
-    throw new Error("Parâmetro 'mes' é obrigatório e deve estar em YYYY-MM.");
-  }
-
+  try { mes = e && e.parameter && e.parameter.mes ? String(e.parameter.mes).trim() : ""; } catch (_) {}
+  if (!mes || !/^\d{4}-\d{2}$/.test(mes)) throw new Error("Parâmetro 'mes' é obrigatório e deve estar em YYYY-MM.");
   return ResumoMensal_DetalharMes(mes);
 }
 
-/**
- * Calcula o resumo mensal. Pode receber mesYYYYMM opcional.
- */
 function ResumoMensal_Calcular(mesYYYYMM) {
   mesYYYYMM = RM_safeStr_(mesYYYYMM);
-  if (mesYYYYMM && !/^\d{4}-\d{2}$/.test(mesYYYYMM)) {
-    throw new Error("Parâmetro 'mes' inválido. Use YYYY-MM.");
-  }
+  if (mesYYYYMM && !/^\d{4}-\d{2}$/.test(mesYYYYMM)) throw new Error("Parâmetro 'mes' inválido. Use YYYY-MM.");
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var shLanc = ss.getSheetByName(RM_SHEET_LANC);
@@ -72,8 +43,8 @@ function ResumoMensal_Calcular(mesYYYYMM) {
     "Tipo",
     "Status",
     "Valor",
+    "Forma_Pagamento",
     "Instituicao_Financeira",
-    "Titularidade",
   ]);
 
   var buckets = {}; // { "YYYY-MM": acc }
@@ -91,14 +62,14 @@ function ResumoMensal_Calcular(mesYYYYMM) {
       tipo: row[idx["Tipo"]],
       status: row[idx["Status"]],
       valor: row[idx["Valor"]],
+      forma: row[idx["Forma_Pagamento"]],
       inst: row[idx["Instituicao_Financeira"]],
-      titular: row[idx["Titularidade"]],
     });
   }
 
-  var meses = Object.keys(buckets).sort().reverse(); // mais recente primeiro
-
+  var meses = Object.keys(buckets).sort().reverse();
   var items = [];
+
   for (var m = 0; m < meses.length; m++) {
     var key = meses[m];
     var acc = buckets[key];
@@ -108,10 +79,9 @@ function ResumoMensal_Calcular(mesYYYYMM) {
     var totalEntradas = entradasPagas + entradasPend;
     var saidas = acc.saidas;
 
-    // ✅ Base = Data_Caixa → caixa = caixa real
     var resultadoCaixa = entradasPagas - saidas;
 
-    items.push({
+    var rowOut = {
       "Mês": key,
       "Entradas Pagas": RM_round2_(entradasPagas),
       "Entradas Pendentes": RM_round2_(entradasPend),
@@ -119,24 +89,35 @@ function ResumoMensal_Calcular(mesYYYYMM) {
       "Saidas": RM_round2_(saidas),
       "Resultado (Caixa)": RM_round2_(resultadoCaixa),
       "Resultado (Caixa Real)": RM_round2_(resultadoCaixa),
-      "Entrada. SumUp PJ": RM_round2_(acc.sumupPJ),
-      "Entrada Nubank PJ": RM_round2_(acc.nubankPJ),
-      "Entrada Nubank PF": RM_round2_(acc.nubankPF),
-      "Entrada PicPay PF": RM_round2_(acc.picpayPF),
-    });
+
+      // ✅ Forma_Pagamento (fixas)
+      "Entrada Pix": RM_round2_(acc.porForma.Pix || 0),
+      "Entrada Dinheiro": RM_round2_(acc.porForma.Dinheiro || 0),
+      "Entrada Cartao_Debito": RM_round2_(acc.porForma.Cartao_Debito || 0),
+      "Entrada Cartao_Credito": RM_round2_(acc.porForma.Cartao_Credito || 0),
+      "Entrada Boleto": RM_round2_(acc.porForma.Boleto || 0),
+      "Entrada Transferencia": RM_round2_(acc.porForma.Transferencia || 0),
+      "Entrada Confianca": RM_round2_(acc.porForma.Confianca || 0),
+      "Entrada Cortesia": RM_round2_(acc.porForma.Cortesia || 0),
+
+      // ✅ Instituicao_Financeira (fixas)
+      "Entrada Nubank": RM_round2_(acc.porInstituicao.Nubank || 0),
+      "Entrada PicPay": RM_round2_(acc.porInstituicao.PicPay || 0),
+      "Entrada SumUp": RM_round2_(acc.porInstituicao.SumUp || 0),
+      "Entrada Terceiro": RM_round2_(acc.porInstituicao.Terceiro || 0),
+      "Entrada Dinheiro Inst": RM_round2_(acc.porInstituicao.Dinheiro || 0),
+      "Entrada Cortesia Inst": RM_round2_(acc.porInstituicao.Cortesia || 0),
+    };
+
+    items.push(rowOut);
   }
 
   return { ok: true, items: items };
 }
 
-/**
- * Drill-down: retorna lançamentos do mês (por Data_Caixa)
- */
 function ResumoMensal_DetalharMes(mesYYYYMM) {
   mesYYYYMM = RM_safeStr_(mesYYYYMM);
-  if (!mesYYYYMM || !/^\d{4}-\d{2}$/.test(mesYYYYMM)) {
-    throw new Error("Parâmetro 'mes' inválido. Use YYYY-MM.");
-  }
+  if (!mesYYYYMM || !/^\d{4}-\d{2}$/.test(mesYYYYMM)) throw new Error("Parâmetro 'mes' inválido. Use YYYY-MM.");
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var shLanc = ss.getSheetByName(RM_SHEET_LANC);
@@ -161,13 +142,12 @@ function ResumoMensal_DetalharMes(mesYYYYMM) {
       Data_Caixa: RM_dateOut_(row[idx["Data_Caixa"]]),
       Tipo: RM_safeStr_(row[idx["Tipo"]]),
       Categoria: RM_safeStr_(row[idx["Categoria"]]),
-      Descricao: RM_safeStr_(row[idx["Descricao"]] || row[idx["Descrição"]]),
+      Descricao: RM_safeStr_(row[idx["Descricao"]]),
       Cliente_Fornecedor: RM_safeStr_(row[idx["Cliente_Fornecedor"]]),
       Forma_Pagamento: RM_safeStr_(row[idx["Forma_Pagamento"]]),
+      Instituicao_Financeira: RM_safeStr_(row[idx["Instituicao_Financeira"]]),
       Valor: RM_round2_(RM_parseNumber_(row[idx["Valor"]])),
       Status: RM_safeStr_(row[idx["Status"]]),
-      Instituicao_Financeira: RM_safeStr_(row[idx["Instituicao_Financeira"]]),
-      Titularidade: RM_safeStr_(row[idx["Titularidade"]])
     });
   }
 

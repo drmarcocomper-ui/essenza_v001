@@ -1,7 +1,7 @@
 // lancamentos.js (JSONP - sem CORS)
 // Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
-// Backend: Api.gs (Registry) + Lancamentos.gs (parcelamento automático)
-// ✅ Suporta: Criar (com parcelas), Listar (rowIndex), Editar (rowIndex)
+// Backend: Api.gs (Registry) + Clientes.gs + Lancamentos.gs
+// ✅ Suporta: Criar (com parcelas), Listar (rowIndex), Editar (rowIndex), Autocomplete de clientes (Clientes.Buscar)
 
 (() => {
   "use strict";
@@ -27,7 +27,11 @@
   const formLanc = document.getElementById("formLancamento");
   const feedbackSalvar = document.getElementById("feedbackSalvar");
 
-  const btnNovo = document.getElementById("btnNovoLancamento"); // existe no HTML atualizado
+  const btnNovo = document.getElementById("btnNovoLancamento");
+
+  // Clientes (datalist)
+  const inputCliente = document.getElementById("Cliente_Fornecedor");
+  const datalistClientes = document.getElementById("listaClientes");
 
   // Campos do formulário de lançamento
   const el = {
@@ -37,7 +41,7 @@
     Origem: document.getElementById("Origem"),
     Categoria: document.getElementById("Categoria"),
     Descricao: document.getElementById("Descricao"),
-    Cliente_Fornecedor: document.getElementById("Cliente_Fornecedor"),
+    Cliente_Fornecedor: inputCliente,
     Forma_Pagamento: document.getElementById("Forma_Pagamento"),
     Instituicao_Financeira: document.getElementById("Instituicao_Financeira"),
     Titularidade: document.getElementById("Titularidade"),
@@ -49,7 +53,7 @@
   };
 
   // ---------- Estado ----------
-  let selectedRowIndex = null; // rowIndex 1-based vindo do backend
+  let selectedRowIndex = null;
 
   // ---------- Helpers ----------
   function setFeedback(node, msg, type = "info") {
@@ -68,11 +72,7 @@
 
   function requireScriptUrl() {
     if (!SCRIPT_URL || !SCRIPT_URL.includes("/exec")) {
-      setFeedback(
-        feedbackLanc,
-        "SCRIPT_URL inválida. Ajuste no assets/js/config.js (precisa terminar em /exec).",
-        "error"
-      );
+      setFeedback(feedbackLanc, "SCRIPT_URL inválida. Ajuste no assets/js/config.js (precisa terminar em /exec).", "error");
       return false;
     }
     return true;
@@ -106,7 +106,7 @@
   function parseParcelCount(raw) {
     const s = String(raw ?? "").trim();
     if (!s) return 0;
-    if (/^\d+\s*\/\s*\d+$/.test(s)) return 0; // já está no formato 1/4 etc
+    if (/^\d+\s*\/\s*\d+$/.test(s)) return 0;
     if (/^\d+$/.test(s)) return Number(s) || 0;
     const m = s.match(/^(\d+)\s*x$/i);
     if (m) return Number(m[1]) || 0;
@@ -147,6 +147,83 @@
     });
   }
 
+  // ---------- Clientes (Autocomplete) ----------
+  let clientesDebounce = null;
+
+  function isTipoEntrada() {
+    return String(el.Tipo?.value || "").trim() === "Entrada";
+  }
+
+  function clearDatalist() {
+    if (!datalistClientes) return;
+    datalistClientes.innerHTML = "";
+  }
+
+  function renderClientesDatalist(items) {
+    if (!datalistClientes) return;
+    clearDatalist();
+
+    const nomes = new Set();
+    (items || []).forEach((it) => {
+      const nome = String(it?.NomeCliente || "").trim();
+      if (nome) nomes.add(nome);
+    });
+
+    [...nomes].slice(0, 50).forEach((nome) => {
+      const opt = document.createElement("option");
+      opt.value = nome;
+      datalistClientes.appendChild(opt);
+    });
+  }
+
+  async function buscarClientes(q) {
+    if (!requireScriptUrl()) return;
+    const query = String(q || "").trim();
+    if (!query) {
+      clearDatalist();
+      return;
+    }
+
+    const data = await jsonpRequest({
+      action: "Clientes.Buscar",
+      q: query
+    });
+
+    if (!data || data.ok !== true) return;
+    renderClientesDatalist(data.items || []);
+  }
+
+  function bindAutocompleteClientes() {
+    if (!inputCliente) return;
+
+    // Só faz sentido quando Tipo = Entrada
+    const schedule = (q) => {
+      if (!isTipoEntrada()) return;
+
+      clearTimeout(clientesDebounce);
+      clientesDebounce = setTimeout(() => {
+        buscarClientes(q).catch(() => {});
+      }, 250);
+    };
+
+    inputCliente.addEventListener("focus", () => {
+      if (!isTipoEntrada()) return;
+      schedule(inputCliente.value || "");
+    });
+
+    inputCliente.addEventListener("input", () => {
+      if (!isTipoEntrada()) return;
+      schedule(inputCliente.value || "");
+    });
+
+    if (el.Tipo) {
+      el.Tipo.addEventListener("change", () => {
+        // Se não for Entrada, limpa sugestões
+        if (!isTipoEntrada()) clearDatalist();
+      });
+    }
+  }
+
   // ---------- Form ----------
   function clearForm() {
     Object.keys(el).forEach((k) => {
@@ -155,11 +232,12 @@
     });
     selectedRowIndex = null;
 
-    // default útil
     if (el.Data_Competencia) el.Data_Competencia.value = hojeISO();
 
     setFeedback(feedbackSalvar, "Novo lançamento", "info");
-    setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 2500);
+    setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 2000);
+
+    clearDatalist();
   }
 
   function fillForm(it) {
@@ -174,18 +252,13 @@
     selectedRowIndex = ri > 0 ? ri : null;
 
     if (selectedRowIndex) {
-      setFeedback(
-        feedbackSalvar,
-        `Modo: EDITAR (rowIndex ${selectedRowIndex}). Salvar atualiza a linha.`,
-        "info"
-      );
+      setFeedback(feedbackSalvar, `Modo: EDITAR (rowIndex ${selectedRowIndex}). Salvar atualiza a linha.`, "info");
     } else {
-      setFeedback(
-        feedbackSalvar,
-        "Este item não possui rowIndex. Atualize o backend para retornar rowIndex no Listar.",
-        "error"
-      );
+      setFeedback(feedbackSalvar, "Este item não possui rowIndex. Atualize o backend para retornar rowIndex no Listar.", "error");
     }
+
+    // Ajuste: se não for Entrada, não precisa sugestões
+    if (!isTipoEntrada()) clearDatalist();
   }
 
   function buildLancPayload() {
@@ -315,7 +388,6 @@
   }
 
   function confirmParcelamentoSeNovo(payload) {
-    // Só confirma parcelamento quando estiver criando (não editando)
     if (selectedRowIndex) return true;
 
     const n = parseParcelCount(payload.Parcelamento);
@@ -342,7 +414,6 @@
     const payload = buildLancPayload();
     if (!validateRequired(payload)) return;
 
-    // confirmação de parcelamento apenas no modo NOVO
     if (!confirmParcelamentoSeNovo(payload)) {
       setFeedback(feedbackSalvar, "Operação cancelada.", "info");
       return;
@@ -355,8 +426,6 @@
         setFeedback(feedbackSalvar, resp.message || "Lançamento atualizado.", "success");
       } else {
         const resp = await criar(payload);
-
-        // Se o backend criou parcelas, mostre isso
         if (resp && typeof resp.parcelas === "number" && resp.parcelas >= 2) {
           setFeedback(feedbackSalvar, resp.message || `Parcelamento criado: ${resp.parcelas} parcelas.`, "success");
         } else {
@@ -393,11 +462,11 @@
     if (btnLimparFiltro) btnLimparFiltro.addEventListener("click", (e) => (e.preventDefault(), limparFiltro()));
     if (formFiltro) formFiltro.addEventListener("submit", (e) => (e.preventDefault(), listar()));
     if (formLanc) formLanc.addEventListener("submit", (e) => (e.preventDefault(), salvar()));
-
     if (btnNovo) btnNovo.addEventListener("click", (e) => (e.preventDefault(), clearForm()));
   }
 
   initDefaults();
   bind();
+  bindAutocompleteClientes();
   listar();
 })();

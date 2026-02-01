@@ -1,4 +1,4 @@
-// resumo.js (JSONP - sem CORS) — OPÇÃO A (cálculo em tempo real) + DRILL-DOWN + TOPs
+// resumo.js (JSONP - sem CORS) — Resumo mensal + Drill-down
 // Requer: config.js (window.APP_CONFIG.SCRIPT_URL)
 
 (() => {
@@ -6,41 +6,31 @@
 
   const SCRIPT_URL = window.APP_CONFIG?.SCRIPT_URL || "";
 
-  // Ações / filtro
   const btnAtualizarLista = document.getElementById("btnAtualizarLista");
   const btnFiltrarMes = document.getElementById("btnFiltrarMes");
   const btnLimparMes = document.getElementById("btnLimparMes");
   const mesInput = document.getElementById("mes");
-
-  // Feedback
   const feedback = document.getElementById("feedbackResumo");
 
-  // Tabela resumo
   const tabelaResumo = document.getElementById("tabelaResumo");
   const tbodyResumo = tabelaResumo ? tabelaResumo.querySelector("tbody") : null;
 
-  // Detalhes
   const cardDetalhes = document.getElementById("cardDetalhes");
   const mesSelecionado = document.getElementById("mesSelecionado");
   const tabelaDetalhes = document.getElementById("tabelaDetalhes");
   const tbodyDetalhes = tabelaDetalhes ? tabelaDetalhes.querySelector("tbody") : null;
   const btnFecharDetalhes = document.getElementById("btnFecharDetalhes");
 
-  // Resumo do mês (detalhes)
   const detEntradasPagas = document.getElementById("detEntradasPagas");
   const detEntradasPend = document.getElementById("detEntradasPend");
   const detSaidas = document.getElementById("detSaidas");
   const detResultado = document.getElementById("detResultado");
 
-  // Formas de pagamento (entradas pagas)
   const detPix = document.getElementById("detPix");
+  const detDinheiro = document.getElementById("detDinheiro");
   const detCredito = document.getElementById("detCredito");
   const detDebito = document.getElementById("detDebito");
   const detOutros = document.getElementById("detOutros");
-
-  // Top categoria / instituição (entradas pagas)
-  const detTopCategorias = document.getElementById("detTopCategorias");
-  const detTopInstituicoes = document.getElementById("detTopInstituicoes");
 
   function setFeedback(msg, type = "info") {
     if (!feedback) return;
@@ -114,9 +104,6 @@
     });
   }
 
-  // =========================
-  // RESUMO (tempo real)
-  // =========================
   async function carregarResumo(mesYYYYMM) {
     if (!requireScriptUrl()) return;
 
@@ -137,7 +124,7 @@
 
     if (!Array.isArray(items) || items.length === 0) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="11">Sem dados.</td>`;
+      tr.innerHTML = `<td colspan="20">Sem dados.</td>`;
       tbodyResumo.appendChild(tr);
       return;
     }
@@ -147,47 +134,46 @@
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>
-          <button type="button" class="btn btn--secondary btn-mes" data-mes="${escapeHtml(mes)}">
-            ${escapeHtml(mes)}
-          </button>
-        </td>
+        <td><button type="button" class="btn btn--secondary btn-mes" data-mes="${escapeHtml(mes)}">${escapeHtml(mes)}</button></td>
+
         <td>${escapeHtml(formatMoneyBR(it["Entradas Pagas"]))}</td>
         <td>${escapeHtml(formatMoneyBR(it["Entradas Pendentes"]))}</td>
         <td>${escapeHtml(formatMoneyBR(it["Total Entradas"]))}</td>
         <td>${escapeHtml(formatMoneyBR(it["Saidas"]))}</td>
         <td>${escapeHtml(formatMoneyBR(it["Resultado (Caixa)"]))}</td>
-        <td>${escapeHtml(formatMoneyBR(it["Resultado (Caixa Real)"]))}</td>
-        <td>${escapeHtml(formatMoneyBR(it["Entrada. SumUp PJ"]))}</td>
-        <td>${escapeHtml(formatMoneyBR(it["Entrada Nubank PJ"]))}</td>
-        <td>${escapeHtml(formatMoneyBR(it["Entrada Nubank PF"]))}</td>
-        <td>${escapeHtml(formatMoneyBR(it["Entrada PicPay PF"]))}</td>
+
+        <td>${escapeHtml(formatMoneyBR(it["Entrada Pix"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Entrada Dinheiro"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Entrada Cartao_Debito"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Entrada Cartao_Credito"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Entrada Boleto"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Entrada Transferencia"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Entrada Confianca"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Entrada Cortesia"]))}</td>
+
+        <td>${escapeHtml(formatMoneyBR(it["Entrada Nubank"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Entrada PicPay"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Entrada SumUp"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Entrada Terceiro"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Entrada Dinheiro Inst"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Entrada Cortesia Inst"]))}</td>
       `;
       tbodyResumo.appendChild(tr);
 
       const btn = tr.querySelector(".btn-mes");
       if (btn) {
         btn.addEventListener("click", () => {
-          carregarDetalhesMes(mes).catch((err) =>
-            setFeedback(err.message || "Erro ao detalhar mês.", "error")
-          );
+          carregarDetalhesMes(mes).catch((err) => setFeedback(err.message || "Erro ao detalhar mês.", "error"));
         });
       }
     });
   }
 
-  // =========================
-  // DETALHES (drill-down)
-  // =========================
   async function carregarDetalhesMes(mesYYYYMM) {
     if (!requireScriptUrl()) return;
 
     setFeedback("Carregando detalhes...", "info");
-    const data = await jsonpRequest({
-      action: "ResumoMensal.DetalharMes",
-      mes: mesYYYYMM,
-    });
-
+    const data = await jsonpRequest({ action: "ResumoMensal.DetalharMes", mes: mesYYYYMM });
     if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao carregar detalhes.");
 
     renderDetalhes(mesYYYYMM, data.items || []);
@@ -197,7 +183,7 @@
   function renderDetalhes(mesYYYYMM, items) {
     if (!tbodyDetalhes) return;
 
-    const sorted = sortByDataCaixaDesc(items || []);
+    const sorted = sortByDataDesc(items || []);
 
     if (mesSelecionado) mesSelecionado.textContent = mesYYYYMM;
     if (cardDetalhes) cardDetalhes.style.display = "block";
@@ -210,18 +196,16 @@
     if (detResultado) detResultado.textContent = formatMoneyBR(resumo.resultado);
 
     if (detPix) detPix.textContent = formatMoneyBR(resumo.pagPix);
+    if (detDinheiro) detDinheiro.textContent = formatMoneyBR(resumo.pagDinheiro);
     if (detCredito) detCredito.textContent = formatMoneyBR(resumo.pagCredito);
     if (detDebito) detDebito.textContent = formatMoneyBR(resumo.pagDebito);
     if (detOutros) detOutros.textContent = formatMoneyBR(resumo.pagOutros);
-
-    renderTopMap(detTopCategorias, resumo.porCategoria, 5);
-    renderTopMap(detTopInstituicoes, resumo.porInstituicao, 5);
 
     tbodyDetalhes.innerHTML = "";
 
     if (!Array.isArray(sorted) || sorted.length === 0) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="8">Nenhum lançamento neste mês.</td>`;
+      tr.innerHTML = `<td colspan="9">Nenhum lançamento neste mês.</td>`;
       tbodyDetalhes.appendChild(tr);
       cardDetalhes.scrollIntoView({ behavior: "smooth" });
       return;
@@ -236,6 +220,7 @@
         <td>${escapeHtml(it.Descricao || "")}</td>
         <td>${escapeHtml(it.Cliente_Fornecedor || "")}</td>
         <td>${escapeHtml(it.Forma_Pagamento || "")}</td>
+        <td>${escapeHtml(it.Instituicao_Financeira || "")}</td>
         <td>${escapeHtml(formatMoneyBR(it.Valor))}</td>
         <td>${escapeHtml(it.Status || "")}</td>
       `;
@@ -245,36 +230,9 @@
     cardDetalhes.scrollIntoView({ behavior: "smooth" });
   }
 
-  function renderTopMap(node, mapObj, limit) {
-    if (!node) return;
-
-    const entries = Object.entries(mapObj || {})
-      .sort((a, b) => (b[1] || 0) - (a[1] || 0))
-      .slice(0, limit);
-
-    if (entries.length === 0) {
-      node.textContent = "—";
-      return;
-    }
-
-    node.innerHTML = entries
-      .map(([k, v]) => `${escapeHtml(k)}: <strong>${escapeHtml(formatMoneyBR(v))}</strong>`)
-      .join(" • ");
-  }
-
-  // =========================
-  // CÁLCULOS
-  // =========================
-  function sortByDataCaixaDesc(items) {
+  function sortByDataDesc(items) {
     const arr = Array.isArray(items) ? [...items] : [];
-    arr.sort((a, b) => {
-      const da = parseDateToTime(a?.Data_Caixa);
-      const db = parseDateToTime(b?.Data_Caixa);
-      if (da === null && db === null) return 0;
-      if (da === null) return 1;
-      if (db === null) return -1;
-      return db - da;
-    });
+    arr.sort((a, b) => (parseDateToTime(b?.Data_Caixa) ?? 0) - (parseDateToTime(a?.Data_Caixa) ?? 0));
     return arr;
   }
 
@@ -287,14 +245,6 @@
       return new Date(y, m - 1, d).getTime();
     }
 
-    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (m) {
-      const d = Number(m[1]);
-      const mo = Number(m[2]);
-      const y = Number(m[3]);
-      return new Date(y, mo - 1, d).getTime();
-    }
-
     const t = Date.parse(s);
     return Number.isNaN(t) ? null : t;
   }
@@ -305,55 +255,45 @@
     let saidas = 0;
 
     let pagPix = 0;
+    let pagDinheiro = 0;
     let pagCredito = 0;
     let pagDebito = 0;
     let pagOutros = 0;
-
-    const porCategoria = {};
-    const porInstituicao = {};
 
     (items || []).forEach((it) => {
       const tipo = String(it.Tipo || "").trim();
       const status = String(it.Status || "").trim();
       const valor = toNumber(it.Valor);
 
-      const fp = String(it.Forma_Pagamento || "").toLowerCase().trim();
-      const cat = String(it.Categoria || "").trim() || "Sem categoria";
-      const inst = String(it.Instituicao_Financeira || "").trim() || "Sem instituição";
-
-      if (tipo === "Receita") {
+      if (tipo === "Entrada") {
         if (status === "Pago") {
           entradasPagas += valor;
 
-          if (fp.includes("pix")) pagPix += valor;
-          else if (fp.includes("cr") || fp.includes("cred") || fp.includes("crédito") || fp.includes("credito")) pagCredito += valor;
-          else if (fp.includes("deb") || fp.includes("déb") || fp.includes("débito") || fp.includes("debito")) pagDebito += valor;
+          const fp = String(it.Forma_Pagamento || "").trim();
+          if (fp === "Pix") pagPix += valor;
+          else if (fp === "Dinheiro") pagDinheiro += valor;
+          else if (fp === "Cartao_Credito") pagCredito += valor;
+          else if (fp === "Cartao_Debito") pagDebito += valor;
           else pagOutros += valor;
-
-          porCategoria[cat] = (porCategoria[cat] || 0) + valor;
-          porInstituicao[inst] = (porInstituicao[inst] || 0) + valor;
 
         } else if (status === "Pendente") {
           entradasPendentes += valor;
         }
-      } else if (tipo === "Despesa") {
+      } else if (tipo === "Saida") {
         saidas += valor;
       }
     });
-
-    const resultado = entradasPagas - saidas;
 
     return {
       entradasPagas,
       entradasPendentes,
       saidas,
-      resultado,
+      resultado: entradasPagas - saidas,
       pagPix,
+      pagDinheiro,
       pagCredito,
       pagDebito,
       pagOutros,
-      porCategoria,
-      porInstituicao,
     };
   }
 
@@ -368,51 +308,38 @@
     if (detResultado) detResultado.textContent = "—";
 
     if (detPix) detPix.textContent = "—";
+    if (detDinheiro) detDinheiro.textContent = "—";
     if (detCredito) detCredito.textContent = "—";
     if (detDebito) detDebito.textContent = "—";
     if (detOutros) detOutros.textContent = "—";
-
-    if (detTopCategorias) detTopCategorias.textContent = "—";
-    if (detTopInstituicoes) detTopInstituicoes.textContent = "—";
   }
 
-  // =========================
-  // BIND
-  // =========================
   function bind() {
-    if (btnAtualizarLista) {
-      btnAtualizarLista.addEventListener("click", (e) => {
-        e.preventDefault();
-        fecharDetalhes();
-        carregarResumo().catch((err) => setFeedback(err.message || "Erro.", "error"));
-      });
-    }
+    if (btnAtualizarLista) btnAtualizarLista.addEventListener("click", (e) => {
+      e.preventDefault();
+      fecharDetalhes();
+      carregarResumo().catch((err) => setFeedback(err.message || "Erro.", "error"));
+    });
 
-    if (btnFiltrarMes) {
-      btnFiltrarMes.addEventListener("click", (e) => {
-        e.preventDefault();
-        fecharDetalhes();
-        const v = (mesInput?.value || "").trim();
-        if (!v) return setFeedback("Escolha um mês ou clique em Limpar.", "error");
-        carregarResumo(v).catch((err) => setFeedback(err.message || "Erro.", "error"));
-      });
-    }
+    if (btnFiltrarMes) btnFiltrarMes.addEventListener("click", (e) => {
+      e.preventDefault();
+      fecharDetalhes();
+      const v = (mesInput?.value || "").trim();
+      if (!v) return setFeedback("Escolha um mês ou clique em Limpar.", "error");
+      carregarResumo(v).catch((err) => setFeedback(err.message || "Erro.", "error"));
+    });
 
-    if (btnLimparMes) {
-      btnLimparMes.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (mesInput) mesInput.value = "";
-        fecharDetalhes();
-        carregarResumo().catch((err) => setFeedback(err.message || "Erro.", "error"));
-      });
-    }
+    if (btnLimparMes) btnLimparMes.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (mesInput) mesInput.value = "";
+      fecharDetalhes();
+      carregarResumo().catch((err) => setFeedback(err.message || "Erro.", "error"));
+    });
 
-    if (btnFecharDetalhes) {
-      btnFecharDetalhes.addEventListener("click", (e) => {
-        e.preventDefault();
-        fecharDetalhes();
-      });
-    }
+    if (btnFecharDetalhes) btnFecharDetalhes.addEventListener("click", (e) => {
+      e.preventDefault();
+      fecharDetalhes();
+    });
   }
 
   bind();

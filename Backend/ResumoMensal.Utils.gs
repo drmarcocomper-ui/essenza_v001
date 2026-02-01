@@ -1,30 +1,57 @@
 /**
  * ResumoMensal.Utils.gs — Helpers da feature ResumoMensal
  * ------------------------------------------------------
- * ✅ Ajustado para Tipo = Entrada / Saida
- * ✅ Também aceita Receita/Despesa (compat)
+ * ✅ Tipo: Entrada / Saida (aceita Receita/Despesa por compat)
+ * ✅ Separa Entradas Pagas por:
+ *   - Forma_Pagamento (fixas)
+ *   - Instituicao_Financeira (fixas)
  * ✅ Normaliza acentos e maiúsculas
  */
+
+var RM_FORMAS_FIXAS = [
+  "Pix",
+  "Dinheiro",
+  "Cartao_Debito",
+  "Cartao_Credito",
+  "Boleto",
+  "Transferencia",
+  "Confianca",
+  "Cortesia",
+];
+
+var RM_INST_FIXAS = [
+  "Nubank",
+  "PicPay",
+  "SumUp",
+  "Terceiro",
+  "Dinheiro",
+  "Cortesia",
+];
 
 // ============================================================
 // ACUMULADOR
 // ============================================================
 function RM_newAcc_() {
+  var formas = {};
+  RM_FORMAS_FIXAS.forEach(function (k) { formas[k] = 0; });
+
+  var insts = {};
+  RM_INST_FIXAS.forEach(function (k) { insts[k] = 0; });
+
   return {
     entradasPagas: 0,
     entradasPendentes: 0,
     saidas: 0,
 
-    sumupPJ: 0,
-    nubankPJ: 0,
-    nubankPF: 0,
-    picpayPF: 0,
+    // ✅ breakdowns (somente entradas pagas)
+    porForma: formas,
+    porInstituicao: insts,
   };
 }
 
 function RM_accumulate_(acc, it) {
-  var tipoN = RM_norm_(it.tipo);     // ex.: "entrada", "saida"
-  var statusN = RM_norm_(it.status); // ex.: "pago", "pendente"
+  var tipoN = RM_norm_(it.tipo);
+  var statusN = RM_norm_(it.status);
   var valor = RM_parseNumber_(it.valor);
 
   // ignora cancelados/inativos
@@ -42,20 +69,13 @@ function RM_accumulate_(acc, it) {
     if (statusN === "pago" || statusN === "paga" || statusN === "quitado") {
       acc.entradasPagas += valor;
 
-      // instituiçoes (somente entradas pagas)
-      var instN = RM_norm_(it.inst);
-      var titN = RM_norm_(it.titular);
+      // ✅ Forma_Pagamento (fixa)
+      var forma = RM_pickFromFixed_(it.forma, RM_FORMAS_FIXAS);
+      if (forma) acc.porForma[forma] = (acc.porForma[forma] || 0) + valor;
 
-      // heurística simples:
-      // - PJ: contém "pj" ou "salao"
-      // - PF: contém "pf" ou "cabeleireira"
-      var isPJ = titN.indexOf("pj") !== -1 || titN.indexOf("salao") !== -1 || titN.indexOf("salao") !== -1;
-      var isPF = titN.indexOf("pf") !== -1 || titN.indexOf("cabeleireira") !== -1;
-
-      if (instN.indexOf("sumup") !== -1 && isPJ) acc.sumupPJ += valor;
-      if (instN.indexOf("nubank") !== -1 && isPJ) acc.nubankPJ += valor;
-      if (instN.indexOf("nubank") !== -1 && isPF) acc.nubankPF += valor;
-      if (instN.indexOf("picpay") !== -1 && isPF) acc.picpayPF += valor;
+      // ✅ Instituicao_Financeira (fixa)
+      var inst = RM_pickFromFixed_(it.inst, RM_INST_FIXAS);
+      if (inst) acc.porInstituicao[inst] = (acc.porInstituicao[inst] || 0) + valor;
 
     } else if (statusN === "pendente" || statusN === "a receber" || statusN === "areceber") {
       acc.entradasPendentes += valor;
@@ -107,10 +127,8 @@ function RM_parseNumber_(v) {
   var s = RM_safeStr_(v);
   if (!s) return 0;
 
-  // remove R$ e espaços
   s = s.replace(/r\$\s?/gi, "").trim();
 
-  // milhares e vírgula
   if (s.indexOf(",") !== -1) {
     s = s.replace(/\./g, "").replace(",", ".");
   }
@@ -122,6 +140,30 @@ function RM_parseNumber_(v) {
 function RM_round2_(n) {
   n = Number(n || 0);
   return Math.round(n * 100) / 100;
+}
+
+/**
+ * Retorna exatamente uma opção fixa, se bater.
+ * Tenta:
+ * - match direto (case-sensitive) primeiro
+ * - match por normalização (case/acentos) depois
+ */
+function RM_pickFromFixed_(raw, fixedList) {
+  var s = RM_safeStr_(raw);
+  if (!s) return "";
+
+  // match direto
+  for (var i = 0; i < fixedList.length; i++) {
+    if (s === fixedList[i]) return fixedList[i];
+  }
+
+  // match normalizado
+  var sn = RM_norm_(s);
+  for (var j = 0; j < fixedList.length; j++) {
+    if (sn === RM_norm_(fixedList[j])) return fixedList[j];
+  }
+
+  return "";
 }
 
 // ============================================================
