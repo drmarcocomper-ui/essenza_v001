@@ -6,5 +6,5 @@
 
 window.APP_CONFIG = {
   SCRIPT_URL:
-    "https://script.google.com/macros/s/AKfycbwyQ-59KwZ5fLeYf1-qFrH8unBNsgX_Dbhcj3yxL_D41ZzYbvCDcttT3Rh2fjJe_5AuZw/exec"
+    "https://script.google.com/macros/s/AKfycbwhK8DIB38ma3t6eTXf5zyXc4WL9EXXMjR-e3eS1K6da_pO6bkCLGE4Sr5t8xGekcZs0Q/exec"
 };
