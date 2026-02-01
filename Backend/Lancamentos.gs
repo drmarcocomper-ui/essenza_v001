@@ -116,7 +116,7 @@ function Lancamentos_criar_(sheet, payload) {
   if (!nParcelas || nParcelas < 2) {
     var rowObj1 = LANC_buildRowObj_(payload, dc, dcaixa, parcRaw, total, statusRaw, payload.Mes_a_receber);
     sheet.appendRow(LANC_toRowValues_(rowObj1));
-    return { message: "Lançamento salvo." };
+    return { message: "Lançamento salvo. DEBUG parcRaw=" + parcRaw + " nParcelas=" + nParcelas };
   }
 
   // Parcelamento automático
