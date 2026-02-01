@@ -2,10 +2,11 @@
 // Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
 // Backend: Api.gs (Registry) + Categoria.gs + Lancamentos.gs + Clientes.gs (opcional)
 //
-// ✅ Novo:
-// - Categoria obrigatória e padronizada (datalist vindo da aba Categoria)
-// - Ao escolher Categoria, Descricao vira um campo com opções (datalist) baseado em Descricao_Padrao (separado por |)
-// - Valida que Categoria existe (evita digitação fora da lista)
+// ✅ Categoria padronizada:
+// - Categoria obrigatória (datalist vindo da aba Categoria, somenteAtivos=1 e por Tipo)
+// - Descricao com opções (datalist) agregando TODAS as linhas da categoria (mesmo Tipo+Categoria)
+// - Descricao_Padrao pode ter várias opções separadas por |, quebra de linha, ; ou ,
+// - Valida que Categoria existe
 
 (() => {
   "use strict";
@@ -69,8 +70,8 @@
   let clientesDebounce = null;
 
   // Categorias
-  let categoriasCache = []; // itens do backend
-  let ultimaDescricaoAuto = ""; // para saber se pode sobrescrever
+  let categoriasCache = [];
+  let ultimaDescricaoAuto = "";
 
   // ---------- Helpers ----------
   function setFeedback(node, msg, type = "info") {
@@ -165,28 +166,30 @@
   }
 
   // ============================================================
-  // DESCRICOES (datalist) — a partir de Descricao_Padrao
+  // DESCRICOES (datalist) — agrega todas as descrições
   // ============================================================
   function clearDescricoesDatalist() {
     if (!datalistDescricoes) return;
     datalistDescricoes.innerHTML = "";
   }
 
-  function renderDescricoesFromPadrao(padraoStr) {
+  function renderDescricoesFromPadrao(padroes) {
     clearDescricoesDatalist();
     if (!datalistDescricoes) return;
 
-    const raw = String(padraoStr || "").trim();
-    if (!raw) return;
+    const all = Array.isArray(padroes) ? padroes : [padroes];
+    const parts = [];
 
-    // padrão: "A | B | C"
-    const parts = raw
-      .split("|")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    all.forEach((raw) => {
+      String(raw || "")
+        .split(/\r?\n|[|;,]/g) // aceita | \n ; ,
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .forEach((s) => parts.push(s));
+    });
 
     const uniq = new Set(parts);
-    [...uniq].slice(0, 50).forEach((txt) => {
+    [...uniq].slice(0, 80).forEach((txt) => {
       const opt = document.createElement("option");
       opt.value = txt;
       datalistDescricoes.appendChild(opt);
@@ -243,18 +246,15 @@
     renderCategoriasDatalist(categoriasCache);
   }
 
-  function findCategoria(tipo, categoriaNome) {
+  function findCategoriaAll(tipo, categoriaNome) {
     const t = String(tipo || "").trim();
     const c = String(categoriaNome || "").trim();
-    if (!t || !c) return null;
+    if (!t || !c) return [];
 
-    return (
-      categoriasCache.find(
-        (x) =>
-          String(x.Tipo || "").trim() === t &&
-          String(x.Categoria || "").trim() === c &&
-          String(x.Ativo || "Sim").trim() !== "Nao"
-      ) || null
+    return categoriasCache.filter((x) =>
+      String(x.Tipo || "").trim() === t &&
+      String(x.Categoria || "").trim() === c &&
+      String(x.Ativo || "Sim").trim() !== "Nao"
     );
   }
 
@@ -265,33 +265,37 @@
     const cat = String(el.Categoria.value || "").trim();
     if (!tipo || !cat) return;
 
-    const found = findCategoria(tipo, cat);
-    if (!found) return;
-
-    const padrao = String(found.Descricao_Padrao || "").trim();
-    if (!padrao) {
+    const matches = findCategoriaAll(tipo, cat);
+    if (!matches.length) {
       clearDescricoesDatalist();
       return;
     }
 
-    // ✅ popula opções no campo Descricao
-    renderDescricoesFromPadrao(padrao);
+    const padroes = matches
+      .map((m) => String(m.Descricao_Padrao || "").trim())
+      .filter(Boolean);
+
+    if (!padroes.length) {
+      clearDescricoesDatalist();
+      return;
+    }
+
+    // ✅ monta opções no datalist
+    renderDescricoesFromPadrao(padroes);
 
     const atual = String(el.Descricao.value || "").trim();
+    const primeira = padroes
+      .join("|")
+      .split(/\r?\n|[|;,]/g)
+      .map((s) => s.trim())
+      .filter(Boolean)[0] || "";
 
-    // ✅ sugere a primeira opção se:
-    // - force (mudou categoria)
-    // - ou descricao está vazia
-    // - ou ainda era a última auto
-    if (force || !atual || atual === ultimaDescricaoAuto) {
-      const first = padrao.split("|")[0]?.trim() || padrao;
-      if (first) {
-        el.Descricao.value = first;
-        ultimaDescricaoAuto = first;
+    if ((force || !atual || atual === ultimaDescricaoAuto) && primeira) {
+      el.Descricao.value = primeira;
+      ultimaDescricaoAuto = primeira;
 
-        setFeedback(feedbackSalvar, "Descrição sugerida pela categoria.", "info");
-        setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 1200);
-      }
+      setFeedback(feedbackSalvar, "Descrição sugerida pela categoria.", "info");
+      setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 1200);
     }
   }
 
@@ -300,8 +304,8 @@
     const cat = String(payload.Categoria || "").trim();
     if (!tipo || !cat) return false;
 
-    const found = findCategoria(tipo, cat);
-    if (!found) {
+    const matches = findCategoriaAll(tipo, cat);
+    if (!matches.length) {
       setFeedback(feedbackSalvar, "Selecione uma Categoria válida (da lista).", "error");
       return false;
     }
@@ -330,6 +334,13 @@
     el.Categoria.addEventListener("blur", () => {
       aplicarDescricaoDaCategoria(false);
     });
+
+    // ✅ se clicar no campo Descricao, garante que o datalist já está populado
+    if (el.Descricao) {
+      el.Descricao.addEventListener("focus", () => {
+        aplicarDescricaoDaCategoria(false);
+      });
+    }
   }
 
   // ============================================================
@@ -433,6 +444,9 @@
     clearDescricoesDatalist();
 
     if (!isTipoEntrada()) clearClientesDatalist();
+
+    // ao carregar, tentar popular descrições
+    aplicarDescricaoDaCategoria(false);
   }
 
   function buildLancPayload() {
