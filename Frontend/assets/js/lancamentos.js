@@ -4,7 +4,7 @@
 //
 // ✅ Novo:
 // - Categoria obrigatória e padronizada (datalist vindo da aba Categoria)
-// - Ao escolher Categoria, Descricao vem de Descricao_Padrao
+// - Ao escolher Categoria, Descricao vira um campo com opções (datalist) baseado em Descricao_Padrao (separado por |)
 // - Valida que Categoria existe (evita digitação fora da lista)
 
 (() => {
@@ -39,6 +39,9 @@
   // Categoria (padronização)
   const inputCategoria = document.getElementById("Categoria");
   const datalistCategorias = document.getElementById("listaCategorias");
+
+  // Descrições por categoria
+  const datalistDescricoes = document.getElementById("listaDescricoes");
 
   // Campos do formulário
   const el = {
@@ -162,6 +165,35 @@
   }
 
   // ============================================================
+  // DESCRICOES (datalist) — a partir de Descricao_Padrao
+  // ============================================================
+  function clearDescricoesDatalist() {
+    if (!datalistDescricoes) return;
+    datalistDescricoes.innerHTML = "";
+  }
+
+  function renderDescricoesFromPadrao(padraoStr) {
+    clearDescricoesDatalist();
+    if (!datalistDescricoes) return;
+
+    const raw = String(padraoStr || "").trim();
+    if (!raw) return;
+
+    // padrão: "A | B | C"
+    const parts = raw
+      .split("|")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const uniq = new Set(parts);
+    [...uniq].slice(0, 50).forEach((txt) => {
+      const opt = document.createElement("option");
+      opt.value = txt;
+      datalistDescricoes.appendChild(opt);
+    });
+  }
+
+  // ============================================================
   // CATEGORIAS — padronização
   // ============================================================
   function getTipoAtual() {
@@ -199,7 +231,7 @@
     const data = await jsonpRequest({
       action: "Categoria.Listar",
       sheet: "Categoria",
-      filtros: JSON.stringify(filtros)
+      filtros: JSON.stringify(filtros),
     });
 
     if (!data || data.ok !== true) {
@@ -216,11 +248,14 @@
     const c = String(categoriaNome || "").trim();
     if (!t || !c) return null;
 
-    return categoriasCache.find((x) =>
-      String(x.Tipo || "").trim() === t &&
-      String(x.Categoria || "").trim() === c &&
-      String(x.Ativo || "Sim").trim() !== "Nao"
-    ) || null;
+    return (
+      categoriasCache.find(
+        (x) =>
+          String(x.Tipo || "").trim() === t &&
+          String(x.Categoria || "").trim() === c &&
+          String(x.Ativo || "Sim").trim() !== "Nao"
+      ) || null
+    );
   }
 
   function aplicarDescricaoDaCategoria(force = false) {
@@ -233,21 +268,30 @@
     const found = findCategoria(tipo, cat);
     if (!found) return;
 
-    const sugestao = String(found.Descricao_Padrao || "").trim();
-    if (!sugestao) return;
+    const padrao = String(found.Descricao_Padrao || "").trim();
+    if (!padrao) {
+      clearDescricoesDatalist();
+      return;
+    }
+
+    // ✅ popula opções no campo Descricao
+    renderDescricoesFromPadrao(padrao);
 
     const atual = String(el.Descricao.value || "").trim();
 
-    // sobrescreve se:
-    // - force = true (mudou categoria)
+    // ✅ sugere a primeira opção se:
+    // - force (mudou categoria)
     // - ou descricao está vazia
-    // - ou descricao é igual à última auto preenchida
+    // - ou ainda era a última auto
     if (force || !atual || atual === ultimaDescricaoAuto) {
-      el.Descricao.value = sugestao;
-      ultimaDescricaoAuto = sugestao;
+      const first = padrao.split("|")[0]?.trim() || padrao;
+      if (first) {
+        el.Descricao.value = first;
+        ultimaDescricaoAuto = first;
 
-      setFeedback(feedbackSalvar, "Descrição preenchida pela categoria.", "info");
-      setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 1200);
+        setFeedback(feedbackSalvar, "Descrição sugerida pela categoria.", "info");
+        setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 1200);
+      }
     }
   }
 
@@ -267,20 +311,18 @@
   function bindCategoriaPadrao() {
     if (!el.Tipo || !el.Categoria) return;
 
-    // Mudou tipo: limpa categoria/descrição e recarrega lista
     el.Tipo.addEventListener("change", () => {
       if (el.Categoria) el.Categoria.value = "";
       if (el.Descricao) el.Descricao.value = "";
       ultimaDescricaoAuto = "";
+      clearDescricoesDatalist();
       carregarCategoriasAtivas(getTipoAtual()).catch(() => {});
     });
 
-    // Foco na categoria: garante lista carregada pro tipo atual
     el.Categoria.addEventListener("focus", () => {
       carregarCategoriasAtivas(getTipoAtual()).catch(() => {});
     });
 
-    // Ao escolher categoria: força a descrição padrão
     el.Categoria.addEventListener("change", () => {
       aplicarDescricaoDaCategoria(true);
     });
@@ -324,7 +366,7 @@
 
     const data = await jsonpRequest({
       action: "Clientes.Buscar",
-      q: String(q ?? "")
+      q: String(q ?? ""),
     });
 
     if (!data || data.ok !== true) return;
@@ -373,6 +415,7 @@
     setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 1200);
 
     clearClientesDatalist();
+    clearDescricoesDatalist();
   }
 
   function fillForm(it) {
@@ -386,8 +429,8 @@
     const ri = Number(it.rowIndex || 0);
     selectedRowIndex = ri > 0 ? ri : null;
 
-    // ao carregar, não forçar descrição
     ultimaDescricaoAuto = "";
+    clearDescricoesDatalist();
 
     if (!isTipoEntrada()) clearClientesDatalist();
   }
@@ -423,13 +466,19 @@
   }
 
   function validateRequired(payload) {
-    if (!payload.Data_Competencia || !payload.Tipo || !payload.Categoria || !payload.Descricao || !payload.Valor || !payload.Status) {
+    if (
+      !payload.Data_Competencia ||
+      !payload.Tipo ||
+      !payload.Categoria ||
+      !payload.Descricao ||
+      !payload.Valor ||
+      !payload.Status
+    ) {
       setFeedback(feedbackSalvar, "Preencha: Data_Competencia, Tipo, Categoria, Descricao, Valor, Status.", "error");
       return false;
     }
-    // ✅ categoria deve existir
-    if (!validarCategoriaSelecionada(payload)) return false;
 
+    if (!validarCategoriaSelecionada(payload)) return false;
     return true;
   }
 
@@ -526,7 +575,7 @@
     if (!n || n < 2) return true;
 
     const total = toNumberBR(payload.Valor);
-    const each = n ? (total / n) : 0;
+    const each = n ? total / n : 0;
 
     const base = payload.Data_Caixa || payload.Data_Competencia;
     const msg =
@@ -543,7 +592,6 @@
   async function salvar() {
     if (!requireScriptUrl()) return;
 
-    // garante descrição padrão no blur/change antes de salvar
     aplicarDescricaoDaCategoria(false);
 
     const payload = buildLancPayload();
@@ -602,7 +650,7 @@
   bindAutocompleteClientes();
   bindCategoriaPadrao();
 
-  // carrega categorias conforme tipo (se já selecionado)
+  // carrega categorias pro tipo atual (se vazio, carrega geral ao focar)
   carregarCategoriasAtivas(getTipoAtual()).catch(() => {});
   listar();
 })();
