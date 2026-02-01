@@ -66,15 +66,28 @@
             </div>
           </div>
 
+          <!-- ✅ Categoria padronizada (somente opções da aba Categoria) -->
           <div class="form-row">
             <div class="field">
-              <label class="label" for="Categoria">Categoria</label>
-              <input class="input" type="text" id="Categoria" name="Categoria" />
+              <label class="label" for="Categoria">Categoria *</label>
+              <input
+                class="input"
+                type="text"
+                id="Categoria"
+                name="Categoria"
+                list="listaCategorias"
+                required
+                placeholder="Selecione uma categoria..."
+                autocomplete="off"
+              />
+              <datalist id="listaCategorias"></datalist>
+              <small class="hint">Categorias são carregadas da aba “Categoria” (somente ativas e do Tipo selecionado).</small>
             </div>
 
             <div class="field">
               <label class="label" for="Descricao">Descricao *</label>
               <input class="input" type="text" id="Descricao" name="Descricao" required />
+              <small class="hint">A descrição é preenchida automaticamente conforme a categoria.</small>
             </div>
           </div>
 
