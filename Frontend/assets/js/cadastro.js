@@ -1,6 +1,7 @@
 // cadastro.js (JSONP - sem CORS)
 // Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
 // ✅ ID_Cliente é gerado automaticamente AO SALVAR (sem botão Gerar ID)
+// ✅ ID não é exibido ao usuário (input hidden no HTML)
 
 (() => {
   "use strict";
@@ -17,7 +18,9 @@
 
   const feedback = document.getElementById("feedback");
 
+  // ID (hidden)
   const elIdCliente = document.getElementById("idCliente");
+
   const elNome = document.getElementById("nomeCliente");
   const elTelefone = document.getElementById("telefone");
   const elEmail = document.getElementById("email");
@@ -147,7 +150,7 @@
 
     if (!Array.isArray(items) || items.length === 0) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="5">Nenhum resultado.</td>`;
+      tr.innerHTML = `<td colspan="4">Nenhum resultado.</td>`;
       tbodyResultados.appendChild(tr);
       return;
     }
@@ -155,7 +158,6 @@
     items.forEach((it) => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${escapeHtml(it.ID_Cliente ?? "")}</td>
         <td>${escapeHtml(it.NomeCliente ?? "")}</td>
         <td>${escapeHtml(it.Telefone ?? "")}</td>
         <td>${escapeHtml(it.Municipio ?? "")}</td>
@@ -169,7 +171,9 @@
   function fillFormFromItem(it) {
     if (!it) return;
 
+    // mantém o ID no hidden (para referência interna, se quiser)
     if (elIdCliente) elIdCliente.value = it.ID_Cliente ?? "";
+
     if (elNome) elNome.value = it.NomeCliente ?? "";
     if (elTelefone) elTelefone.value = it.Telefone ?? "";
     if (elEmail) elEmail.value = it["E-mail"] ?? it.Email ?? "";
@@ -182,7 +186,7 @@
     if (elOrigem) elOrigem.value = it.Origem ?? "";
     if (elObservacao) elObservacao.value = it["Observação"] ?? it.Observacao ?? "";
 
-    setFeedback("Cliente carregado no formulário (Salvar grava um novo).", "info");
+    setFeedback("Cliente carregado no formulário.", "info");
   }
 
   // =========================
@@ -201,7 +205,7 @@
 
     if (elDataCadastro && !elDataCadastro.value) elDataCadastro.value = hojeISO();
 
-    // ✅ limpa o ID antes de salvar (para não confundir)
+    // ✅ limpa o hidden ID antes de salvar (para garantir que o backend gere)
     if (elIdCliente) elIdCliente.value = "";
 
     setFeedback("Salvando...", "info");
@@ -216,10 +220,15 @@
 
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao salvar.");
 
-      // ✅ backend retorna id gerado
+      // backend retorna id gerado (mantemos no hidden)
       if (data.id && elIdCliente) elIdCliente.value = data.id;
 
-      setFeedback((data.message || "Cadastro salvo.") + (data.id ? ` (ID: ${data.id})` : ""), "success");
+      // ✅ não mostra ID para o usuário
+      setFeedback(data.message || "Cadastro salvo.", "success");
+
+      // opcional: limpar campos após salvar (mantém DataCadastro)
+      // formCadastro?.reset(); initDefaults();
+
     } catch (err) {
       setFeedback(err.message || "Erro ao salvar cadastro.", "error");
     }

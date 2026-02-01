@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cadastro de Clientes | Salão</title>
 
+  <!-- CSS -->
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
@@ -31,27 +32,21 @@
 
       <div class="card__body">
         <form id="formCadastro" autocomplete="on">
-          <!-- ID_Cliente (gerado automaticamente ao salvar) -->
-          <div class="form-row">
-            <div class="field field--full">
-              <label class="label" for="idCliente">ID_Cliente</label>
-              <input
-                class="input"
-                type="text"
-                id="idCliente"
-                name="ID_Cliente"
-                placeholder="Gerado automaticamente ao salvar"
-                readonly
-              />
-              <small class="hint">O ID é gerado automaticamente ao salvar o cadastro.</small>
-            </div>
-          </div>
+
+          <!-- ID_Cliente (gerado automaticamente no backend) -->
+          <input type="hidden" id="idCliente" name="ID_Cliente" />
 
           <!-- Nome / Telefone -->
           <div class="form-row">
             <div class="field">
               <label class="label" for="nomeCliente">NomeCliente *</label>
-              <input class="input" type="text" id="nomeCliente" name="NomeCliente" required />
+              <input
+                class="input"
+                type="text"
+                id="nomeCliente"
+                name="NomeCliente"
+                required
+              />
             </div>
 
             <div class="field">
@@ -72,25 +67,46 @@
           <div class="form-row">
             <div class="field">
               <label class="label" for="email">E-mail</label>
-              <input class="input" type="email" id="email" name="E-mail" placeholder="email@exemplo.com" />
+              <input
+                class="input"
+                type="email"
+                id="email"
+                name="E-mail"
+                placeholder="email@exemplo.com"
+              />
             </div>
 
             <div class="field">
               <label class="label" for="dataNascimento">DataNascimento</label>
-              <input class="input" type="date" id="dataNascimento" name="DataNascimento" />
+              <input
+                class="input"
+                type="date"
+                id="dataNascimento"
+                name="DataNascimento"
+              />
             </div>
           </div>
 
-          <!-- Municipio / Bairro -->
+          <!-- Município / Bairro -->
           <div class="form-row">
             <div class="field">
-              <label class="label" for="municipio">Municipio</label>
-              <input class="input" type="text" id="municipio" name="Municipio" />
+              <label class="label" for="municipio">Município</label>
+              <input
+                class="input"
+                type="text"
+                id="municipio"
+                name="Municipio"
+              />
             </div>
 
             <div class="field">
               <label class="label" for="bairro">Bairro</label>
-              <input class="input" type="text" id="bairro" name="Bairro" />
+              <input
+                class="input"
+                type="text"
+                id="bairro"
+                name="Bairro"
+              />
             </div>
           </div>
 
@@ -98,13 +114,23 @@
           <div class="form-row">
             <div class="field">
               <label class="label" for="dataCadastro">DataCadastro</label>
-              <input class="input" type="date" id="dataCadastro" name="DataCadastro" />
-              <small class="hint">Pode preencher automaticamente no JS (hoje) e/ou no Apps Script.</small>
+              <input
+                class="input"
+                type="date"
+                id="dataCadastro"
+                name="DataCadastro"
+              />
+              <small class="hint">Preenchido automaticamente se deixado em branco.</small>
             </div>
 
             <div class="field">
               <label class="label" for="profissao">Profissão</label>
-              <input class="input" type="text" id="profissao" name="Profissão" />
+              <input
+                class="input"
+                type="text"
+                id="profissao"
+                name="Profissão"
+              />
             </div>
           </div>
 
@@ -117,7 +143,7 @@
                 type="text"
                 id="preferencias"
                 name="Preferências"
-                placeholder="Ex.: loiro, progressiva, corte curto..."
+                placeholder="Ex.: loiro, progressiva, corte curto…"
               />
             </div>
 
@@ -144,15 +170,19 @@
                 id="observacao"
                 name="Observação"
                 rows="4"
-                placeholder="Anotações importantes (alergias, histórico, preferências, etc.)"
+                placeholder="Anotações importantes (alergias, histórico, preferências etc.)"
               ></textarea>
             </div>
           </div>
 
           <!-- Ações -->
           <div class="actions">
-            <button type="submit" id="btnSalvar" class="btn btn--primary">Salvar cadastro</button>
-            <button type="reset" id="btnLimpar" class="btn">Limpar</button>
+            <button type="submit" id="btnSalvar" class="btn btn--primary">
+              Salvar cadastro
+            </button>
+            <button type="reset" id="btnLimpar" class="btn">
+              Limpar
+            </button>
           </div>
 
           <div id="feedback" class="feedback" aria-live="polite" role="status"></div>
@@ -160,10 +190,11 @@
       </div>
     </section>
 
+    <!-- Busca -->
     <section class="card">
       <div class="card__header">
         <h2 class="card__title">Busca rápida</h2>
-        <p class="card__desc">Localizar cliente por nome/telefone.</p>
+        <p class="card__desc">Localizar cliente por nome ou telefone.</p>
       </div>
 
       <div class="card__body">
@@ -172,18 +203,25 @@
             <div class="field field--full">
               <label class="label" for="q">Buscar</label>
               <div class="input-group">
-                <input class="input" type="text" id="q" name="q" placeholder="Nome ou telefone" />
-                <button type="button" id="btnBuscar" class="btn btn--secondary">Buscar</button>
+                <input
+                  class="input"
+                  type="text"
+                  id="q"
+                  name="q"
+                  placeholder="Nome ou telefone"
+                />
+                <button type="button" id="btnBuscar" class="btn btn--secondary">
+                  Buscar
+                </button>
               </div>
             </div>
           </div>
 
-          <div class="table-wrap" aria-label="Resultados da busca">
+          <div class="table-wrap">
             <table class="table" id="tabelaResultados">
               <thead>
                 <tr>
-                  <th>ID_Cliente</th>
-                  <th>NomeCliente</th>
+                  <th>Nome</th>
                   <th>Telefone</th>
                   <th>Município</th>
                   <th>Bairro</th>
@@ -201,6 +239,7 @@
     <small>Cadastro • Google Planilhas + Apps Script</small>
   </footer>
 
+  <!-- JS -->
   <script src="assets/js/config.js"></script>
   <script src="assets/js/cadastro.js" defer></script>
 </body>
