@@ -1,9 +1,13 @@
 /** Lancamentos.gs — Módulo Lançamentos — Aba: "Lancamentos"
  * ------------------------------------------------------------
  * Actions:
- * - Lancamentos.Criar        ✅ agora suporta parcelamento automático
+ * - Lancamentos.Criar        ✅ parcelamento automático + regra de status por Forma_Pagamento
  * - Lancamentos.Listar       ✅ retorna rowIndex
  * - Lancamentos.Editar       ✅ edita por rowIndex
+ *
+ * Regra nova (parcelamento):
+ * - Se Forma_Pagamento = Cartao_Credito => TODAS as parcelas ficam Pago
+ * - Caso contrário => 1ª parcela mantém status informado; demais = Pendente
  *
  * Dependências:
  * - Lancamentos.Utils.gs (helpers LANC_*)
@@ -82,9 +86,12 @@ function Lancamentos_dispatch_(action, p) {
  * Regras de parcelamento:
  * - Datas: base na Data_Caixa se existir; senão Data_Competencia.
  * - Cada parcela avança 1 mês.
- * - Status: 1ª parcela mantém o status informado; demais = "Pendente".
  * - Valor: divide em N, ajusta centavos na última.
  * - Mes_a_receber: YYYY-MM conforme o mês da parcela.
+ *
+ * ✅ Regra nova de Status no parcelamento:
+ * - Se Forma_Pagamento = Cartao_Credito => TODAS as parcelas = Pago
+ * - Caso contrário => 1ª parcela = status informado; demais = Pendente
  */
 function Lancamentos_criar_(sheet, payload) {
   payload = payload || {};
@@ -116,7 +123,7 @@ function Lancamentos_criar_(sheet, payload) {
   if (!nParcelas || nParcelas < 2) {
     var rowObj1 = LANC_buildRowObj_(payload, dc, dcaixa, parcRaw, total, statusRaw, payload.Mes_a_receber);
     sheet.appendRow(LANC_toRowValues_(rowObj1));
-    return { message: "Lançamento salvo. DEBUG parcRaw=" + parcRaw + " nParcelas=" + nParcelas };
+    return { message: "Lançamento salvo." };
   }
 
   // Parcelamento automático
@@ -125,7 +132,10 @@ function Lancamentos_criar_(sheet, payload) {
   if (!baseDate) throw new Error("Data base inválida para parcelamento. Preencha Data_Caixa ou Data_Competencia (YYYY-MM-DD).");
 
   // valores por parcela
-  var parts = LANC_splitAmount_(total, nParcelas); // array com n valores, soma = total
+  var parts = LANC_splitAmount_(total, nParcelas);
+
+  // ✅ Forma de pagamento define regra de status
+  var formaPg = LANC_safeStr_(payload.Forma_Pagamento);
 
   var created = 0;
   for (var i = 0; i < nParcelas; i++) {
@@ -135,22 +145,16 @@ function Lancamentos_criar_(sheet, payload) {
     var iso = LANC_dateToIso_(d);
     var mesAReceber = iso.slice(0, 7);
 
-    // Data_Competencia e Data_Caixa por parcela:
-    // - Data_Caixa: a data prevista/real daquele recebimento
-    // - Data_Competencia: acompanha o mês da parcela (padrão)
+    // datas por parcela
     var dcParc = iso;
     var dcaixaParc = iso;
 
-    // Status: primeira mantém, demais pendente
-    var formaPg = LANC_safeStr_(payload.Forma_Pagamento);
-
-// ✅ Regra nova:
-// - Se Cartao_Credito: todas as parcelas = Pago
-// - Caso contrário: 1ª parcela = status informado; demais = Pendente
-var st = (formaPg === "Cartao_Credito")
-  ? "Pago"
-  : ((parcelaNum === 1) ? statusRaw : "Pendente");
-
+    // ✅ Regra nova:
+    // - Cartao_Credito => tudo Pago
+    // - outros => 1ª = statusRaw; demais = Pendente
+    var st = (formaPg === "Cartao_Credito")
+      ? "Pago"
+      : ((parcelaNum === 1) ? statusRaw : "Pendente");
 
     var rowObj = LANC_buildRowObj_(
       payload,
@@ -169,7 +173,8 @@ var st = (formaPg === "Cartao_Credito")
   return {
     message: "Parcelamento criado: " + created + " parcelas.",
     parcelas: created,
-    valorTotal: total
+    valorTotal: total,
+    statusParcelas: (formaPg === "Cartao_Credito") ? "Pago" : "Primeira conforme / demais Pendente"
   };
 }
 
@@ -259,7 +264,7 @@ function Lancamentos_listar_(sheet, filtros) {
     }
 
     var obj = LANC_rowToObj_(header, row);
-    obj.rowIndex = i + 1; // ✅ linha real (1-based)
+    obj.rowIndex = i + 1;
     out.push(obj);
 
     if (out.length >= 300) break;
@@ -280,7 +285,6 @@ function Lancamentos_listar_(sheet, filtros) {
 // ============================================================
 // HELPERS internos (somente deste arquivo)
 // ============================================================
-
 function LANC_toRowValues_(rowObj) {
   return LANC_HEADERS.map(function (h) {
     return rowObj[h] !== undefined ? rowObj[h] : "";
@@ -310,17 +314,13 @@ function LANC_buildRowObj_(payload, dc, dcaixa, parcelamentoStr, valorNum, statu
 function LANC_parseParcelasCount_(parcRaw) {
   var s = LANC_safeStr_(parcRaw);
   if (!s) return 0;
-
-  // se já veio "1/4", não auto-cria (considera manual)
   if (/^\d+\s*\/\s*\d+$/.test(s)) return 0;
 
-  // inteiro simples: "4"
   if (/^\d+$/.test(s)) {
     var n = Number(s);
     return (!isNaN(n) && n >= 2) ? n : 0;
   }
 
-  // aceita "4x"
   var m = s.match(/^(\d+)\s*x$/i);
   if (m) {
     var nx = Number(m[1]);
@@ -330,9 +330,6 @@ function LANC_parseParcelasCount_(parcRaw) {
   return 0;
 }
 
-/**
- * Divide total em n parcelas com ajuste de centavos na última.
- */
 function LANC_splitAmount_(total, n) {
   total = Number(total || 0);
   n = Number(n || 0);
@@ -350,9 +347,6 @@ function LANC_splitAmount_(total, n) {
   return out;
 }
 
-/**
- * Soma meses preservando o dia (se estourar, cai no último dia do mês).
- */
 function LANC_addMonths_(dateObj, add) {
   var d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
   var y = d.getFullYear();

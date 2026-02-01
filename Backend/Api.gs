@@ -20,14 +20,14 @@ function doGet(e) {
     var callback = safeStr_(p.callback); // JSONP opcional
 
     // Healthcheck
-if (!action) {
-  return jsonp_(callback, {
-    ok: true,
-    message: "Web App ativo",
-    now: new Date().toISOString(),
-    version: "2026-02-01-parcelas-v1"
-  });
-}
+    if (!action) {
+      return jsonp_(callback, {
+        ok: true,
+        message: "Web App ativo",
+        now: new Date().toISOString(),
+        version: "2026-02-01-parcelas-v1"
+      });
+    }
 
     // Dispatch central
     var result = Registry_dispatch_(action, e);
@@ -38,7 +38,7 @@ if (!action) {
     return jsonp_(cb, {
       ok: false,
       code: "INTERNAL_ERROR",
-      message: String(err && err.message ? err.message : err),
+      message: String(err && err.message ? err.message : err)
     });
   }
 }

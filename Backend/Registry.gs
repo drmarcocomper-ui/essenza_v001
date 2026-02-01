@@ -12,13 +12,9 @@
 var REGISTRY_EXACT = null;   // { "Action.Name": function(e){...} }
 var REGISTRY_PREFIX = null;  // [ { prefix, fn(action,e) } ]
 
-/** Inicialização lazy */
 function Registry_init_() {
   if (REGISTRY_EXACT && REGISTRY_PREFIX) return;
 
-  // =========================
-  // AÇÕES EXATAS
-  // =========================
   REGISTRY_EXACT = {
     // ---- RESUMO MENSAL ----
     "ResumoMensal.Calcular": function (e) {
@@ -58,10 +54,8 @@ function Registry_init_() {
     }
   };
 
-  // =========================
-  // ROTAS POR PREFIXO
-  // =========================
   REGISTRY_PREFIX = [
+    // ---- LANÇAMENTOS ----
     {
       prefix: "Lancamentos.",
       fn: function (action, e) {
@@ -71,14 +65,22 @@ function Registry_init_() {
         }
         return Lancamentos_dispatch_(action, p);
       }
-    }
+    },
 
-    // Futuro:
-    // { prefix: "Relatorios.", fn: function(action,e){ return Relatorios_dispatch_(action, (e&&e.parameter)||{}); } }
+    // ---- CATEGORIA ----
+    {
+      prefix: "Categoria.",
+      fn: function (action, e) {
+        var p = (e && e.parameter) ? e.parameter : {};
+        if (typeof Categoria_dispatch_ !== "function") {
+          throw new Error("Categoria_dispatch_ não encontrado. Verifique Categoria.gs.");
+        }
+        return Categoria_dispatch_(action, p);
+      }
+    }
   ];
 }
 
-/** Resolve a action para handler */
 function Registry_resolve_(action) {
   Registry_init_();
 
@@ -96,7 +98,6 @@ function Registry_resolve_(action) {
   return null;
 }
 
-/** Dispatcher público */
 function Registry_dispatch_(action, e) {
   var a = String(action || "").trim();
   if (!a) {
@@ -108,12 +109,9 @@ function Registry_dispatch_(action, e) {
     return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + a };
   }
 
-  var result;
-  if (resolved.mode === "exact") {
-    result = resolved.handler(e);
-  } else {
-    result = resolved.route.fn(a, e);
-  }
+  var result = (resolved.mode === "exact")
+    ? resolved.handler(e)
+    : resolved.route.fn(a, e);
 
   if (result && typeof result === "object" && result.ok === undefined) {
     result.ok = true;
