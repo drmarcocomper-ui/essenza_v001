@@ -1,5 +1,6 @@
 // cadastro.js (JSONP - sem CORS)
 // Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
+// ✅ ID_Cliente é gerado automaticamente AO SALVAR (sem botão Gerar ID)
 
 (() => {
   "use strict";
@@ -12,8 +13,6 @@
   // =========================
   const formCadastro = document.getElementById("formCadastro");
   const formBusca = document.getElementById("formBusca");
-
-  const btnGerarId = document.getElementById("btnGerarId");
   const btnBuscar = document.getElementById("btnBuscar");
 
   const feedback = document.getElementById("feedback");
@@ -119,7 +118,7 @@
   // =========================
   function buildCadastroPayload() {
     return {
-      ID_Cliente: normalizeText(elIdCliente?.value),
+      // ✅ NÃO envia ID_Cliente (backend gera)
       NomeCliente: normalizeText(elNome?.value),
       Telefone: sanitizePhone(elTelefone?.value),
       "E-mail": normalizeText(elEmail?.value),
@@ -189,23 +188,6 @@
   // =========================
   // Actions
   // =========================
-  async function gerarIdNoBackend() {
-    if (!requireScriptUrl()) return;
-
-    setFeedback("Gerando ID...", "info");
-    try {
-      const data = await jsonpRequest({ action: "Clientes.GerarID", sheet: SHEET_NAME });
-
-      if (!data || data.ok !== true) throw new Error((data && data.message) || "Falha ao gerar ID.");
-      if (!data.id) throw new Error("Backend não retornou 'id'.");
-
-      if (elIdCliente) elIdCliente.value = data.id;
-      setFeedback("ID gerado.", "success");
-    } catch (err) {
-      setFeedback(err.message || "Erro ao gerar ID.", "error");
-    }
-  }
-
   async function salvarCadastro() {
     if (!requireScriptUrl()) return;
 
@@ -219,6 +201,9 @@
 
     if (elDataCadastro && !elDataCadastro.value) elDataCadastro.value = hojeISO();
 
+    // ✅ limpa o ID antes de salvar (para não confundir)
+    if (elIdCliente) elIdCliente.value = "";
+
     setFeedback("Salvando...", "info");
     try {
       const payload = buildCadastroPayload();
@@ -230,9 +215,11 @@
       });
 
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao salvar.");
+
+      // ✅ backend retorna id gerado
       if (data.id && elIdCliente) elIdCliente.value = data.id;
 
-      setFeedback(data.message || "Cadastro salvo.", "success");
+      setFeedback((data.message || "Cadastro salvo.") + (data.id ? ` (ID: ${data.id})` : ""), "success");
     } catch (err) {
       setFeedback(err.message || "Erro ao salvar cadastro.", "error");
     }
@@ -256,6 +243,7 @@
       });
 
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro na busca.");
+
       renderResults(data.items || []);
       setFeedback(`Resultados: ${(data.items || []).length}`, "success");
     } catch (err) {
@@ -271,7 +259,6 @@
   }
 
   function bindEvents() {
-    if (btnGerarId) btnGerarId.addEventListener("click", (e) => (e.preventDefault(), gerarIdNoBackend()));
     if (formCadastro) formCadastro.addEventListener("submit", (e) => (e.preventDefault(), salvarCadastro()));
     if (btnBuscar) btnBuscar.addEventListener("click", (e) => (e.preventDefault(), buscarClientes()));
     if (formBusca) formBusca.addEventListener("submit", (e) => (e.preventDefault(), buscarClientes()));

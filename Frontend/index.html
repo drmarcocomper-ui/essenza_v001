@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cadastro de Clientes | Salão</title>
 
-  <!-- ✅ novo caminho -->
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
@@ -32,24 +31,19 @@
 
       <div class="card__body">
         <form id="formCadastro" autocomplete="on">
-          <!-- ID_Cliente (gerado) -->
+          <!-- ID_Cliente (gerado automaticamente ao salvar) -->
           <div class="form-row">
             <div class="field field--full">
               <label class="label" for="idCliente">ID_Cliente</label>
-              <div class="input-group">
-                <input
-                  class="input"
-                  type="text"
-                  id="idCliente"
-                  name="ID_Cliente"
-                  placeholder="Gerado automaticamente"
-                  readonly
-                />
-                <button type="button" id="btnGerarId" class="btn btn--secondary">
-                  Gerar ID
-                </button>
-              </div>
-              <small class="hint">Sugestão: gerar no Apps Script (ex.: CL-20260124-0001).</small>
+              <input
+                class="input"
+                type="text"
+                id="idCliente"
+                name="ID_Cliente"
+                placeholder="Gerado automaticamente ao salvar"
+                readonly
+              />
+              <small class="hint">O ID é gerado automaticamente ao salvar o cadastro.</small>
             </div>
           </div>
 
@@ -207,7 +201,6 @@
     <small>Cadastro • Google Planilhas + Apps Script</small>
   </footer>
 
-  <!-- ✅ novos caminhos + ordem importa -->
   <script src="assets/js/config.js"></script>
   <script src="assets/js/cadastro.js" defer></script>
 </body>
