@@ -1,7 +1,7 @@
 // lancamentos.js (JSONP - sem CORS)
 // Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
-// Backend: Api.gs (Registry) + Registry.gs + Lancamentos.gs (Lancamentos_dispatch_)
-// ✅ Suporta: Criar, Listar e Editar (por rowIndex)
+// Backend: Api.gs (Registry) + Lancamentos.gs (parcelamento automático)
+// ✅ Suporta: Criar (com parcelas), Listar (rowIndex), Editar (rowIndex)
 
 (() => {
   "use strict";
@@ -27,8 +27,7 @@
   const formLanc = document.getElementById("formLancamento");
   const feedbackSalvar = document.getElementById("feedbackSalvar");
 
-  // (Opcional no HTML) botão para “Novo lançamento”
-  const btnNovo = document.getElementById("btnNovoLancamento"); // se não existir, ignora
+  const btnNovo = document.getElementById("btnNovoLancamento"); // existe no HTML atualizado
 
   // Campos do formulário de lançamento
   const el = {
@@ -50,7 +49,7 @@
   };
 
   // ---------- Estado ----------
-  let selectedRowIndex = null; // rowIndex 1-based vindo do backend (Lancamentos.Listar)
+  let selectedRowIndex = null; // rowIndex 1-based vindo do backend
 
   // ---------- Helpers ----------
   function setFeedback(node, msg, type = "info") {
@@ -96,6 +95,24 @@
     return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   }
 
+  function toNumberBR(v) {
+    const s = String(v ?? "").trim();
+    if (!s) return 0;
+    const clean = s.replace(/r\$\s?/gi, "");
+    const num = Number(clean.includes(",") ? clean.replace(/\./g, "").replace(",", ".") : clean.replace(",", "."));
+    return Number.isNaN(num) ? 0 : num;
+  }
+
+  function parseParcelCount(raw) {
+    const s = String(raw ?? "").trim();
+    if (!s) return 0;
+    if (/^\d+\s*\/\s*\d+$/.test(s)) return 0; // já está no formato 1/4 etc
+    if (/^\d+$/.test(s)) return Number(s) || 0;
+    const m = s.match(/^(\d+)\s*x$/i);
+    if (m) return Number(m[1]) || 0;
+    return 0;
+  }
+
   function jsonpRequest(params) {
     return new Promise((resolve, reject) => {
       const cb = "cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
@@ -108,9 +125,7 @@
 
       function cleanup() {
         clearTimeout(timeout);
-        try {
-          delete window[cb];
-        } catch (_) {}
+        try { delete window[cb]; } catch (_) {}
         if (script && script.parentNode) script.parentNode.removeChild(script);
       }
 
@@ -139,9 +154,12 @@
       el[k].value = "";
     });
     selectedRowIndex = null;
-    setFeedback(feedbackSalvar, "Modo: NOVO lançamento.", "info");
+
     // default útil
     if (el.Data_Competencia) el.Data_Competencia.value = hojeISO();
+
+    setFeedback(feedbackSalvar, "Novo lançamento", "info");
+    setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 2500);
   }
 
   function fillForm(it) {
@@ -152,14 +170,13 @@
       el[k].value = it[k] ?? "";
     });
 
-    // ✅ pega rowIndex retornado pelo backend
     const ri = Number(it.rowIndex || 0);
     selectedRowIndex = ri > 0 ? ri : null;
 
     if (selectedRowIndex) {
       setFeedback(
         feedbackSalvar,
-        `Modo: EDITAR lançamento (rowIndex ${selectedRowIndex}). Ao salvar, atualiza a linha.`,
+        `Modo: EDITAR (rowIndex ${selectedRowIndex}). Salvar atualiza a linha.`,
         "info"
       );
     } else {
@@ -291,13 +308,32 @@
     const data = await jsonpRequest({
       action: "Lancamentos.Editar",
       sheet: SHEET_NAME,
-      payload: JSON.stringify({
-        rowIndex,
-        data: payload,
-      }),
+      payload: JSON.stringify({ rowIndex, data: payload }),
     });
     if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao salvar (editar).");
     return data;
+  }
+
+  function confirmParcelamentoSeNovo(payload) {
+    // Só confirma parcelamento quando estiver criando (não editando)
+    if (selectedRowIndex) return true;
+
+    const n = parseParcelCount(payload.Parcelamento);
+    if (!n || n < 2) return true;
+
+    const total = toNumberBR(payload.Valor);
+    const each = n ? (total / n) : 0;
+
+    const base = payload.Data_Caixa || payload.Data_Competencia;
+    const msg =
+      `Você informou Parcelamento = ${n}.\n\n` +
+      `O sistema vai criar ${n} parcelas (1/${n} ... ${n}/${n}).\n` +
+      `Valor total: ${formatMoneyBR(total)}\n` +
+      `Aproximadamente por parcela: ${formatMoneyBR(each)}\n` +
+      `Data base: ${base || "(vazia)"}\n\n` +
+      `Deseja continuar?`;
+
+    return window.confirm(msg);
   }
 
   async function salvar() {
@@ -306,15 +342,26 @@
     const payload = buildLancPayload();
     if (!validateRequired(payload)) return;
 
+    // confirmação de parcelamento apenas no modo NOVO
+    if (!confirmParcelamentoSeNovo(payload)) {
+      setFeedback(feedbackSalvar, "Operação cancelada.", "info");
+      return;
+    }
+
     setFeedback(feedbackSalvar, "Salvando...", "info");
     try {
-      // ✅ Se selecionou um item (tem rowIndex), edita. Senão, cria.
       if (selectedRowIndex && Number(selectedRowIndex) >= 2) {
         const resp = await editar(selectedRowIndex, payload);
         setFeedback(feedbackSalvar, resp.message || "Lançamento atualizado.", "success");
       } else {
         const resp = await criar(payload);
-        setFeedback(feedbackSalvar, resp.message || "Lançamento salvo.", "success");
+
+        // Se o backend criou parcelas, mostre isso
+        if (resp && typeof resp.parcelas === "number" && resp.parcelas >= 2) {
+          setFeedback(feedbackSalvar, resp.message || `Parcelamento criado: ${resp.parcelas} parcelas.`, "success");
+        } else {
+          setFeedback(feedbackSalvar, resp.message || "Lançamento salvo.", "success");
+        }
       }
 
       await listar();
@@ -332,7 +379,6 @@
   function initDefaults() {
     if (el.Data_Competencia && !el.Data_Competencia.value) el.Data_Competencia.value = hojeISO();
 
-    // ✅ Se marcar Status=Pago e Data_Caixa estiver vazia, preenche hoje
     if (el.Status && el.Data_Caixa) {
       el.Status.addEventListener("change", () => {
         if (String(el.Status.value || "").trim() === "Pago" && !el.Data_Caixa.value) {
@@ -348,7 +394,6 @@
     if (formFiltro) formFiltro.addEventListener("submit", (e) => (e.preventDefault(), listar()));
     if (formLanc) formLanc.addEventListener("submit", (e) => (e.preventDefault(), salvar()));
 
-    // opcional
     if (btnNovo) btnNovo.addEventListener("click", (e) => (e.preventDefault(), clearForm()));
   }
 

@@ -1,0 +1,166 @@
+DOCUMENTO BASE DO SISTEMA
+Gestão Financeira do Salão
+==================================================
+
+1. FINALIDADE DO SISTEMA
+Este sistema foi desenvolvido para a gestão financeira de um salão de beleza com um único profissional, de forma simples, confiável e organizada.
+
+Objetivos:
+- Registrar entradas e saídas financeiras
+- Evitar erros operacionais
+- Facilitar o controle mensal do caixa
+- Manter histórico íntegro (sem exclusões físicas)
+
+--------------------------------------------------
+
+2. PRINCÍPIOS FUNDAMENTAIS
+
+1. Fonte única de dados: Google Planilhas
+2. Nunca apagar registros (apenas editar ou cancelar)
+3. Separação clara entre interface e regra de negócio
+4. Prevenção de erro humano
+5. Simplicidade acima de automação excessiva
+
+--------------------------------------------------
+
+3. ESTRUTURA TÉCNICA
+
+Frontend:
+- HTML
+- CSS
+- JavaScript (JSONP)
+
+Backend:
+- Google Apps Script
+
+Banco de dados:
+- Google Planilhas
+
+Comunicação:
+- JSONP (sem CORS)
+
+--------------------------------------------------
+
+4. ESTRUTURA DE DADOS — ABA "Lancamentos"
+
+Campos do lançamento:
+
+- Data_Competencia: data contábil (YYYY-MM-DD)
+- Data_Caixa: data real do pagamento
+- Tipo: Entrada ou Saida
+- Origem: origem do valor (Pix, Cartão, Caixa etc.)
+- Categoria: categoria do lançamento
+- Descricao: descrição livre
+- Cliente_Fornecedor: cliente ou fornecedor
+- Forma_Pagamento: Pix, Crédito, Débito etc.
+- Instituicao_Financeira: Nubank, SumUp, PicPay etc.
+- Titularidade: Salão ou Cabeleireira
+- Parcelamento: 1/3, 3/8, à vista etc.
+- Valor: valor numérico
+- Status: Pago, Pendente ou Cancelado
+- Observacoes: observações livres
+- Mes_a_receber: mês futuro (YYYY-MM), quando aplicável
+
+--------------------------------------------------
+
+5. REGRAS DE NEGÓCIO
+
+5.1 Tipo
+- Entrada: dinheiro que entra no caixa
+- Saida: dinheiro que sai do caixa
+
+(O sistema aceita Receita/Despesa por compatibilidade técnica.)
+
+5.2 Status
+- Pago: entra no cálculo do caixa
+- Pendente: não entra no cálculo
+- Cancelado: ignorado em todos os cálculos
+
+--------------------------------------------------
+
+6. PADRÃO DE DATAS E VALORES
+
+Datas:
+- Backend: YYYY-MM-DD (ISO)
+- Visualização: DD/MM/YYYY
+
+Valores:
+- Backend: número puro
+- Visualização: R$ 1.234,56
+
+--------------------------------------------------
+
+7. FLUXO DE LANÇAMENTOS
+
+7.1 Criar novo lançamento
+1. Usuário clica em "Novo"
+2. Formulário é limpo
+3. Sistema entra em modo criação
+4. Ao salvar, cria nova linha na planilha
+
+7.2 Editar lançamento
+1. Usuário clica em uma linha da tabela
+2. Sistema entra em modo edição
+3. Ao salvar, atualiza a linha selecionada
+
+7.3 Segurança contra erros
+- Não existe botão "Limpar"
+- Botão "Novo" é obrigatório para sair do modo edição
+- Evita sobrescrita acidental de dados
+
+--------------------------------------------------
+
+8. RESUMO MENSAL
+
+8.1 Base de cálculo
+- Agrupamento por mês
+- Base padrão: Data_Caixa
+
+8.2 Indicadores
+- Entradas Pagas
+- Entradas Pendentes
+- Total de Entradas
+- Saídas
+- Resultado do Caixa
+
+8.3 Robustez
+- Aceita Entrada/Saida ou Receita/Despesa
+- Aceita variações de texto (maiúsculas, acentos)
+- Ignora lançamentos cancelados
+
+--------------------------------------------------
+
+9. PADRÕES IMPORTANTES
+
+- Lançamentos nunca são apagados
+- Alterações devem ser rastreáveis
+- Sistema prioriza clareza e previsibilidade
+
+--------------------------------------------------
+
+10. EVOLUÇÕES PLANEJADAS
+
+- Cancelar lançamento (soft delete)
+- Escolher base do resumo (Data_Caixa ou Data_Competencia)
+- Resumo anual
+- Duplicar lançamento
+- Exportação de dados
+- Segurança por token
+
+--------------------------------------------------
+
+11. FILOSOFIA DO SISTEMA
+
+Menos automação, mais controle.
+Menos mágica, mais previsibilidade.
+
+Sistema pensado para:
+- Uso diário
+- Baixo risco de erro
+- Alta confiabilidade
+- Crescimento gradual e consciente
+
+--------------------------------------------------
+
+ESTE DOCUMENTO É A REFERÊNCIA OFICIAL DO SISTEMA.
+QUALQUER MUDANÇA FUTURA DEVE RESPEITAR ESTAS DIRETRIZES.
