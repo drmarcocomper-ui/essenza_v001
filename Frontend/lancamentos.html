@@ -66,7 +66,7 @@
             </div>
           </div>
 
-          <!-- ✅ Categoria padronizada (somente opções da aba Categoria) -->
+          <!-- ✅ Categoria padronizada + ✅ opções de Descricao por categoria -->
           <div class="form-row">
             <div class="field">
               <label class="label" for="Categoria">Categoria *</label>
@@ -86,8 +86,18 @@
 
             <div class="field">
               <label class="label" for="Descricao">Descricao *</label>
-              <input class="input" type="text" id="Descricao" name="Descricao" required />
-              <small class="hint">A descrição é preenchida automaticamente conforme a categoria.</small>
+              <input
+                class="input"
+                type="text"
+                id="Descricao"
+                name="Descricao"
+                list="listaDescricoes"
+                required
+                placeholder="Escolha ou digite..."
+                autocomplete="off"
+              />
+              <datalist id="listaDescricoes"></datalist>
+              <small class="hint">Opções vêm de Descricao_Padrao (separe opções com | na Categoria).</small>
             </div>
           </div>
 
@@ -119,7 +129,7 @@
                 <option value="Confianca">Confiança</option>
                 <option value="Cortesia">Cortesia</option>
               </select>
-              <small class="hint">Parcelamento automático mantém todas as parcelas como Pago apenas no Cartão Crédito.</small>
+              <small class="hint">Parcelamento: se Forma_Pagamento = Cartao_Credito, todas parcelas ficam Pago.</small>
             </div>
           </div>
 
