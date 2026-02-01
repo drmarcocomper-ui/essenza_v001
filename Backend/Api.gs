@@ -20,13 +20,14 @@ function doGet(e) {
     var callback = safeStr_(p.callback); // JSONP opcional
 
     // Healthcheck
-    if (!action) {
-      return jsonp_(callback, {
-        ok: true,
-        message: "Web App ativo",
-        now: new Date().toISOString(),
-      });
-    }
+if (!action) {
+  return jsonp_(callback, {
+    ok: true,
+    message: "Web App ativo",
+    now: new Date().toISOString(),
+    version: "2026-02-01-parcelas-v1"
+  });
+}
 
     // Dispatch central
     var result = Registry_dispatch_(action, e);
