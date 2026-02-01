@@ -1,7 +1,13 @@
 // lancamentos.js (JSONP - sem CORS)
 // Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
-// Backend: Api.gs (Registry) + Clientes.gs + Lancamentos.gs
-// ✅ Suporta: Criar (parcelas), Listar (rowIndex), Editar (rowIndex), Autocomplete (NomeCliente -> Cliente_Fornecedor)
+// Backend: Api.gs (Registry) + Clientes.gs + Categoria.gs + Lancamentos.gs
+//
+// ✅ Suporta:
+// - Criar (parcelas)
+// - Listar (rowIndex)
+// - Editar (rowIndex)
+// - Autocomplete clientes (Entrada)
+// - ✅ Padronização Categoria/Descricao (carrega Categoria.Listar e sugere Descricao_Padrao)
 
 (() => {
   "use strict";
@@ -26,7 +32,6 @@
 
   const formLanc = document.getElementById("formLancamento");
   const feedbackSalvar = document.getElementById("feedbackSalvar");
-
   const btnNovo = document.getElementById("btnNovoLancamento");
 
   // datalist clientes
@@ -39,7 +44,7 @@
     Data_Caixa: document.getElementById("Data_Caixa"),
     Tipo: document.getElementById("Tipo"),
     Origem: document.getElementById("Origem"),
-    Categoria: document.getElementById("Categoria"),
+    Categoria: document.getElementById("Categoria"), // input text
     Descricao: document.getElementById("Descricao"),
     Cliente_Fornecedor: inputCliente,
     Forma_Pagamento: document.getElementById("Forma_Pagamento"),
@@ -55,6 +60,7 @@
   // ---------- Estado ----------
   let selectedRowIndex = null;
   let clientesDebounce = null;
+  let categoriasCache = []; // [{Tipo,Categoria,Descricao_Padrao,Ativo,Ordem,ID_Categoria}]
 
   // ---------- Helpers ----------
   function setFeedback(node, msg, type = "info") {
@@ -160,17 +166,18 @@
 
   function renderClientesDatalist(items) {
     if (!datalistClientes) return;
-    clearDatalist();
+    datalistClientes.innerHTML = "";
 
     const nomes = new Set();
     (items || []).forEach((it) => {
-      const nome = String(it?.NomeCliente || "").trim(); // ✅ vem do Cadastro
+      // prioriza NomeSugestao, depois NomeCliente
+      const nome = String(it?.NomeSugestao || it?.NomeCliente || "").trim();
       if (nome) nomes.add(nome);
     });
 
     [...nomes].slice(0, 50).forEach((nome) => {
       const opt = document.createElement("option");
-      opt.value = nome; // ✅ preenche Cliente_Fornecedor
+      opt.value = nome;
       datalistClientes.appendChild(opt);
     });
   }
@@ -178,12 +185,9 @@
   async function buscarClientes(q) {
     if (!requireScriptUrl()) return;
 
-    // ✅ permite vazio: retorna lista padrão
-    const query = String(q ?? "");
-
     const data = await jsonpRequest({
       action: "Clientes.Buscar",
-      q: query
+      q: String(q ?? "")
     });
 
     if (!data || data.ok !== true) return;
@@ -193,13 +197,11 @@
   function bindAutocompleteClientes() {
     if (!inputCliente) return;
 
-    // Foco: carrega lista padrão (se Tipo=Entrada)
     inputCliente.addEventListener("focus", () => {
       if (!isTipoEntrada()) return;
       buscarClientes(inputCliente.value || "").catch(() => {});
     });
 
-    // Digitação: filtra com debounce
     inputCliente.addEventListener("input", () => {
       if (!isTipoEntrada()) return;
 
@@ -209,12 +211,77 @@
       }, 250);
     });
 
-    // Mudou tipo: limpa sugestões se não for Entrada
     if (el.Tipo) {
       el.Tipo.addEventListener("change", () => {
         if (!isTipoEntrada()) clearDatalist();
       });
     }
+  }
+
+  // ---------- Categorias (padronização) ----------
+  async function carregarCategoriasAtivas() {
+    if (!requireScriptUrl()) return;
+
+    // traz todas as ativas (e com ordem)
+    const data = await jsonpRequest({
+      action: "Categoria.Listar",
+      sheet: "Categoria",
+      filtros: JSON.stringify({ somenteAtivos: "1" })
+    });
+
+    if (!data || data.ok !== true) return;
+
+    categoriasCache = Array.isArray(data.items) ? data.items : [];
+  }
+
+  function categoriaMatch(tipo, categoriaNome) {
+    const t = String(tipo || "").trim();
+    const c = String(categoriaNome || "").trim();
+    if (!t || !c) return null;
+
+    // procura exato
+    return categoriasCache.find((x) =>
+      String(x.Tipo || "").trim() === t &&
+      String(x.Categoria || "").trim() === c
+    ) || null;
+  }
+
+  function tryAutoDescricaoFromCategoria() {
+    // só auto-preenche se Descricao estiver vazia (não sobrescreve)
+    if (!el.Descricao || !el.Categoria || !el.Tipo) return;
+
+    const descAtual = String(el.Descricao.value || "").trim();
+    if (descAtual) return;
+
+    const tipo = String(el.Tipo.value || "").trim();
+    const cat = String(el.Categoria.value || "").trim();
+    if (!tipo || !cat) return;
+
+    const found = categoriaMatch(tipo, cat);
+    const sugestao = found ? String(found.Descricao_Padrao || "").trim() : "";
+    if (sugestao) {
+      el.Descricao.value = sugestao;
+      setFeedback(feedbackSalvar, "Descrição preenchida pela categoria.", "info");
+      setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 1200);
+    }
+  }
+
+  function bindCategoriaDescricao() {
+    if (!el.Categoria || !el.Tipo || !el.Descricao) return;
+
+    // quando trocar tipo, tenta preencher (se já tiver categoria)
+    el.Tipo.addEventListener("change", () => {
+      tryAutoDescricaoFromCategoria();
+    });
+
+    // ao sair do campo categoria (ou alterar), tenta preencher
+    el.Categoria.addEventListener("change", () => {
+      tryAutoDescricaoFromCategoria();
+    });
+
+    el.Categoria.addEventListener("blur", () => {
+      tryAutoDescricaoFromCategoria();
+    });
   }
 
   // ---------- Form ----------
@@ -228,7 +295,7 @@
     if (el.Data_Competencia) el.Data_Competencia.value = hojeISO();
 
     setFeedback(feedbackSalvar, "Novo lançamento", "info");
-    setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 2000);
+    setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 1500);
 
     clearDatalist();
   }
@@ -245,11 +312,8 @@
     selectedRowIndex = ri > 0 ? ri : null;
 
     if (selectedRowIndex) {
-      setFeedback(feedbackSalvar, `Modo: EDITAR (rowIndex ${selectedRowIndex}). Salvar atualiza a linha.`, "info");
-    } else {
-      setFeedback(feedbackSalvar, "Este item não possui rowIndex. Atualize o backend para retornar rowIndex no Listar.", "error");
+      setFeedback(feedbackSalvar, `Modo: EDITAR (rowIndex ${selectedRowIndex}).`, "info");
     }
-
     if (!isTipoEntrada()) clearDatalist();
   }
 
@@ -336,7 +400,7 @@
     });
   }
 
-  // ---------- Ações ----------
+  // ---------- Actions ----------
   async function listar() {
     if (!requireScriptUrl()) return;
 
@@ -390,12 +454,12 @@
 
     const base = payload.Data_Caixa || payload.Data_Competencia;
     const msg =
-      `Você informou Parcelamento = ${n}.\n\n` +
-      `O sistema vai criar ${n} parcelas (1/${n} ... ${n}/${n}).\n` +
-      `Valor total: ${formatMoneyBR(total)}\n` +
-      `Aproximadamente por parcela: ${formatMoneyBR(each)}\n` +
+      `Parcelamento = ${n}\n\n` +
+      `Serão criadas ${n} parcelas (1/${n}...${n}/${n}).\n` +
+      `Total: ${formatMoneyBR(total)}\n` +
+      `Aprox/parcela: ${formatMoneyBR(each)}\n` +
       `Data base: ${base || "(vazia)"}\n\n` +
-      `Deseja continuar?`;
+      `Continuar?`;
 
     return window.confirm(msg);
   }
@@ -415,14 +479,10 @@
     try {
       if (selectedRowIndex && Number(selectedRowIndex) >= 2) {
         const resp = await editar(selectedRowIndex, payload);
-        setFeedback(feedbackSalvar, resp.message || "Lançamento atualizado.", "success");
+        setFeedback(feedbackSalvar, resp.message || "Atualizado.", "success");
       } else {
         const resp = await criar(payload);
-        if (resp && typeof resp.parcelas === "number" && resp.parcelas >= 2) {
-          setFeedback(feedbackSalvar, resp.message || `Parcelamento criado: ${resp.parcelas} parcelas.`, "success");
-        } else {
-          setFeedback(feedbackSalvar, resp.message || "Lançamento salvo.", "success");
-        }
+        setFeedback(feedbackSalvar, resp.message || "Salvo.", "success");
       }
 
       await listar();
@@ -457,8 +517,14 @@
     if (btnNovo) btnNovo.addEventListener("click", (e) => (e.preventDefault(), clearForm()));
   }
 
+  // init
   initDefaults();
   bind();
   bindAutocompleteClientes();
+  bindCategoriaDescricao();
+
+  // carrega cache de categorias (não bloqueia a tela)
+  carregarCategoriasAtivas().catch(() => {});
+
   listar();
 })();
