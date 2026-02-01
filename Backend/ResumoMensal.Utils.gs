@@ -1,7 +1,9 @@
 /**
  * ResumoMensal.Utils.gs — Helpers da feature ResumoMensal
  * ------------------------------------------------------
- * Contém apenas utilitários e acumuladores RM_*
+ * ✅ Ajustado para Tipo = Entrada / Saida
+ * ✅ Também aceita Receita/Despesa (compat)
+ * ✅ Normaliza acentos e maiúsculas
  */
 
 // ============================================================
@@ -21,27 +23,46 @@ function RM_newAcc_() {
 }
 
 function RM_accumulate_(acc, it) {
-  var tipo = RM_safeStr_(it.tipo);
-  var status = RM_safeStr_(it.status);
+  var tipoN = RM_norm_(it.tipo);     // ex.: "entrada", "saida"
+  var statusN = RM_norm_(it.status); // ex.: "pago", "pendente"
   var valor = RM_parseNumber_(it.valor);
 
-  if (tipo === "Receita") {
-    if (status === "Pago") acc.entradasPagas += valor;
-    else if (status === "Pendente") acc.entradasPendentes += valor;
+  // ignora cancelados/inativos
+  if (statusN === "cancelado" || statusN === "inativo") return;
 
-    // Instituições (somente pagos)
-    if (status === "Pago") {
+  var isEntrada =
+    tipoN === "entrada" || tipoN === "entradas" ||
+    tipoN === "receita" || tipoN === "receitas";
+
+  var isSaida =
+    tipoN === "saida" || tipoN === "saidas" ||
+    tipoN === "despesa" || tipoN === "despesas";
+
+  if (isEntrada) {
+    if (statusN === "pago" || statusN === "paga" || statusN === "quitado") {
+      acc.entradasPagas += valor;
+
+      // instituiçoes (somente entradas pagas)
       var instN = RM_norm_(it.inst);
       var titN = RM_norm_(it.titular);
 
-      if (instN.indexOf("sumup") !== -1 && titN.indexOf("pj") !== -1) acc.sumupPJ += valor;
-      if (instN.indexOf("nubank") !== -1 && titN.indexOf("pj") !== -1) acc.nubankPJ += valor;
-      if (instN.indexOf("nubank") !== -1 && titN.indexOf("pf") !== -1) acc.nubankPF += valor;
-      if (instN.indexOf("picpay") !== -1 && titN.indexOf("pf") !== -1) acc.picpayPF += valor;
+      // heurística simples:
+      // - PJ: contém "pj" ou "salao"
+      // - PF: contém "pf" ou "cabeleireira"
+      var isPJ = titN.indexOf("pj") !== -1 || titN.indexOf("salao") !== -1 || titN.indexOf("salao") !== -1;
+      var isPF = titN.indexOf("pf") !== -1 || titN.indexOf("cabeleireira") !== -1;
+
+      if (instN.indexOf("sumup") !== -1 && isPJ) acc.sumupPJ += valor;
+      if (instN.indexOf("nubank") !== -1 && isPJ) acc.nubankPJ += valor;
+      if (instN.indexOf("nubank") !== -1 && isPF) acc.nubankPF += valor;
+      if (instN.indexOf("picpay") !== -1 && isPF) acc.picpayPF += valor;
+
+    } else if (statusN === "pendente" || statusN === "a receber" || statusN === "areceber") {
+      acc.entradasPendentes += valor;
     }
   }
 
-  if (tipo === "Despesa") {
+  if (isSaida) {
     acc.saidas += valor;
   }
 }
@@ -74,8 +95,10 @@ function RM_safeStr_(v) {
 }
 
 function RM_norm_(v) {
-  // simples (sem remover acentos)
-  return RM_safeStr_(v).toLowerCase();
+  var s = RM_safeStr_(v).toLowerCase();
+  try { s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); } catch (_) {}
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
 }
 
 function RM_parseNumber_(v) {
@@ -84,6 +107,10 @@ function RM_parseNumber_(v) {
   var s = RM_safeStr_(v);
   if (!s) return 0;
 
+  // remove R$ e espaços
+  s = s.replace(/r\$\s?/gi, "").trim();
+
+  // milhares e vírgula
   if (s.indexOf(",") !== -1) {
     s = s.replace(/\./g, "").replace(",", ".");
   }
@@ -103,17 +130,14 @@ function RM_round2_(n) {
 function RM_monthKeyFromDate_(value) {
   if (!value) return "";
 
-  // Date object vindo da planilha
   if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
     return value.getFullYear() + "-" + String(value.getMonth() + 1).padStart(2, "0");
   }
 
   var s = RM_safeStr_(value);
 
-  // YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.slice(0, 7);
 
-  // DD/MM/YYYY
   var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (m) return m[3] + "-" + m[2];
 
