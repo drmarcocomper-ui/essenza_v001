@@ -142,7 +142,15 @@ function Lancamentos_criar_(sheet, payload) {
     var dcaixaParc = iso;
 
     // Status: primeira mantém, demais pendente
-    var st = (parcelaNum === 1) ? statusRaw : "Pendente";
+    var formaPg = LANC_safeStr_(payload.Forma_Pagamento);
+
+// ✅ Regra nova:
+// - Se Cartao_Credito: todas as parcelas = Pago
+// - Caso contrário: 1ª parcela = status informado; demais = Pendente
+var st = (formaPg === "Cartao_Credito")
+  ? "Pago"
+  : ((parcelaNum === 1) ? statusRaw : "Pendente");
+
 
     var rowObj = LANC_buildRowObj_(
       payload,
