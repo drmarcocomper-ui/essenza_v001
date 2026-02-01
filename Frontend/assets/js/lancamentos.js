@@ -1,13 +1,11 @@
 // lancamentos.js (JSONP - sem CORS)
 // Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
-// Backend: Api.gs (Registry) + Clientes.gs + Categoria.gs + Lancamentos.gs
+// Backend: Api.gs (Registry) + Categoria.gs + Lancamentos.gs + Clientes.gs (opcional)
 //
-// ✅ Suporta:
-// - Criar (parcelas)
-// - Listar (rowIndex)
-// - Editar (rowIndex)
-// - Autocomplete clientes (Entrada)
-// - ✅ Padronização Categoria/Descricao (carrega Categoria.Listar e sugere Descricao_Padrao)
+// ✅ Novo:
+// - Categoria obrigatória e padronizada (datalist vindo da aba Categoria)
+// - Ao escolher Categoria, Descricao vem de Descricao_Padrao
+// - Valida que Categoria existe (evita digitação fora da lista)
 
 (() => {
   "use strict";
@@ -34,9 +32,13 @@
   const feedbackSalvar = document.getElementById("feedbackSalvar");
   const btnNovo = document.getElementById("btnNovoLancamento");
 
-  // datalist clientes
+  // Clientes (opcional)
   const inputCliente = document.getElementById("Cliente_Fornecedor");
   const datalistClientes = document.getElementById("listaClientes");
+
+  // Categoria (padronização)
+  const inputCategoria = document.getElementById("Categoria");
+  const datalistCategorias = document.getElementById("listaCategorias");
 
   // Campos do formulário
   const el = {
@@ -44,7 +46,7 @@
     Data_Caixa: document.getElementById("Data_Caixa"),
     Tipo: document.getElementById("Tipo"),
     Origem: document.getElementById("Origem"),
-    Categoria: document.getElementById("Categoria"), // input text
+    Categoria: inputCategoria,
     Descricao: document.getElementById("Descricao"),
     Cliente_Fornecedor: inputCliente,
     Forma_Pagamento: document.getElementById("Forma_Pagamento"),
@@ -59,8 +61,13 @@
 
   // ---------- Estado ----------
   let selectedRowIndex = null;
+
+  // Clientes
   let clientesDebounce = null;
-  let categoriasCache = []; // [{Tipo,Categoria,Descricao_Padrao,Ativo,Ordem,ID_Categoria}]
+
+  // Categorias
+  let categoriasCache = []; // itens do backend
+  let ultimaDescricaoAuto = ""; // para saber se pode sobrescrever
 
   // ---------- Helpers ----------
   function setFeedback(node, msg, type = "info") {
@@ -154,12 +161,143 @@
     });
   }
 
-  // ---------- Clientes (autocomplete) ----------
-  function isTipoEntrada() {
-    return String(el.Tipo?.value || "").trim() === "Entrada";
+  // ============================================================
+  // CATEGORIAS — padronização
+  // ============================================================
+  function getTipoAtual() {
+    return String(el.Tipo?.value || "").trim();
   }
 
-  function clearDatalist() {
+  function clearCategoriasDatalist() {
+    if (!datalistCategorias) return;
+    datalistCategorias.innerHTML = "";
+  }
+
+  function renderCategoriasDatalist(items) {
+    if (!datalistCategorias) return;
+    clearCategoriasDatalist();
+
+    const set = new Set();
+    (items || []).forEach((it) => {
+      const cat = String(it?.Categoria || "").trim();
+      if (cat) set.add(cat);
+    });
+
+    [...set].slice(0, 200).forEach((cat) => {
+      const opt = document.createElement("option");
+      opt.value = cat;
+      datalistCategorias.appendChild(opt);
+    });
+  }
+
+  async function carregarCategoriasAtivas(tipo) {
+    if (!requireScriptUrl()) return;
+
+    const filtros = { somenteAtivos: "1" };
+    if (tipo) filtros.fTipo = tipo;
+
+    const data = await jsonpRequest({
+      action: "Categoria.Listar",
+      sheet: "Categoria",
+      filtros: JSON.stringify(filtros)
+    });
+
+    if (!data || data.ok !== true) {
+      console.error("Categoria.Listar falhou:", data);
+      return;
+    }
+
+    categoriasCache = Array.isArray(data.items) ? data.items : [];
+    renderCategoriasDatalist(categoriasCache);
+  }
+
+  function findCategoria(tipo, categoriaNome) {
+    const t = String(tipo || "").trim();
+    const c = String(categoriaNome || "").trim();
+    if (!t || !c) return null;
+
+    return categoriasCache.find((x) =>
+      String(x.Tipo || "").trim() === t &&
+      String(x.Categoria || "").trim() === c &&
+      String(x.Ativo || "Sim").trim() !== "Nao"
+    ) || null;
+  }
+
+  function aplicarDescricaoDaCategoria(force = false) {
+    if (!el.Descricao || !el.Categoria || !el.Tipo) return;
+
+    const tipo = getTipoAtual();
+    const cat = String(el.Categoria.value || "").trim();
+    if (!tipo || !cat) return;
+
+    const found = findCategoria(tipo, cat);
+    if (!found) return;
+
+    const sugestao = String(found.Descricao_Padrao || "").trim();
+    if (!sugestao) return;
+
+    const atual = String(el.Descricao.value || "").trim();
+
+    // sobrescreve se:
+    // - force = true (mudou categoria)
+    // - ou descricao está vazia
+    // - ou descricao é igual à última auto preenchida
+    if (force || !atual || atual === ultimaDescricaoAuto) {
+      el.Descricao.value = sugestao;
+      ultimaDescricaoAuto = sugestao;
+
+      setFeedback(feedbackSalvar, "Descrição preenchida pela categoria.", "info");
+      setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 1200);
+    }
+  }
+
+  function validarCategoriaSelecionada(payload) {
+    const tipo = String(payload.Tipo || "").trim();
+    const cat = String(payload.Categoria || "").trim();
+    if (!tipo || !cat) return false;
+
+    const found = findCategoria(tipo, cat);
+    if (!found) {
+      setFeedback(feedbackSalvar, "Selecione uma Categoria válida (da lista).", "error");
+      return false;
+    }
+    return true;
+  }
+
+  function bindCategoriaPadrao() {
+    if (!el.Tipo || !el.Categoria) return;
+
+    // Mudou tipo: limpa categoria/descrição e recarrega lista
+    el.Tipo.addEventListener("change", () => {
+      if (el.Categoria) el.Categoria.value = "";
+      if (el.Descricao) el.Descricao.value = "";
+      ultimaDescricaoAuto = "";
+      carregarCategoriasAtivas(getTipoAtual()).catch(() => {});
+    });
+
+    // Foco na categoria: garante lista carregada pro tipo atual
+    el.Categoria.addEventListener("focus", () => {
+      carregarCategoriasAtivas(getTipoAtual()).catch(() => {});
+    });
+
+    // Ao escolher categoria: força a descrição padrão
+    el.Categoria.addEventListener("change", () => {
+      aplicarDescricaoDaCategoria(true);
+    });
+
+    el.Categoria.addEventListener("blur", () => {
+      aplicarDescricaoDaCategoria(false);
+    });
+  }
+
+  // ============================================================
+  // CLIENTES — autocomplete (mantido)
+  // ============================================================
+  function isTipoEntrada() {
+    return getTipoAtual() === "Entrada";
+  }
+
+  function clearClientesDatalist() {
     if (!datalistClientes) return;
     datalistClientes.innerHTML = "";
   }
@@ -170,7 +308,6 @@
 
     const nomes = new Set();
     (items || []).forEach((it) => {
-      // prioriza NomeSugestao, depois NomeCliente
       const nome = String(it?.NomeSugestao || it?.NomeCliente || "").trim();
       if (nome) nomes.add(nome);
     });
@@ -213,91 +350,29 @@
 
     if (el.Tipo) {
       el.Tipo.addEventListener("change", () => {
-        if (!isTipoEntrada()) clearDatalist();
+        if (!isTipoEntrada()) clearClientesDatalist();
       });
     }
   }
 
-  // ---------- Categorias (padronização) ----------
-  async function carregarCategoriasAtivas() {
-    if (!requireScriptUrl()) return;
-
-    // traz todas as ativas (e com ordem)
-    const data = await jsonpRequest({
-      action: "Categoria.Listar",
-      sheet: "Categoria",
-      filtros: JSON.stringify({ somenteAtivos: "1" })
-    });
-
-    if (!data || data.ok !== true) return;
-
-    categoriasCache = Array.isArray(data.items) ? data.items : [];
-  }
-
-  function categoriaMatch(tipo, categoriaNome) {
-    const t = String(tipo || "").trim();
-    const c = String(categoriaNome || "").trim();
-    if (!t || !c) return null;
-
-    // procura exato
-    return categoriasCache.find((x) =>
-      String(x.Tipo || "").trim() === t &&
-      String(x.Categoria || "").trim() === c
-    ) || null;
-  }
-
-  function tryAutoDescricaoFromCategoria() {
-    // só auto-preenche se Descricao estiver vazia (não sobrescreve)
-    if (!el.Descricao || !el.Categoria || !el.Tipo) return;
-
-    const descAtual = String(el.Descricao.value || "").trim();
-    if (descAtual) return;
-
-    const tipo = String(el.Tipo.value || "").trim();
-    const cat = String(el.Categoria.value || "").trim();
-    if (!tipo || !cat) return;
-
-    const found = categoriaMatch(tipo, cat);
-    const sugestao = found ? String(found.Descricao_Padrao || "").trim() : "";
-    if (sugestao) {
-      el.Descricao.value = sugestao;
-      setFeedback(feedbackSalvar, "Descrição preenchida pela categoria.", "info");
-      setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 1200);
-    }
-  }
-
-  function bindCategoriaDescricao() {
-    if (!el.Categoria || !el.Tipo || !el.Descricao) return;
-
-    // quando trocar tipo, tenta preencher (se já tiver categoria)
-    el.Tipo.addEventListener("change", () => {
-      tryAutoDescricaoFromCategoria();
-    });
-
-    // ao sair do campo categoria (ou alterar), tenta preencher
-    el.Categoria.addEventListener("change", () => {
-      tryAutoDescricaoFromCategoria();
-    });
-
-    el.Categoria.addEventListener("blur", () => {
-      tryAutoDescricaoFromCategoria();
-    });
-  }
-
-  // ---------- Form ----------
+  // ============================================================
+  // FORM / LISTA / SALVAR
+  // ============================================================
   function clearForm() {
     Object.keys(el).forEach((k) => {
       if (!el[k]) return;
       el[k].value = "";
     });
+
     selectedRowIndex = null;
+    ultimaDescricaoAuto = "";
 
     if (el.Data_Competencia) el.Data_Competencia.value = hojeISO();
 
     setFeedback(feedbackSalvar, "Novo lançamento", "info");
-    setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 1500);
+    setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 1200);
 
-    clearDatalist();
+    clearClientesDatalist();
   }
 
   function fillForm(it) {
@@ -311,10 +386,10 @@
     const ri = Number(it.rowIndex || 0);
     selectedRowIndex = ri > 0 ? ri : null;
 
-    if (selectedRowIndex) {
-      setFeedback(feedbackSalvar, `Modo: EDITAR (rowIndex ${selectedRowIndex}).`, "info");
-    }
-    if (!isTipoEntrada()) clearDatalist();
+    // ao carregar, não forçar descrição
+    ultimaDescricaoAuto = "";
+
+    if (!isTipoEntrada()) clearClientesDatalist();
   }
 
   function buildLancPayload() {
@@ -348,14 +423,16 @@
   }
 
   function validateRequired(payload) {
-    if (!payload.Data_Competencia || !payload.Tipo || !payload.Descricao || !payload.Valor || !payload.Status) {
-      setFeedback(feedbackSalvar, "Preencha: Data_Competencia, Tipo, Descricao, Valor, Status.", "error");
+    if (!payload.Data_Competencia || !payload.Tipo || !payload.Categoria || !payload.Descricao || !payload.Valor || !payload.Status) {
+      setFeedback(feedbackSalvar, "Preencha: Data_Competencia, Tipo, Categoria, Descricao, Valor, Status.", "error");
       return false;
     }
+    // ✅ categoria deve existir
+    if (!validarCategoriaSelecionada(payload)) return false;
+
     return true;
   }
 
-  // ---------- Tabela ----------
   function clearTable() {
     if (!tbody) return;
     tbody.innerHTML = "";
@@ -400,7 +477,6 @@
     });
   }
 
-  // ---------- Actions ----------
   async function listar() {
     if (!requireScriptUrl()) return;
 
@@ -467,6 +543,9 @@
   async function salvar() {
     if (!requireScriptUrl()) return;
 
+    // garante descrição padrão no blur/change antes de salvar
+    aplicarDescricaoDaCategoria(false);
+
     const payload = buildLancPayload();
     if (!validateRequired(payload)) return;
 
@@ -521,10 +600,9 @@
   initDefaults();
   bind();
   bindAutocompleteClientes();
-  bindCategoriaDescricao();
+  bindCategoriaPadrao();
 
-  // carrega cache de categorias (não bloqueia a tela)
-  carregarCategoriasAtivas().catch(() => {});
-
+  // carrega categorias conforme tipo (se já selecionado)
+  carregarCategoriasAtivas(getTipoAtual()).catch(() => {});
   listar();
 })();
