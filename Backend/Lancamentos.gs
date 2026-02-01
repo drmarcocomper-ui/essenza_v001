@@ -1,16 +1,17 @@
-/** Lacamentos.gs (módulo separado) — Aba: "Lancamentos"
+/** Lancamentos.gs — Módulo Lançamentos — Aba: "Lancamentos"
  * ------------------------------------------------------------
  * Colunas:
  * Data_Competencia, Data_Caixa, Tipo, Origem, Categoria, Descricao,
  * Cliente_Fornecedor, Forma_Pagamento, Instituicao_Financeira, Titularidade,
  * Parcelamento, Valor, Status, Observacoes, Mes_a_receber
  *
- * Compatível com WebApp JSONP (Code.gs) chamando actions:
- * - "Lancamentos.Criar"
- * - "Lancamentos.Listar" (com filtros)
+ * Actions (via Registry prefix "Lancamentos."):
+ * - Lancamentos.Criar
+ * - Lancamentos.Listar        ✅ agora retorna rowIndex em cada item
+ * - Lancamentos.Editar        ✅ edita por rowIndex (linha real 1-based)
  *
- * Router no Code.gs:
- *   if (action.indexOf("Lancamentos.") === 0) return jsonp_(callback, Lancamentos_dispatch_(action, p));
+ * Dependências:
+ * - Lancamentos.Utils.gs (helpers LANC_*)
  */
 
 // ============================================================
@@ -39,6 +40,7 @@ var LANC_HEADERS = [
 // DISPATCH
 // ============================================================
 function Lancamentos_dispatch_(action, p) {
+  p = p || {};
   var sheetName = LANC_safeStr_(p.sheet) || LANC_SHEET_DEFAULT;
 
   var sheet = LANC_getOrCreateSheet_(sheetName);
@@ -51,22 +53,26 @@ function Lancamentos_dispatch_(action, p) {
     return res;
   }
 
+  if (action === "Lancamentos.Editar") {
+    var payloadEdit = LANC_parseJsonParam_(p.payload);
+    var resEdit = Lancamentos_editar_(sheet, payloadEdit);
+    resEdit.ok = true;
+    return resEdit;
+  }
+
   if (action === "Lancamentos.Listar") {
-    // ✅ aceita "filtros" (padrão atual do lancamentos.js)
-    // ✅ aceita também "filtro" (compat antigo)
+    // aceita filtros em JSON
     var filtros = LANC_parseJsonParam_(p.filtros);
     if (!filtros || typeof filtros !== "object") filtros = LANC_parseJsonParam_(p.filtro);
     if (!filtros || typeof filtros !== "object") filtros = {};
 
-    // também aceita filtros flat via querystring
+    // aceita filtros flat via querystring
     if (LANC_safeStr_(p.fDataIni)) filtros.fDataIni = p.fDataIni;
     if (LANC_safeStr_(p.fDataFim)) filtros.fDataFim = p.fDataFim;
     if (LANC_safeStr_(p.fTipo)) filtros.fTipo = p.fTipo;
     if (LANC_safeStr_(p.fStatus)) filtros.fStatus = p.fStatus;
     if (LANC_safeStr_(p.q)) filtros.q = p.q;
 
-    // opcional: filtro por Data_Caixa em vez de Data_Competencia
-    // filtros.dateField = "Data_Caixa" (se quiser no futuro)
     var items = Lancamentos_listar_(sheet, filtros);
     return { ok: true, items: items, message: "OK" };
   }
@@ -78,6 +84,8 @@ function Lancamentos_dispatch_(action, p) {
 // AÇÕES
 // ============================================================
 function Lancamentos_criar_(sheet, payload) {
+  payload = payload || {};
+
   var dc = LANC_safeStr_(payload.Data_Competencia);
   var tipo = LANC_safeStr_(payload.Tipo);
   var desc = LANC_safeStr_(payload.Descricao);
@@ -123,6 +131,48 @@ function Lancamentos_criar_(sheet, payload) {
   return { message: "Lançamento salvo." };
 }
 
+/**
+ * ✅ Edita um lançamento por rowIndex (linha real 1-based).
+ * Payload:
+ * { rowIndex: <number>, data: {campo: valor, ...} }
+ */
+function Lancamentos_editar_(sheet, payload) {
+  payload = payload || {};
+  var rowIndex = Number(payload.rowIndex || 0); // 1-based
+  var data = payload.data || {};
+
+  if (!rowIndex || rowIndex < 2) {
+    throw new Error("rowIndex inválido (use a linha real 1-based; mínimo 2).");
+  }
+  if (!data || typeof data !== "object") {
+    throw new Error("payload.data é obrigatório (objeto com campos a atualizar).");
+  }
+
+  // Normalizações úteis
+  if (data.Valor !== undefined) data.Valor = LANC_parseNumber_(data.Valor);
+  if (data.Data_Competencia) data.Data_Competencia = LANC_normalizeIsoDate_(data.Data_Competencia);
+  if (data.Data_Caixa) data.Data_Caixa = LANC_normalizeIsoDate_(data.Data_Caixa);
+
+  // Header/índices
+  var header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var idx = LANC_indexMap_(header);
+
+  // Lê linha atual
+  var rowRange = sheet.getRange(rowIndex, 1, 1, header.length);
+  var current = rowRange.getValues()[0];
+
+  // Aplica alterações apenas em colunas existentes
+  Object.keys(data).forEach(function (k) {
+    if (idx[k] === undefined) return;
+    current[idx[k]] = data[k];
+  });
+
+  // Salva
+  rowRange.setValues([current]);
+
+  return { message: "Lançamento atualizado.", rowIndex: rowIndex };
+}
+
 function Lancamentos_listar_(sheet, filtros) {
   filtros = filtros || {};
 
@@ -132,7 +182,7 @@ function Lancamentos_listar_(sheet, filtros) {
   var header = data[0];
   var idx = LANC_indexMap_(header);
 
-  // ✅ qual campo de data usar no filtro (default Data_Competencia)
+  // campo de data do filtro (default Data_Competencia)
   var dateField = LANC_safeStr_(filtros.dateField || "Data_Competencia");
   if (dateField !== "Data_Competencia" && dateField !== "Data_Caixa") dateField = "Data_Competencia";
 
@@ -144,20 +194,19 @@ function Lancamentos_listar_(sheet, filtros) {
 
   var iniDate = fIni ? LANC_parseIsoDateToDate_(fIni) : null;
   var fimDate = fFim ? LANC_parseIsoDateToDate_(fFim) : null;
-
   var qNorm = q ? LANC_normalize_(q) : "";
 
   var out = [];
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
 
-    var dValue = LANC_safeStr_(row[idx[dateField]]);
+    var dValue = row[idx[dateField]];
     var tipo = LANC_safeStr_(row[idx["Tipo"]]);
     var status = LANC_safeStr_(row[idx["Status"]]);
 
-    // Data filter
+    // filtro de data (aceita Date ou string)
     if (iniDate || fimDate) {
-      var dDate = LANC_parseIsoDateToDate_(dValue);
+      var dDate = LANC_parseAnyToDate_(dValue);
       if (!dDate) continue;
 
       if (iniDate && dDate < iniDate) continue;
@@ -185,14 +234,17 @@ function Lancamentos_listar_(sheet, filtros) {
       }
     }
 
-    out.push(LANC_rowToObj_(header, row));
+    var obj = LANC_rowToObj_(header, row);
+    obj.rowIndex = i + 1; // ✅ linha real (1-based)
+    out.push(obj);
+
     if (out.length >= 300) break;
   }
 
-  // ordena por Data_Competencia desc (mantém padrão da tela)
+  // ordena por Data_Competencia desc
   out.sort(function (a, b) {
-    var da = LANC_parseIsoDateToDate_(a.Data_Competencia);
-    var db = LANC_parseIsoDateToDate_(b.Data_Competencia);
+    var da = LANC_parseAnyToDate_(a.Data_Competencia);
+    var db = LANC_parseAnyToDate_(b.Data_Competencia);
     if (!da && !db) return 0;
     if (!da) return 1;
     if (!db) return -1;
@@ -212,7 +264,6 @@ function LANC_getOrCreateSheet_(name) {
   return sh;
 }
 
-/** ✅ evita erro de validação no cabeçalho */
 function LANC_ensureHeader_(sheet, headers) {
   var headerRange = sheet.getRange(1, 1, 1, headers.length);
   headerRange.clearDataValidations();
@@ -240,75 +291,4 @@ function LANC_ensureHeader_(sheet, headers) {
     headerRange.setValues([headers]);
     sheet.setFrozenRows(1);
   }
-}
-
-// ============================================================
-// HELPERS
-// ============================================================
-function LANC_parseJsonParam_(s) {
-  var raw = (s || "").toString();
-  if (!raw) return {};
-  try {
-    return JSON.parse(raw);
-  } catch (_) {
-    return {};
-  }
-}
-
-function LANC_safeStr_(v) {
-  return String(v == null ? "" : v).trim();
-}
-
-function LANC_normalize_(s) {
-  return LANC_safeStr_(s).toLowerCase();
-}
-
-function LANC_indexMap_(headerRow) {
-  var map = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var k = String(headerRow[i] || "").trim();
-    if (k) map[k] = i;
-  }
-  return map;
-}
-
-function LANC_rowToObj_(headerRow, row) {
-  var o = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var k = String(headerRow[i] || "").trim();
-    if (!k) continue;
-    o[k] = row[i] != null ? row[i] : "";
-  }
-  return o;
-}
-
-function LANC_parseNumber_(v) {
-  var s = LANC_safeStr_(v);
-  if (!s) return 0;
-
-  if (s.indexOf(",") !== -1) {
-    s = s.replace(/\./g, "").replace(",", ".");
-  }
-  var n = Number(s);
-  if (isNaN(n)) throw new Error("Valor inválido: " + v);
-  return n;
-}
-
-function LANC_normalizeIsoDate_(iso) {
-  var s = LANC_safeStr_(iso);
-  if (!s) return "";
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-
-  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (m) return m[3] + "-" + m[2] + "-" + m[1];
-
-  return s;
-}
-
-function LANC_parseIsoDateToDate_(iso) {
-  var s = LANC_normalizeIsoDate_(iso);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
-  var parts = s.split("-");
-  return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
 }

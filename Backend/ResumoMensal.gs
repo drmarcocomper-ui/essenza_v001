@@ -1,4 +1,5 @@
-/** ResumoMensal.gs — OPÇÃO A (sem aba Resumo_Mensal)
+/**
+ * ResumoMensal.gs — OPÇÃO A (sem aba Resumo_Mensal)
  * ------------------------------------------------------------
  * Fonte: aba "Lancamentos"
  * Saída: calcula e RETORNA (não escreve em nenhuma aba)
@@ -11,12 +12,47 @@
  * Mês | Entradas Pagas | Entradas Pendentes | Total Entradas | Saidas |
  * Resultado (Caixa) | Resultado (Caixa Real) |
  * Entrada. SumUp PJ | Entrada Nubank PJ | Entrada Nubank PF | Entrada PicPay PF
+ *
+ * Dependência:
+ * - ResumoMensal.Utils.gs (RM_* helpers)
  */
 
 var RM_SHEET_LANC = "Lancamentos";
 
+/**
+ * ✅ Wrapper para o Registry/Api (lê e.parameter.mes opcional)
+ * Action: "ResumoMensal.Calcular"
+ */
+function ResumoMensal_CalcularApi_(e) {
+  var mes = "";
+  try {
+    mes = e && e.parameter && e.parameter.mes ? String(e.parameter.mes).trim() : "";
+  } catch (_) {}
+  return ResumoMensal_Calcular(mes);
+}
+
+/**
+ * ✅ Wrapper para o Registry/Api (lê e.parameter.mes obrigatório)
+ * Action: "ResumoMensal.DetalharMes"
+ */
+function ResumoMensal_DetalharMesApi_(e) {
+  var mes = "";
+  try {
+    mes = e && e.parameter && e.parameter.mes ? String(e.parameter.mes).trim() : "";
+  } catch (_) {}
+
+  if (!mes || !/^\d{4}-\d{2}$/.test(mes)) {
+    throw new Error("Parâmetro 'mes' é obrigatório e deve estar em YYYY-MM.");
+  }
+
+  return ResumoMensal_DetalharMes(mes);
+}
+
+/**
+ * Calcula o resumo mensal. Pode receber mesYYYYMM opcional.
+ */
 function ResumoMensal_Calcular(mesYYYYMM) {
-  mesYYYYMM = RM_safeStr_(mesYYYYMM); // opcional
+  mesYYYYMM = RM_safeStr_(mesYYYYMM);
   if (mesYYYYMM && !/^\d{4}-\d{2}$/.test(mesYYYYMM)) {
     throw new Error("Parâmetro 'mes' inválido. Use YYYY-MM.");
   }
@@ -46,29 +82,21 @@ function ResumoMensal_Calcular(mesYYYYMM) {
     var row = data[i];
 
     var mes = RM_monthKeyFromDate_(row[idx["Data_Caixa"]]);
-    if (!mes) continue; // só entra se Data_Caixa válida
+    if (!mes) continue;
     if (mesYYYYMM && mes !== mesYYYYMM) continue;
-
-    var tipo = RM_safeStr_(row[idx["Tipo"]]);
-    var status = RM_safeStr_(row[idx["Status"]]);
-    var inst = RM_safeStr_(row[idx["Instituicao_Financeira"]]);
-    var titular = RM_safeStr_(row[idx["Titularidade"]]);
-    var valor = RM_parseNumber_(row[idx["Valor"]]);
 
     if (!buckets[mes]) buckets[mes] = RM_newAcc_();
 
     RM_accumulate_(buckets[mes], {
-      tipo: tipo,
-      status: status,
-      valor: valor,
-      inst: inst,
-      titular: titular,
+      tipo: row[idx["Tipo"]],
+      status: row[idx["Status"]],
+      valor: row[idx["Valor"]],
+      inst: row[idx["Instituicao_Financeira"]],
+      titular: row[idx["Titularidade"]],
     });
   }
 
-  var meses = Object.keys(buckets).sort(); // asc
-  // se você quiser mostrar do mais recente para o mais antigo:
-  meses.reverse();
+  var meses = Object.keys(buckets).sort().reverse(); // mais recente primeiro
 
   var items = [];
   for (var m = 0; m < meses.length; m++) {
@@ -80,9 +108,8 @@ function ResumoMensal_Calcular(mesYYYYMM) {
     var totalEntradas = entradasPagas + entradasPend;
     var saidas = acc.saidas;
 
-    // como base é Data_Caixa, os dois ficam iguais
+    // ✅ Base = Data_Caixa → caixa = caixa real
     var resultadoCaixa = entradasPagas - saidas;
-    var resultadoCaixaReal = resultadoCaixa;
 
     items.push({
       "Mês": key,
@@ -91,7 +118,7 @@ function ResumoMensal_Calcular(mesYYYYMM) {
       "Total Entradas": RM_round2_(totalEntradas),
       "Saidas": RM_round2_(saidas),
       "Resultado (Caixa)": RM_round2_(resultadoCaixa),
-      "Resultado (Caixa Real)": RM_round2_(resultadoCaixaReal),
+      "Resultado (Caixa Real)": RM_round2_(resultadoCaixa),
       "Entrada. SumUp PJ": RM_round2_(acc.sumupPJ),
       "Entrada Nubank PJ": RM_round2_(acc.nubankPJ),
       "Entrada Nubank PF": RM_round2_(acc.nubankPF),
@@ -102,109 +129,47 @@ function ResumoMensal_Calcular(mesYYYYMM) {
   return { ok: true, items: items };
 }
 
-// ============================================================
-// ACUMULADOR
-// ============================================================
-function RM_newAcc_() {
-  return {
-    entradasPagas: 0,
-    entradasPendentes: 0,
-    saidas: 0,
-
-    sumupPJ: 0,
-    nubankPJ: 0,
-    nubankPF: 0,
-    picpayPF: 0,
-  };
-}
-
-function RM_accumulate_(acc, it) {
-  var tipo = RM_safeStr_(it.tipo);
-  var status = RM_safeStr_(it.status);
-  var valor = Number(it.valor || 0) || 0;
-
-  if (tipo === "Receita") {
-    if (status === "Pago") acc.entradasPagas += valor;
-    else if (status === "Pendente") acc.entradasPendentes += valor;
-
-    // instituiçoes (somente pagos)
-    if (status === "Pago") {
-      var instN = RM_norm_(it.inst);
-      var titN = RM_norm_(it.titular);
-
-      if (instN.indexOf("sumup") !== -1 && titN.indexOf("pj") !== -1) acc.sumupPJ += valor;
-      if (instN.indexOf("nubank") !== -1 && titN.indexOf("pj") !== -1) acc.nubankPJ += valor;
-      if (instN.indexOf("nubank") !== -1 && titN.indexOf("pf") !== -1) acc.nubankPF += valor;
-      if (instN.indexOf("picpay") !== -1 && titN.indexOf("pf") !== -1) acc.picpayPF += valor;
-    }
+/**
+ * Drill-down: retorna lançamentos do mês (por Data_Caixa)
+ */
+function ResumoMensal_DetalharMes(mesYYYYMM) {
+  mesYYYYMM = RM_safeStr_(mesYYYYMM);
+  if (!mesYYYYMM || !/^\d{4}-\d{2}$/.test(mesYYYYMM)) {
+    throw new Error("Parâmetro 'mes' inválido. Use YYYY-MM.");
   }
 
-  if (tipo === "Despesa") {
-    acc.saidas += valor;
-  }
-}
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var shLanc = ss.getSheetByName(RM_SHEET_LANC);
+  if (!shLanc) throw new Error("Aba não encontrada: " + RM_SHEET_LANC);
 
-// ============================================================
-// UTIL
-// ============================================================
-function RM_indexMap_(headerRow) {
-  var map = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var k = String(headerRow[i] || "").trim();
-    if (k) map[k] = i;
-  }
-  return map;
-}
+  var data = shLanc.getDataRange().getValues();
+  if (data.length <= 1) return { ok: true, items: [] };
 
-function RM_requireCols_(idxMap, cols) {
-  for (var i = 0; i < cols.length; i++) {
-    if (idxMap[cols[i]] === undefined) {
-      throw new Error("Coluna obrigatória ausente em Lancamentos: " + cols[i]);
-    }
-  }
-}
+  var header = data[0];
+  var idx = RM_indexMap_(header);
 
-function RM_safeStr_(v) {
-  return String(v == null ? "" : v).trim();
-}
+  RM_requireCols_(idx, ["Data_Caixa", "Tipo", "Valor", "Status"]);
 
-function RM_norm_(v) {
-  return RM_safeStr_(v).toLowerCase();
-}
+  var items = [];
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
 
-function RM_parseNumber_(v) {
-  if (typeof v === "number") return v;
-  var s = RM_safeStr_(v);
-  if (!s) return 0;
+    var mes = RM_monthKeyFromDate_(row[idx["Data_Caixa"]]);
+    if (!mes || mes !== mesYYYYMM) continue;
 
-  if (s.indexOf(",") !== -1) {
-    s = s.replace(/\./g, "").replace(",", ".");
-  }
-  var n = Number(s);
-  return isNaN(n) ? 0 : n;
-}
-
-function RM_round2_(n) {
-  n = Number(n || 0);
-  return Math.round(n * 100) / 100;
-}
-
-function RM_monthKeyFromDate_(value) {
-  if (!value) return "";
-
-  // Date object vindo da planilha
-  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
-    return value.getFullYear() + "-" + String(value.getMonth() + 1).padStart(2, "0");
+    items.push({
+      Data_Caixa: RM_dateOut_(row[idx["Data_Caixa"]]),
+      Tipo: RM_safeStr_(row[idx["Tipo"]]),
+      Categoria: RM_safeStr_(row[idx["Categoria"]]),
+      Descricao: RM_safeStr_(row[idx["Descricao"]] || row[idx["Descrição"]]),
+      Cliente_Fornecedor: RM_safeStr_(row[idx["Cliente_Fornecedor"]]),
+      Forma_Pagamento: RM_safeStr_(row[idx["Forma_Pagamento"]]),
+      Valor: RM_round2_(RM_parseNumber_(row[idx["Valor"]])),
+      Status: RM_safeStr_(row[idx["Status"]]),
+      Instituicao_Financeira: RM_safeStr_(row[idx["Instituicao_Financeira"]]),
+      Titularidade: RM_safeStr_(row[idx["Titularidade"]])
+    });
   }
 
-  var s = RM_safeStr_(value);
-
-  // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.slice(0, 7);
-
-  // DD/MM/YYYY
-  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (m) return m[3] + "-" + m[2];
-
-  return "";
+  return { ok: true, items: items };
 }
