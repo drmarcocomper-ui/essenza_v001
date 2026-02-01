@@ -1,6 +1,7 @@
 // lancamentos.js (JSONP - sem CORS)
 // Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
-// Backend: Code.gs (router) + Lacamentos.gs (Lancamentos_dispatch_)
+// Backend: Api.gs (Registry) + Registry.gs + Lancamentos.gs (Lancamentos_dispatch_)
+// ✅ Suporta: Criar, Listar e Editar (por rowIndex)
 
 (() => {
   "use strict";
@@ -26,6 +27,9 @@
   const formLanc = document.getElementById("formLancamento");
   const feedbackSalvar = document.getElementById("feedbackSalvar");
 
+  // (Opcional no HTML) botão para “Novo lançamento”
+  const btnNovo = document.getElementById("btnNovoLancamento"); // se não existir, ignora
+
   // Campos do formulário de lançamento
   const el = {
     Data_Competencia: document.getElementById("Data_Competencia"),
@@ -45,6 +49,9 @@
     Mes_a_receber: document.getElementById("Mes_a_receber"),
   };
 
+  // ---------- Estado ----------
+  let selectedRowIndex = null; // rowIndex 1-based vindo do backend (Lancamentos.Listar)
+
   // ---------- Helpers ----------
   function setFeedback(node, msg, type = "info") {
     if (!node) return;
@@ -62,7 +69,11 @@
 
   function requireScriptUrl() {
     if (!SCRIPT_URL || !SCRIPT_URL.includes("/exec")) {
-      setFeedback(feedbackLanc, "SCRIPT_URL inválida. Ajuste no assets/js/config.js (precisa terminar em /exec).", "error");
+      setFeedback(
+        feedbackLanc,
+        "SCRIPT_URL inválida. Ajuste no assets/js/config.js (precisa terminar em /exec).",
+        "error"
+      );
       return false;
     }
     return true;
@@ -97,7 +108,9 @@
 
       function cleanup() {
         clearTimeout(timeout);
-        try { delete window[cb]; } catch (_) {}
+        try {
+          delete window[cb];
+        } catch (_) {}
         if (script && script.parentNode) script.parentNode.removeChild(script);
       }
 
@@ -119,39 +132,16 @@
     });
   }
 
-  // ---------- Tabela ----------
-  function clearTable() {
-    if (!tbody) return;
-    tbody.innerHTML = "";
-  }
-
-  function renderTable(items) {
-    clearTable();
-    if (!tbody) return;
-
-    if (!Array.isArray(items) || items.length === 0) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="8">Nenhum lançamento encontrado.</td>`;
-      tbody.appendChild(tr);
-      return;
-    }
-
-    items.forEach((it) => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${escapeHtml(it.Data_Competencia || "")}</td>
-        <td>${escapeHtml(it.Tipo || "")}</td>
-        <td>${escapeHtml(it.Categoria || "")}</td>
-        <td>${escapeHtml(it.Descricao || "")}</td>
-        <td>${escapeHtml(it.Cliente_Fornecedor || "")}</td>
-        <td>${escapeHtml(it.Forma_Pagamento || "")}</td>
-        <td>${escapeHtml(formatMoneyBR(it.Valor))}</td>
-        <td>${escapeHtml(it.Status || "")}</td>
-      `;
-      tbody.appendChild(tr);
-
-      tr.addEventListener("click", () => fillForm(it));
+  // ---------- Form ----------
+  function clearForm() {
+    Object.keys(el).forEach((k) => {
+      if (!el[k]) return;
+      el[k].value = "";
     });
+    selectedRowIndex = null;
+    setFeedback(feedbackSalvar, "Modo: NOVO lançamento.", "info");
+    // default útil
+    if (el.Data_Competencia) el.Data_Competencia.value = hojeISO();
   }
 
   function fillForm(it) {
@@ -162,10 +152,25 @@
       el[k].value = it[k] ?? "";
     });
 
-    setFeedback(feedbackSalvar, "Lançamento carregado (salvar cria uma NOVA linha).", "info");
+    // ✅ pega rowIndex retornado pelo backend
+    const ri = Number(it.rowIndex || 0);
+    selectedRowIndex = ri > 0 ? ri : null;
+
+    if (selectedRowIndex) {
+      setFeedback(
+        feedbackSalvar,
+        `Modo: EDITAR lançamento (rowIndex ${selectedRowIndex}). Ao salvar, atualiza a linha.`,
+        "info"
+      );
+    } else {
+      setFeedback(
+        feedbackSalvar,
+        "Este item não possui rowIndex. Atualize o backend para retornar rowIndex no Listar.",
+        "error"
+      );
+    }
   }
 
-  // ---------- Payload ----------
   function buildLancPayload() {
     return {
       Data_Competencia: (el.Data_Competencia?.value || "").trim(),
@@ -196,6 +201,59 @@
     };
   }
 
+  function validateRequired(payload) {
+    if (!payload.Data_Competencia || !payload.Tipo || !payload.Descricao || !payload.Valor || !payload.Status) {
+      setFeedback(feedbackSalvar, "Preencha: Data_Competencia, Tipo, Descricao, Valor, Status.", "error");
+      return false;
+    }
+    return true;
+  }
+
+  // ---------- Tabela ----------
+  function clearTable() {
+    if (!tbody) return;
+    tbody.innerHTML = "";
+  }
+
+  function markSelectedRow(tr) {
+    if (!tbody) return;
+    [...tbody.querySelectorAll("tr")].forEach((x) => x.classList.remove("is-selected"));
+    if (tr) tr.classList.add("is-selected");
+  }
+
+  function renderTable(items) {
+    clearTable();
+    if (!tbody) return;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="8">Nenhum lançamento encontrado.</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+
+    items.forEach((it) => {
+      const tr = document.createElement("tr");
+      tr.dataset.rowIndex = String(it.rowIndex ?? "");
+      tr.innerHTML = `
+        <td>${escapeHtml(it.Data_Competencia || "")}</td>
+        <td>${escapeHtml(it.Tipo || "")}</td>
+        <td>${escapeHtml(it.Categoria || "")}</td>
+        <td>${escapeHtml(it.Descricao || "")}</td>
+        <td>${escapeHtml(it.Cliente_Fornecedor || "")}</td>
+        <td>${escapeHtml(it.Forma_Pagamento || "")}</td>
+        <td>${escapeHtml(formatMoneyBR(it.Valor))}</td>
+        <td>${escapeHtml(it.Status || "")}</td>
+      `;
+      tbody.appendChild(tr);
+
+      tr.addEventListener("click", () => {
+        markSelectedRow(tr);
+        fillForm(it);
+      });
+    });
+  }
+
   // ---------- Ações ----------
   async function listar() {
     if (!requireScriptUrl()) return;
@@ -219,27 +277,46 @@
     }
   }
 
+  async function criar(payload) {
+    const data = await jsonpRequest({
+      action: "Lancamentos.Criar",
+      sheet: SHEET_NAME,
+      payload: JSON.stringify(payload),
+    });
+    if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao salvar (criar).");
+    return data;
+  }
+
+  async function editar(rowIndex, payload) {
+    const data = await jsonpRequest({
+      action: "Lancamentos.Editar",
+      sheet: SHEET_NAME,
+      payload: JSON.stringify({
+        rowIndex,
+        data: payload,
+      }),
+    });
+    if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao salvar (editar).");
+    return data;
+  }
+
   async function salvar() {
     if (!requireScriptUrl()) return;
 
     const payload = buildLancPayload();
-
-    if (!payload.Data_Competencia || !payload.Tipo || !payload.Descricao || !payload.Valor || !payload.Status) {
-      setFeedback(feedbackSalvar, "Preencha: Data_Competencia, Tipo, Descricao, Valor, Status.", "error");
-      return;
-    }
+    if (!validateRequired(payload)) return;
 
     setFeedback(feedbackSalvar, "Salvando...", "info");
     try {
-      const data = await jsonpRequest({
-        action: "Lancamentos.Criar",
-        sheet: SHEET_NAME,
-        payload: JSON.stringify(payload),
-      });
+      // ✅ Se selecionou um item (tem rowIndex), edita. Senão, cria.
+      if (selectedRowIndex && Number(selectedRowIndex) >= 2) {
+        const resp = await editar(selectedRowIndex, payload);
+        setFeedback(feedbackSalvar, resp.message || "Lançamento atualizado.", "success");
+      } else {
+        const resp = await criar(payload);
+        setFeedback(feedbackSalvar, resp.message || "Lançamento salvo.", "success");
+      }
 
-      if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao salvar.");
-
-      setFeedback(feedbackSalvar, data.message || "Lançamento salvo.", "success");
       await listar();
     } catch (err) {
       setFeedback(feedbackSalvar, err.message || "Erro ao salvar.", "error");
@@ -270,6 +347,9 @@
     if (btnLimparFiltro) btnLimparFiltro.addEventListener("click", (e) => (e.preventDefault(), limparFiltro()));
     if (formFiltro) formFiltro.addEventListener("submit", (e) => (e.preventDefault(), listar()));
     if (formLanc) formLanc.addEventListener("submit", (e) => (e.preventDefault(), salvar()));
+
+    // opcional
+    if (btnNovo) btnNovo.addEventListener("click", (e) => (e.preventDefault(), clearForm()));
   }
 
   initDefaults();

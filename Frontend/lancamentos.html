@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Lançamentos | Salão</title>
 
-  <!-- ✅ novo caminho -->
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
@@ -95,7 +94,7 @@
     <section class="card">
       <div class="card__header">
         <h2 class="card__title">Lista</h2>
-        <p class="card__desc">Clique em uma linha para carregar nos campos do formulário (opcional).</p>
+        <p class="card__desc">Clique em uma linha para carregar nos campos do formulário e editar.</p>
       </div>
 
       <div class="card__body">
@@ -116,14 +115,18 @@
             <tbody></tbody>
           </table>
         </div>
+
+        <small class="hint" style="margin-top:.75rem; display:block;">
+          Dica: após clicar em uma linha, o formulário entra em modo <strong>Editar</strong>. Use o botão <strong>Novo</strong> para voltar ao modo criação.
+        </small>
       </div>
     </section>
 
-    <!-- NOVO LANÇAMENTO -->
+    <!-- LANÇAMENTO (NOVO / EDITAR) -->
     <section class="card">
       <div class="card__header">
-        <h2 class="card__title">Novo lançamento</h2>
-        <p class="card__desc">Preencha e salve na aba “Lancamentos”.</p>
+        <h2 class="card__title">Lançamento</h2>
+        <p class="card__desc">Preencha e salve na aba “Lancamentos”. Clique na lista para editar.</p>
       </div>
 
       <div class="card__body">
@@ -237,6 +240,7 @@
 
           <div class="actions">
             <button type="submit" id="btnSalvarLanc" class="btn btn--primary">Salvar lançamento</button>
+            <button type="button" id="btnNovoLancamento" class="btn btn--secondary">Novo</button>
             <button type="reset" id="btnLimparLanc" class="btn">Limpar</button>
           </div>
 
@@ -250,7 +254,6 @@
     <small>Lançamentos • Google Planilhas + Apps Script</small>
   </footer>
 
-  <!-- ✅ novos caminhos + ordem importa -->
   <script src="assets/js/config.js"></script>
   <script src="assets/js/lancamentos.js" defer></script>
 </body>
