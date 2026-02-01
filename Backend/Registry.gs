@@ -5,6 +5,11 @@
  * - ações exatas  -> handler(e)
  * - ações por prefixo -> dispatcher(action, e)
  *
+ * ✅ Categoria:
+ * - Categoria.Criar
+ * - Categoria.Editar
+ * - Categoria.Listar
+ *
  * Usado por:
  * - Api.gs
  */
@@ -55,7 +60,7 @@ function Registry_init_() {
   };
 
   REGISTRY_PREFIX = [
-    // ---- LANÇAMENTOS ----
+    // ---- LANÇAMENTOS (prefixo) ----
     {
       prefix: "Lancamentos.",
       fn: function (action, e) {
@@ -67,7 +72,7 @@ function Registry_init_() {
       }
     },
 
-    // ---- CATEGORIA ----
+    // ---- CATEGORIA (prefixo) ----
     {
       prefix: "Categoria.",
       fn: function (action, e) {
@@ -75,6 +80,17 @@ function Registry_init_() {
         if (typeof Categoria_dispatch_ !== "function") {
           throw new Error("Categoria_dispatch_ não encontrado. Verifique Categoria.gs.");
         }
+
+        // ✅ garante que somente as ações do módulo Categoria passem aqui
+        // (opcional, mas deixa mais claro)
+        if (
+          action !== "Categoria.Criar" &&
+          action !== "Categoria.Editar" &&
+          action !== "Categoria.Listar"
+        ) {
+          return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
+        }
+
         return Categoria_dispatch_(action, p);
       }
     }

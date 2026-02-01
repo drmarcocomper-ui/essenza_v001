@@ -13,13 +13,13 @@
  * - DataCadastro        (ISO)
  * - DataAtualizacao     (ISO)
  *
- * Actions (via Api/Registry):
+ * Actions (via Registry prefix "Categoria."):
  * - Categoria.Criar
  * - Categoria.Editar
  * - Categoria.Listar
  *
- * Observação:
- * - Usa JSONP via Api.gs/Registry.gs
+ * Dependências:
+ * - Categoria.Utils.gs (CAT_* helpers)
  */
 
 var CAT_SHEET_DEFAULT = "Categoria";
@@ -35,7 +35,7 @@ var CAT_HEADERS = [
 ];
 
 // ============================================================
-// DISPATCH (chamado via Registry prefix "Categoria.")
+// DISPATCH
 // ============================================================
 function Categoria_dispatch_(action, p) {
   p = p || {};
@@ -77,13 +77,15 @@ function Categoria_criar_(sheet, payload) {
   var tipo = CAT_safeStr_(payload.Tipo);
   var categoria = CAT_safeStr_(payload.Categoria);
 
-  if (!tipo) throw new Error("Tipo é obrigatório.");
+  if (!CAT_isValidTipo_(tipo)) throw new Error("Tipo inválido. Use: Entrada, Saida ou Transferência.");
   if (!categoria) throw new Error("Categoria é obrigatória.");
+
+  var ativo = CAT_toAtivo_(payload.Ativo);
+  if (!CAT_isValidAtivo_(ativo)) throw new Error("Ativo inválido. Use: Sim ou Nao.");
 
   var id = CAT_safeStr_(payload.ID_Categoria);
   if (!id) id = CAT_newId_("CAT");
 
-  // evita duplicar ID
   if (CAT_findRowById_(sheet, id) > 0) throw new Error("ID_Categoria já existe: " + id);
 
   var nowIso = CAT_isoNow_();
@@ -93,8 +95,8 @@ function Categoria_criar_(sheet, payload) {
     Tipo: tipo,
     Categoria: categoria,
     Descricao_Padrao: CAT_safeStr_(payload.Descricao_Padrao),
-    Ativo: CAT_safeStr_(payload.Ativo) || "Sim",
-    Ordem: CAT_safeStr_(payload.Ordem),
+    Ativo: ativo,
+    Ordem: CAT_toOrdem_(payload.Ordem),
     DataCadastro: nowIso,
     DataAtualizacao: nowIso,
   };
@@ -112,20 +114,24 @@ function Categoria_editar_(sheet, payload) {
   var rowIndex = CAT_findRowById_(sheet, id);
   if (rowIndex < 2) throw new Error("ID_Categoria não encontrado: " + id);
 
+  if (payload.Tipo && !CAT_isValidTipo_(payload.Tipo)) throw new Error("Tipo inválido. Use: Entrada, Saida ou Transferência.");
+  if (payload.Ativo && !CAT_isValidAtivo_(payload.Ativo)) throw new Error("Ativo inválido. Use: Sim ou Nao.");
+
   var header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   var idx = CAT_indexMap_(header);
 
   var rowRange = sheet.getRange(rowIndex, 1, 1, header.length);
   var current = rowRange.getValues()[0];
 
-  // atualiza campos permitidos
   CAT_setIfExists_(idx, current, "Tipo", payload.Tipo);
   CAT_setIfExists_(idx, current, "Categoria", payload.Categoria);
   CAT_setIfExists_(idx, current, "Descricao_Padrao", payload.Descricao_Padrao);
   CAT_setIfExists_(idx, current, "Ativo", payload.Ativo);
-  CAT_setIfExists_(idx, current, "Ordem", payload.Ordem);
 
-  // DataAtualizacao
+  if (payload.Ordem !== undefined) {
+    CAT_setIfExists_(idx, current, "Ordem", CAT_toOrdem_(payload.Ordem));
+  }
+
   if (idx["DataAtualizacao"] !== undefined) current[idx["DataAtualizacao"]] = CAT_isoNow_();
 
   rowRange.setValues([current]);
@@ -143,6 +149,7 @@ function Categoria_listar_(sheet, filtros) {
 
   var fTipo = CAT_safeStr_(filtros.fTipo || "");
   var q = CAT_safeStr_(filtros.q || "");
+  var somenteAtivos = (String(filtros.somenteAtivos || "").trim() === "1");
 
   var qn = q ? CAT_norm_(q) : "";
 
@@ -157,9 +164,9 @@ function Categoria_listar_(sheet, filtros) {
     var desc = CAT_safeStr_(row[idx["Descricao_Padrao"]] || "");
     var ordem = row[idx["Ordem"]];
 
+    if (somenteAtivos && ativo === "Nao") continue;
     if (fTipo && tipo !== fTipo) continue;
 
-    // busca textual
     if (qn) {
       var blob = CAT_norm_(tipo + " " + cat + " " + desc + " " + ativo);
       if (blob.indexOf(qn) === -1) continue;
@@ -176,27 +183,15 @@ function Categoria_listar_(sheet, filtros) {
       DataAtualizacao: CAT_safeStr_(row[idx["DataAtualizacao"]] || ""),
     });
 
-    if (out.length >= 300) break;
+    if (out.length >= 500) break;
   }
 
-  // ordena: Ordem asc (quando houver), depois Categoria asc
-  out.sort(function (a, b) {
-    var ao = Number(a.Ordem || 0);
-    var bo = Number(b.Ordem || 0);
-    if (ao !== bo) return ao - bo;
-
-    var ac = (a.Categoria || "").toLowerCase();
-    var bc = (b.Categoria || "").toLowerCase();
-    if (ac < bc) return -1;
-    if (ac > bc) return 1;
-    return 0;
-  });
-
+  out.sort(CAT_sortByOrdemThenCategoria_);
   return out;
 }
 
 // ============================================================
-// HELPERS
+// HELPERS (internos ao módulo)
 // ============================================================
 function CAT_toRowValues_(rowObj) {
   return CAT_HEADERS.map(function (h) {
@@ -219,7 +214,7 @@ function CAT_findRowById_(sheet, id) {
   if (colId === undefined) return -1;
 
   for (var i = 1; i < data.length; i++) {
-    if (String(data[i][colId] || "").trim() === id) return i + 1; // 1-based row index
+    if (String(data[i][colId] || "").trim() === id) return i + 1;
   }
   return -1;
 }
@@ -266,15 +261,13 @@ function CAT_parseJsonParam_(s) {
   try { return JSON.parse(raw); } catch (_) { return {}; }
 }
 
-function CAT_safeStr_(v) {
-  return String(v == null ? "" : v).trim();
-}
-
-function CAT_norm_(v) {
-  var s = CAT_safeStr_(v).toLowerCase();
-  try { s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); } catch (_) {}
-  s = s.replace(/\s+/g, " ").trim();
-  return s;
+function CAT_indexMap_(headerRow) {
+  var map = {};
+  for (var i = 0; i < headerRow.length; i++) {
+    var k = String(headerRow[i] || "").trim();
+    if (k) map[k] = i;
+  }
+  return map;
 }
 
 function CAT_rowEmpty_(row) {
@@ -282,15 +275,4 @@ function CAT_rowEmpty_(row) {
     if (String(row[i] || "").trim() !== "") return false;
   }
   return true;
-}
-
-function CAT_isoNow_() {
-  return new Date().toISOString();
-}
-
-function CAT_newId_(prefix) {
-  var p = String(prefix || "ID").trim() || "ID";
-  var rnd = Math.random().toString(16).slice(2, 10);
-  var t = Date.now().toString(36);
-  return p + "-" + t + "-" + rnd;
 }

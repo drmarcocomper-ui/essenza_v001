@@ -17,7 +17,7 @@ function doGet(e) {
   try {
     var p = (e && e.parameter) ? e.parameter : {};
     var action = safeStr_(p.action);
-    var callback = safeStr_(p.callback); // JSONP opcional
+    var callback = safeStr_(p.callback);
 
     // Healthcheck
     if (!action) {
@@ -25,7 +25,7 @@ function doGet(e) {
         ok: true,
         message: "Web App ativo",
         now: new Date().toISOString(),
-        version: "2026-02-01-parcelas-v1"
+        version: "2026-02-01-categoria-v1"
       });
     }
 
