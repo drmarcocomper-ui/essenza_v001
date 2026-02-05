@@ -77,6 +77,53 @@
       position: relative;
       height: 280px;
     }
+
+    /* Comparativo Mensal */
+    .comparativo-section {
+      margin-top: 1.5rem;
+    }
+
+    .comparativo-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .comparativo-table th,
+    .comparativo-table td {
+      padding: 0.6rem 0.75rem;
+      text-align: right;
+      border-bottom: 1px solid var(--cor-borda);
+    }
+
+    .comparativo-table th:first-child,
+    .comparativo-table td:first-child {
+      text-align: left;
+      font-weight: 500;
+    }
+
+    .comparativo-table thead th {
+      background: var(--cor-bg-alt, #f5f5f5);
+      font-weight: 600;
+    }
+
+    .comparativo-table .var-up { color: #228b22; }
+    .comparativo-table .var-down { color: #c41e3a; }
+    .comparativo-table .var-neutral { color: var(--cor-muted); }
+
+    .comparativo-table .arrow { font-size: 0.8rem; margin-right: 0.25rem; }
+
+    .comparativo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .comparativo-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 
@@ -119,6 +166,25 @@
         <h3>Entradas por Forma de Pagamento</h3>
         <div class="chart-canvas-wrap">
           <canvas id="chartPagamentos"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARATIVO MENSAL -->
+    <section class="comparativo-section">
+      <div class="comparativo-grid">
+        <div class="chart-container">
+          <h3>Comparativo Mensal - Resumo</h3>
+          <div id="comparativoResumo">
+            <p style="color: var(--cor-muted);">Carregando...</p>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <h3>Comparativo por Instituição</h3>
+          <div id="comparativoInstituicao">
+            <p style="color: var(--cor-muted);">Carregando...</p>
+          </div>
         </div>
       </div>
     </section>

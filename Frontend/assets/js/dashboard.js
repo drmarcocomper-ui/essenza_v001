@@ -9,6 +9,8 @@
   // DOM
   const dashboardCards = document.getElementById("dashboardCards");
   const feedback = document.getElementById("feedbackDash");
+  const comparativoResumo = document.getElementById("comparativoResumo");
+  const comparativoInstituicao = document.getElementById("comparativoInstituicao");
 
   // Charts
   let chartEvolucao = null;
@@ -110,6 +112,8 @@
     renderCards(dadosAtual, dadosAnterior, mesAtual);
     renderChartEvolucao(ultimos6);
     renderChartPagamentos(dadosAtual);
+    renderComparativoResumo(dadosAtual, dadosAnterior, mesAtual, mesAnterior);
+    renderComparativoInstituicao(dadosAtual, dadosAnterior, mesAtual, mesAnterior);
   }
 
   // ============================
@@ -332,6 +336,131 @@
         }
       }
     });
+  }
+
+  // ============================
+  // Comparativo Resumo
+  // ============================
+  function formatMesLabel(mesYYYYMM) {
+    if (!mesYYYYMM) return "";
+    const [ano, mes] = mesYYYYMM.split("-");
+    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    return `${meses[parseInt(mes, 10) - 1]}/${ano}`;
+  }
+
+  function renderVarCell(atual, anterior, inverter = false) {
+    const var_ = calcVariacao(atual, anterior);
+    if (var_ === null) return `<td class="var-neutral">--</td>`;
+
+    const isUp = inverter ? var_ <= 0 : var_ >= 0;
+    const cls = isUp ? "var-up" : "var-down";
+    const arrow = var_ >= 0 ? "▲" : "▼";
+
+    return `<td class="${cls}"><span class="arrow">${arrow}</span>${formatVariacao(var_)}</td>`;
+  }
+
+  function renderComparativoResumo(atual, anterior, mesAtual, mesAnterior) {
+    if (!comparativoResumo) return;
+
+    const mesAtualLabel = formatMesLabel(mesAtual);
+    const mesAnteriorLabel = formatMesLabel(mesAnterior);
+
+    const campos = [
+      { label: "Entradas Pagas", key: "Entradas Pagas", inverter: false },
+      { label: "Entradas Pendentes", key: "Entradas Pendentes", inverter: false },
+      { label: "Total Entradas", key: "Total Entradas", inverter: false },
+      { label: "Saídas", key: "Saidas", inverter: true },
+      { label: "Resultado", key: "Resultado (Caixa)", inverter: false },
+    ];
+
+    let html = `
+      <table class="comparativo-table">
+        <thead>
+          <tr>
+            <th>Métrica</th>
+            <th>${mesAnteriorLabel}</th>
+            <th>${mesAtualLabel}</th>
+            <th>Variação</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    campos.forEach(c => {
+      const valAtual = toNumber(atual?.[c.key]);
+      const valAnterior = toNumber(anterior?.[c.key]);
+
+      html += `
+        <tr>
+          <td>${c.label}</td>
+          <td>${formatMoneyBR(valAnterior)}</td>
+          <td>${formatMoneyBR(valAtual)}</td>
+          ${renderVarCell(valAtual, valAnterior, c.inverter)}
+        </tr>
+      `;
+    });
+
+    html += `</tbody></table>`;
+    comparativoResumo.innerHTML = html;
+  }
+
+  // ============================
+  // Comparativo Instituição
+  // ============================
+  function renderComparativoInstituicao(atual, anterior, mesAtual, mesAnterior) {
+    if (!comparativoInstituicao) return;
+
+    const mesAtualLabel = formatMesLabel(mesAtual);
+    const mesAnteriorLabel = formatMesLabel(mesAnterior);
+
+    const instituicoes = [
+      { label: "Nubank PF", key: "Nubank PF" },
+      { label: "Nubank PJ", key: "Nubank PJ" },
+      { label: "PicPay PF", key: "PicPay PF" },
+      { label: "PicPay PJ", key: "PicPay PJ" },
+      { label: "SumUp PF", key: "SumUp PF" },
+      { label: "SumUp PJ", key: "SumUp PJ" },
+      { label: "Terceiro PF", key: "Terceiro PF" },
+      { label: "Terceiro PJ", key: "Terceiro PJ" },
+    ];
+
+    let html = `
+      <table class="comparativo-table">
+        <thead>
+          <tr>
+            <th>Instituição</th>
+            <th>${mesAnteriorLabel}</th>
+            <th>${mesAtualLabel}</th>
+            <th>Variação</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    let temDados = false;
+    instituicoes.forEach(inst => {
+      const valAtual = toNumber(atual?.[inst.key]);
+      const valAnterior = toNumber(anterior?.[inst.key]);
+
+      if (valAtual > 0 || valAnterior > 0) {
+        temDados = true;
+        html += `
+          <tr>
+            <td>${inst.label}</td>
+            <td>${formatMoneyBR(valAnterior)}</td>
+            <td>${formatMoneyBR(valAtual)}</td>
+            ${renderVarCell(valAtual, valAnterior, false)}
+          </tr>
+        `;
+      }
+    });
+
+    if (!temDados) {
+      html += `<tr><td colspan="4" style="text-align:center; color: var(--cor-muted);">Sem dados de Instituição+Titularidade</td></tr>`;
+    }
+
+    html += `</tbody></table>`;
+    comparativoInstituicao.innerHTML = html;
   }
 
   // ============================
