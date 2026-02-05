@@ -1,13 +1,13 @@
 // cadastro.js (JSONP - sem CORS)
-// Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
+// Requer: assets/js/config.js (window.APP_CONFIG)
 // Requer: assets/js/auth.js (window.EssenzaAuth)
+// Requer: assets/js/api.js (window.EssenzaApi)
 // ✅ ID_Cliente é gerado automaticamente AO SALVAR (sem botão Gerar ID)
 // ✅ ID não é exibido ao usuário (input hidden no HTML)
 
 (() => {
   "use strict";
 
-  const SCRIPT_URL = window.APP_CONFIG?.SCRIPT_URL || "";
   const SHEET_NAME = "Cadastro";
 
   // =========================
@@ -64,8 +64,9 @@
   }
 
   function requireScriptUrl() {
-    if (!SCRIPT_URL || !SCRIPT_URL.includes("/exec")) {
-      setFeedback("SCRIPT_URL inválida. Ajuste no assets/js/config.js (precisa terminar em /exec).", "error");
+    const url = window.EssenzaApi?.getScriptUrl?.() || "";
+    if (!url || !url.includes("/exec")) {
+      setFeedback("SCRIPT_URL inválida. Ajuste no assets/js/config.js.", "error");
       return false;
     }
     return true;
@@ -81,52 +82,9 @@
   }
 
   // =========================
-  // JSONP
+  // API
   // =========================
-  function jsonpRequest(params) {
-    return new Promise((resolve, reject) => {
-      const cb = "cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error("Timeout na chamada ao Apps Script."));
-      }, 20000);
-
-      let script;
-
-      function cleanup() {
-        clearTimeout(timeout);
-        try { delete window[cb]; } catch (_) {}
-        if (script && script.parentNode) script.parentNode.removeChild(script);
-      }
-
-      window[cb] = (data) => {
-        cleanup();
-
-        // Verificar se erro de autenticação
-        if (data && data.code === "AUTH_ERROR" && window.EssenzaAuth) {
-          window.EssenzaAuth.redirectToLogin();
-          return;
-        }
-
-        resolve(data);
-      };
-
-      // Injetar token de autenticação
-      const token = window.EssenzaAuth?.getToken?.() || "";
-      const paramsWithToken = { ...params, token, callback: cb };
-
-      const qs = new URLSearchParams(paramsWithToken).toString();
-      const url = `${SCRIPT_URL}?${qs}`;
-
-      script = document.createElement("script");
-      script.src = url;
-      script.onerror = () => {
-        cleanup();
-        reject(new Error("Falha ao carregar JSONP (script)."));
-      };
-      document.head.appendChild(script);
-    });
-  }
+  const jsonpRequest = window.EssenzaApi?.request || (() => Promise.reject(new Error("EssenzaApi não carregado")));
 
   // =========================
   // Payload

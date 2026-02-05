@@ -1,6 +1,5 @@
 // categoria.js (JSONP - sem CORS)
-// Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
-// Requer: assets/js/auth.js (window.EssenzaAuth)
+// Requer: config.js, auth.js, api.js
 // Backend: Categoria.gs (via Api/Registry)
 // Actions esperadas:
 // - Categoria.Criar
@@ -10,8 +9,8 @@
 (() => {
   "use strict";
 
-  const SCRIPT_URL = window.APP_CONFIG?.SCRIPT_URL || "";
   const SHEET_NAME = "Categoria";
+  const jsonpRequest = window.EssenzaApi?.request || (() => Promise.reject(new Error("EssenzaApi não carregado")));
 
   // ---------- DOM ----------
   const form = document.getElementById("formCategoria");
@@ -51,8 +50,9 @@
   }
 
   function requireScriptUrl() {
-    if (!SCRIPT_URL || !SCRIPT_URL.includes("/exec")) {
-      setFeedback(feedbackLista, "SCRIPT_URL inválida. Ajuste no assets/js/config.js (precisa terminar em /exec).", "error");
+    const url = window.EssenzaApi?.getScriptUrl?.() || "";
+    if (!url || !url.includes("/exec")) {
+      setFeedback(feedbackLista, "SCRIPT_URL inválida. Ajuste em config.js.", "error");
       return false;
     }
     return true;
@@ -67,50 +67,6 @@
       .replaceAll("'", "&#039;");
   }
 
-  function jsonpRequest(params) {
-    return new Promise((resolve, reject) => {
-      const cb = "cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error("Timeout na chamada ao Apps Script."));
-      }, 20000);
-
-      let script;
-
-      function cleanup() {
-        clearTimeout(timeout);
-        try { delete window[cb]; } catch (_) {}
-        if (script && script.parentNode) script.parentNode.removeChild(script);
-      }
-
-      window[cb] = (data) => {
-        cleanup();
-
-        // Verificar se erro de autenticação
-        if (data && data.code === "AUTH_ERROR" && window.EssenzaAuth) {
-          window.EssenzaAuth.redirectToLogin();
-          return;
-        }
-
-        resolve(data);
-      };
-
-      // Injetar token de autenticação
-      const token = window.EssenzaAuth?.getToken?.() || "";
-      const paramsWithToken = { ...params, token, callback: cb };
-
-      const qs = new URLSearchParams(paramsWithToken).toString();
-      const url = `${SCRIPT_URL}?${qs}`;
-
-      script = document.createElement("script");
-      script.src = url;
-      script.onerror = () => {
-        cleanup();
-        reject(new Error("Falha ao carregar JSONP (script)."));
-      };
-      document.head.appendChild(script);
-    });
-  }
 
   // ---------- Form ----------
   function clearForm() {

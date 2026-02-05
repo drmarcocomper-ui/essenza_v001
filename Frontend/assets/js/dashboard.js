@@ -1,10 +1,10 @@
 // dashboard.js — Dashboard com gráficos
-// Requer: config.js, auth.js, Chart.js (CDN)
+// Requer: config.js, auth.js, api.js, Chart.js (CDN)
 
 (() => {
   "use strict";
 
-  const SCRIPT_URL = window.APP_CONFIG?.SCRIPT_URL || "";
+  const jsonpRequest = window.EssenzaApi?.request || (() => Promise.reject(new Error("EssenzaApi não carregado")));
 
   // DOM
   const dashboardCards = document.getElementById("dashboardCards");
@@ -61,51 +61,6 @@
     return `${sinal}${variacao.toFixed(1)}%`;
   }
 
-  // ============================
-  // JSONP
-  // ============================
-  function jsonpRequest(params) {
-    return new Promise((resolve, reject) => {
-      const cb = "dash_cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error("Timeout na chamada ao Apps Script."));
-      }, 20000);
-
-      let script;
-
-      function cleanup() {
-        clearTimeout(timeout);
-        try { delete window[cb]; } catch (_) {}
-        if (script && script.parentNode) script.parentNode.removeChild(script);
-      }
-
-      window[cb] = (data) => {
-        cleanup();
-
-        if (data && data.code === "AUTH_ERROR" && window.EssenzaAuth) {
-          window.EssenzaAuth.redirectToLogin();
-          return;
-        }
-
-        resolve(data);
-      };
-
-      const token = window.EssenzaAuth?.getToken?.() || "";
-      const paramsWithToken = { ...params, token, callback: cb };
-
-      const qs = new URLSearchParams(paramsWithToken).toString();
-      const url = `${SCRIPT_URL}?${qs}`;
-
-      script = document.createElement("script");
-      script.src = url;
-      script.onerror = () => {
-        cleanup();
-        reject(new Error("Falha ao carregar dados."));
-      };
-      document.head.appendChild(script);
-    });
-  }
 
   // ============================
   // Carregar Dados
