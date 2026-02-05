@@ -20,6 +20,8 @@
   // Charts
   let chartEvolucao = null;
   let chartPagamentos = null;
+  let chartCategoriasSaidas = null;
+  let chartCategoriasEntradas = null;
 
   // ============================
   // Helpers
@@ -696,6 +698,167 @@
   }
 
   // ============================
+  // Gráficos por Categoria
+  // ============================
+  const CORES_CATEGORIAS = [
+    "#8b5ca5", "#c41e3a", "#228b22", "#4169e1", "#ff8c00",
+    "#20b2aa", "#9370db", "#daa520", "#00d4aa", "#cd5c5c",
+    "#6495ed", "#32cd32", "#ba55d3", "#f0e68c", "#87ceeb"
+  ];
+
+  async function carregarCategorias() {
+    const mesAtual = getMesAtual();
+    const [ano, mes] = mesAtual.split("-");
+    const primeiroDia = `${ano}-${mes}-01`;
+    const ultimoDia = `${ano}-${mes}-31`;
+
+    try {
+      const data = await jsonpRequest({
+        action: "Lancamentos.Listar",
+        filtros: JSON.stringify({
+          fDataIni: primeiroDia,
+          fDataFim: ultimoDia,
+          dateField: "Data_Caixa"
+        }),
+        limit: 500
+      });
+
+      if (!data || data.ok !== true) return;
+
+      const items = data.items || [];
+      renderChartCategorias(items);
+
+    } catch (err) {
+      console.error("Erro ao carregar categorias:", err);
+    }
+  }
+
+  function agruparPorCategoria(items, tipo) {
+    const agrupado = {};
+
+    items.forEach(item => {
+      if (item.Tipo !== tipo) return;
+      if (item.Status !== "Pago") return;
+
+      const categoria = item.Categoria || "(Sem categoria)";
+      const valor = toNumber(item.Valor);
+
+      if (!agrupado[categoria]) {
+        agrupado[categoria] = 0;
+      }
+      agrupado[categoria] += valor;
+    });
+
+    // Converter para array e ordenar por valor
+    const arr = Object.keys(agrupado).map(cat => ({
+      categoria: cat,
+      valor: agrupado[cat]
+    }));
+
+    arr.sort((a, b) => b.valor - a.valor);
+
+    // Limitar a 10 categorias, agrupar resto em "Outros"
+    if (arr.length > 10) {
+      const top10 = arr.slice(0, 10);
+      const outros = arr.slice(10).reduce((sum, it) => sum + it.valor, 0);
+      if (outros > 0) {
+        top10.push({ categoria: "Outros", valor: outros });
+      }
+      return top10;
+    }
+
+    return arr;
+  }
+
+  function renderChartCategorias(items) {
+    // Saídas
+    const saidasAgrupadas = agruparPorCategoria(items, "Saida");
+    renderChartCategoriaPie("chartCategoriasSaidas", saidasAgrupadas, "Saídas");
+
+    // Entradas
+    const entradasAgrupadas = agruparPorCategoria(items, "Entrada");
+    renderChartCategoriaPie("chartCategoriasEntradas", entradasAgrupadas, "Entradas");
+  }
+
+  function renderChartCategoriaPie(canvasId, dados, titulo) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    // Destruir chart anterior se existir
+    if (canvasId === "chartCategoriasSaidas" && chartCategoriasSaidas) {
+      chartCategoriasSaidas.destroy();
+    }
+    if (canvasId === "chartCategoriasEntradas" && chartCategoriasEntradas) {
+      chartCategoriasEntradas.destroy();
+    }
+
+    if (!dados.length) {
+      const chart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["Sem dados"],
+          datasets: [{
+            data: [1],
+            backgroundColor: ["#e0e0e0"]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+
+      if (canvasId === "chartCategoriasSaidas") chartCategoriasSaidas = chart;
+      if (canvasId === "chartCategoriasEntradas") chartCategoriasEntradas = chart;
+      return;
+    }
+
+    const labels = dados.map(d => d.categoria);
+    const values = dados.map(d => d.valor);
+    const colors = dados.map((_, i) => CORES_CATEGORIAS[i % CORES_CATEGORIAS.length]);
+
+    const chart = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 2,
+          borderColor: "#fff"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: {
+              boxWidth: 12,
+              padding: 6,
+              font: { size: 11 }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const value = context.raw || 0;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const perc = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                return `${context.label}: ${formatMoneyBR(value)} (${perc}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (canvasId === "chartCategoriasSaidas") chartCategoriasSaidas = chart;
+    if (canvasId === "chartCategoriasEntradas") chartCategoriasEntradas = chart;
+  }
+
+  // ============================
   // Backup Completo
   // ============================
   function setFeedbackBackup(msg, type = "info") {
@@ -751,4 +914,5 @@
   carregarDados();
   carregarRankingClientes();
   carregarPendencias();
+  carregarCategorias();
 })();
