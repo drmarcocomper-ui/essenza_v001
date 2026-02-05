@@ -13,6 +13,7 @@
   const comparativoInstituicao = document.getElementById("comparativoInstituicao");
   const rankingClientes = document.getElementById("rankingClientes");
   const selectMesCliente = document.getElementById("selectMesCliente");
+  const alertaPendencias = document.getElementById("alertaPendencias");
 
   // Charts
   let chartEvolucao = null;
@@ -584,9 +585,119 @@
   }
 
   // ============================
+  // Alerta Pendências
+  // ============================
+  async function carregarPendencias() {
+    if (!alertaPendencias) return;
+
+    try {
+      const data = await jsonpRequest({
+        action: "Lancamentos.Listar",
+        filtros: JSON.stringify({ fTipo: "Entrada", fStatus: "Pendente" }),
+        limit: 200
+      });
+
+      if (!data || data.ok !== true) return;
+
+      const items = data.items || [];
+      renderAlertaPendencias(items);
+
+    } catch (err) {
+      console.error("Erro ao carregar pendências:", err);
+    }
+  }
+
+  function renderAlertaPendencias(items) {
+    if (!alertaPendencias) return;
+
+    if (!items.length) {
+      alertaPendencias.style.display = "block";
+      alertaPendencias.innerHTML = `
+        <div class="alerta-pendencias alerta-pendencias--vazio">
+          <div class="alerta-pendencias__icon">✓</div>
+          <div class="alerta-pendencias__content">
+            <div class="alerta-pendencias__title">Tudo em dia!</div>
+            <div class="alerta-pendencias__desc">Não há entradas pendentes no momento.</div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // Calcular total e ordenar por data mais antiga
+    let totalPendente = 0;
+    items.forEach(it => {
+      totalPendente += toNumber(it.Valor);
+    });
+
+    // Ordenar por data mais antiga primeiro
+    const sorted = [...items].sort((a, b) => {
+      const da = a.Data_Competencia || "";
+      const db = b.Data_Competencia || "";
+      return da.localeCompare(db);
+    });
+
+    // Pegar os 5 mais antigos
+    const top5 = sorted.slice(0, 5);
+
+    alertaPendencias.style.display = "block";
+    alertaPendencias.innerHTML = `
+      <div class="alerta-pendencias">
+        <div class="alerta-pendencias__icon">⚠️</div>
+        <div class="alerta-pendencias__content">
+          <div class="alerta-pendencias__title">${items.length} entrada(s) pendente(s)</div>
+          <div class="alerta-pendencias__desc">Valores a receber aguardando confirmação de pagamento.</div>
+        </div>
+        <div class="alerta-pendencias__valor">${formatMoneyBR(totalPendente)}</div>
+
+        <div class="alerta-pendencias__lista">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Cliente</th>
+                <th>Descrição</th>
+                <th style="text-align:right;">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${top5.map(it => `
+                <tr>
+                  <td>${escapeHtml(formatDataBR(it.Data_Competencia))}</td>
+                  <td>${escapeHtml(it.Cliente_Fornecedor || "-")}</td>
+                  <td>${escapeHtml(it.Descricao || "-")}</td>
+                  <td style="text-align:right;">${formatMoneyBR(it.Valor)}</td>
+                </tr>
+              `).join("")}
+              ${items.length > 5 ? `
+                <tr>
+                  <td colspan="4" style="text-align:center; font-style:italic; color:#856404;">
+                    ... e mais ${items.length - 5} pendência(s)
+                  </td>
+                </tr>
+              ` : ""}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function formatDataBR(dataISO) {
+    if (!dataISO) return "";
+    const s = String(dataISO).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const [y, m, d] = s.split("-");
+      return `${d}/${m}/${y}`;
+    }
+    return s;
+  }
+
+  // ============================
   // Init
   // ============================
   bindSelectMes();
   carregarDados();
   carregarRankingClientes();
+  carregarPendencias();
 })();

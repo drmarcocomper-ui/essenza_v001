@@ -78,6 +78,76 @@
       height: 280px;
     }
 
+    /* Alerta Pendências */
+    .alerta-pendencias {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+      border: 1px solid #ffc107;
+      border-radius: var(--raio);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .alerta-pendencias--vazio {
+      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+      border-color: #28a745;
+    }
+
+    .alerta-pendencias__icon {
+      font-size: 1.5rem;
+    }
+
+    .alerta-pendencias__content {
+      flex: 1;
+    }
+
+    .alerta-pendencias__title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .alerta-pendencias__desc {
+      font-size: 0.85rem;
+      color: #856404;
+    }
+
+    .alerta-pendencias--vazio .alerta-pendencias__desc {
+      color: #155724;
+    }
+
+    .alerta-pendencias__valor {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #856404;
+    }
+
+    .alerta-pendencias__lista {
+      width: 100%;
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    .alerta-pendencias__lista table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .alerta-pendencias__lista th,
+    .alerta-pendencias__lista td {
+      padding: 0.4rem 0.5rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .alerta-pendencias__lista th {
+      font-weight: 600;
+      background: rgba(0,0,0,0.05);
+    }
+
     /* Comparativo Mensal */
     .comparativo-section {
       margin-top: 1.5rem;
@@ -157,6 +227,9 @@
   </header>
 
   <main class="app-main">
+    <!-- ALERTA PENDÊNCIAS -->
+    <section id="alertaPendencias" style="display: none;"></section>
+
     <!-- CARDS RESUMO -->
     <section>
       <div class="dashboard-cards" id="dashboardCards">
