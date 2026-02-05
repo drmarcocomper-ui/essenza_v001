@@ -74,6 +74,10 @@
   let totalPaginas = 1;
   const ITENS_POR_PAGINA = 50;
 
+  // Ordenação
+  let sortCol = "Data_Competencia";
+  let sortDir = "desc";
+
   // Clientes
   let clientesDebounce = null;
 
@@ -526,6 +530,66 @@
     if (tr) tr.classList.add("is-selected");
   }
 
+  function sortItems(items) {
+    if (!sortCol) return items;
+
+    const sorted = [...items].sort((a, b) => {
+      let va = a[sortCol] ?? "";
+      let vb = b[sortCol] ?? "";
+
+      // Para Valor, converter para número
+      if (sortCol === "Valor") {
+        va = toNumberBR(va);
+        vb = toNumberBR(vb);
+      } else {
+        va = String(va).toLowerCase();
+        vb = String(vb).toLowerCase();
+      }
+
+      let cmp = 0;
+      if (va < vb) cmp = -1;
+      else if (va > vb) cmp = 1;
+
+      return sortDir === "desc" ? -cmp : cmp;
+    });
+
+    return sorted;
+  }
+
+  function updateSortIcons() {
+    if (!tabela) return;
+    const ths = tabela.querySelectorAll("th.sortable");
+    ths.forEach(th => {
+      th.classList.remove("sort-asc", "sort-desc");
+      if (th.dataset.col === sortCol) {
+        th.classList.add(sortDir === "asc" ? "sort-asc" : "sort-desc");
+      }
+    });
+  }
+
+  function handleSort(col) {
+    if (sortCol === col) {
+      sortDir = sortDir === "asc" ? "desc" : "asc";
+    } else {
+      sortCol = col;
+      sortDir = "asc";
+    }
+    updateSortIcons();
+    renderTable(dadosListaAtual);
+  }
+
+  function bindSortHeaders() {
+    if (!tabela) return;
+    const ths = tabela.querySelectorAll("th.sortable");
+    ths.forEach(th => {
+      th.addEventListener("click", () => {
+        const col = th.dataset.col;
+        if (col) handleSort(col);
+      });
+    });
+    updateSortIcons();
+  }
+
   function renderTable(items) {
     clearTable();
     if (!tbody) return;
@@ -537,7 +601,9 @@
       return;
     }
 
-    items.forEach((it) => {
+    const sorted = sortItems(items);
+
+    sorted.forEach((it) => {
       const tr = document.createElement("tr");
       tr.dataset.rowIndex = String(it.rowIndex ?? "");
       tr.innerHTML = `
@@ -764,6 +830,7 @@
   bind();
   bindAutocompleteClientes();
   bindCategoriaPadrao();
+  bindSortHeaders();
 
   // carrega categorias pro tipo atual (se vazio, carrega geral ao focar)
   carregarCategoriasAtivas(getTipoAtual()).catch(() => {});
