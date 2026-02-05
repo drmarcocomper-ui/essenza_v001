@@ -68,6 +68,16 @@ function Lancamentos_dispatch_(action, p) {
     };
   }
 
+  if (action === "Lancamentos.Excluir") {
+    var rowIndex = parseInt(p.rowIndex, 10);
+    if (!rowIndex || rowIndex < 2) {
+      return { ok: false, code: "VALIDATION_ERROR", message: "rowIndex inválido." };
+    }
+    var resExcluir = Lancamentos_excluir_(sheet, rowIndex);
+    resExcluir.ok = true;
+    return resExcluir;
+  }
+
   if (action === "Lancamentos.Listar") {
     var filtros = LANC_parseJsonParam_(p.filtros);
     if (!filtros || typeof filtros !== "object") filtros = LANC_parseJsonParam_(p.filtro);
@@ -353,6 +363,24 @@ function Lancamentos_listar_(sheet, filtros, page, limit) {
       totalPages: totalPages
     }
   };
+}
+
+/**
+ * Exclui um lançamento por rowIndex
+ */
+function Lancamentos_excluir_(sheet, rowIndex) {
+  rowIndex = Number(rowIndex || 0);
+  if (!rowIndex || rowIndex < 2) {
+    throw new Error("rowIndex inválido (mínimo 2).");
+  }
+
+  var lastRow = sheet.getLastRow();
+  if (rowIndex > lastRow) {
+    throw new Error("Linha não encontrada: " + rowIndex);
+  }
+
+  sheet.deleteRow(rowIndex);
+  return { message: "Lançamento excluído.", rowIndex: rowIndex };
 }
 
 /**

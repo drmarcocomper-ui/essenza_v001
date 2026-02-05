@@ -203,6 +203,7 @@
           <div class="actions">
             <button type="submit" id="btnSalvarLanc" class="btn btn--primary">Salvar lançamento</button>
             <button type="button" id="btnNovoLancamento" class="btn btn--secondary">Novo</button>
+            <button type="button" id="btnExcluirLanc" class="btn btn--danger" style="display:none;">Excluir</button>
           </div>
 
           <div id="feedbackSalvar" class="feedback" aria-live="polite" role="status"></div>
@@ -366,6 +367,23 @@
   <footer class="app-footer">
     <small>Lançamentos • Google Planilhas + Apps Script</small>
   </footer>
+
+  <!-- Modal Confirmação Exclusão -->
+  <div class="modal-overlay" id="modalExcluir">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 class="modal__title">Confirmar Exclusão</h3>
+      </div>
+      <div class="modal__body">
+        <p>Tem certeza que deseja excluir este lançamento?</p>
+        <p id="modalExcluirInfo" style="font-size:0.85rem; color:var(--cor-muted);"></p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" id="btnCancelarExcluir" class="btn">Cancelar</button>
+        <button type="button" id="btnConfirmarExcluir" class="btn btn--danger">Excluir</button>
+      </div>
+    </div>
+  </div>
 
   <script src="assets/js/config.js"></script>
   <script src="assets/js/auth.js"></script>

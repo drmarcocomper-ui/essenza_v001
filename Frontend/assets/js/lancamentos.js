@@ -36,6 +36,13 @@
   const formLanc = document.getElementById("formLancamento");
   const feedbackSalvar = document.getElementById("feedbackSalvar");
   const btnNovo = document.getElementById("btnNovoLancamento");
+  const btnExcluir = document.getElementById("btnExcluirLanc");
+
+  // Modal
+  const modalExcluir = document.getElementById("modalExcluir");
+  const modalExcluirInfo = document.getElementById("modalExcluirInfo");
+  const btnCancelarExcluir = document.getElementById("btnCancelarExcluir");
+  const btnConfirmarExcluir = document.getElementById("btnConfirmarExcluir");
 
   // Clientes (opcional)
   const inputCliente = document.getElementById("Cliente_Fornecedor");
@@ -446,6 +453,9 @@
 
     clearClientesDatalist();
     clearDescricoesDatalist();
+
+    // Esconder botão excluir
+    if (btnExcluir) btnExcluir.style.display = "none";
   }
 
   function fillForm(it) {
@@ -466,6 +476,11 @@
 
     // ao carregar, tentar popular descrições
     aplicarDescricaoDaCategoria(false);
+
+    // Mostrar botão excluir quando em modo edição
+    if (btnExcluir && selectedRowIndex) {
+      btnExcluir.style.display = "inline-block";
+    }
   }
 
   function buildLancPayload() {
@@ -757,6 +772,52 @@
     listar(1);
   }
 
+  // ============================================================
+  // EXCLUIR com Modal de Confirmação
+  // ============================================================
+  function abrirModalExcluir() {
+    if (!modalExcluir || !selectedRowIndex) return;
+
+    const desc = el.Descricao?.value || "";
+    const valor = el.Valor?.value || "";
+    const data = el.Data_Competencia?.value || "";
+
+    if (modalExcluirInfo) {
+      modalExcluirInfo.textContent = `${data} - ${desc} - R$ ${valor}`;
+    }
+
+    modalExcluir.classList.add("is-open");
+  }
+
+  function fecharModalExcluir() {
+    if (modalExcluir) modalExcluir.classList.remove("is-open");
+  }
+
+  async function confirmarExcluir() {
+    if (!selectedRowIndex) return;
+
+    fecharModalExcluir();
+    setFeedback(feedbackSalvar, "Excluindo...", "info");
+
+    try {
+      const data = await jsonpRequest({
+        action: "Lancamentos.Excluir",
+        rowIndex: selectedRowIndex
+      });
+
+      if (!data || data.ok !== true) {
+        throw new Error(data?.message || "Erro ao excluir.");
+      }
+
+      setFeedback(feedbackSalvar, "Lançamento excluído.", "success");
+      clearForm();
+      await listar(paginaAtual);
+
+    } catch (err) {
+      setFeedback(feedbackSalvar, err.message || "Erro ao excluir.", "error");
+    }
+  }
+
   function initDefaults() {
     if (el.Data_Competencia && !el.Data_Competencia.value) el.Data_Competencia.value = hojeISO();
 
@@ -775,6 +836,18 @@
     if (formFiltro) formFiltro.addEventListener("submit", (e) => (e.preventDefault(), listar(1)));
     if (formLanc) formLanc.addEventListener("submit", (e) => (e.preventDefault(), salvar()));
     if (btnNovo) btnNovo.addEventListener("click", (e) => (e.preventDefault(), clearForm()));
+
+    // Excluir
+    if (btnExcluir) btnExcluir.addEventListener("click", (e) => (e.preventDefault(), abrirModalExcluir()));
+    if (btnCancelarExcluir) btnCancelarExcluir.addEventListener("click", (e) => (e.preventDefault(), fecharModalExcluir()));
+    if (btnConfirmarExcluir) btnConfirmarExcluir.addEventListener("click", (e) => (e.preventDefault(), confirmarExcluir()));
+
+    // Fechar modal clicando fora
+    if (modalExcluir) {
+      modalExcluir.addEventListener("click", (e) => {
+        if (e.target === modalExcluir) fecharModalExcluir();
+      });
+    }
 
     // Paginação
     const btnPrevPage = document.getElementById("btnPrevPage");
