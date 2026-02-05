@@ -33,6 +33,9 @@
   const detDebito = document.getElementById("detDebito");
   const detOutros = document.getElementById("detOutros");
 
+  // Estado para exportação
+  let dadosResumoAtual = [];
+
   function setFeedback(msg, type = "info") {
     if (!feedback) return;
     feedback.textContent = msg || "";
@@ -126,8 +129,9 @@
     const data = await jsonpRequest(params);
     if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao calcular resumo.");
 
-    renderResumo(data.items || []);
-    setFeedback(`OK • ${(data.items || []).length} mês(es)`, "success");
+    dadosResumoAtual = data.items || [];
+    renderResumo(dadosResumoAtual);
+    setFeedback(`OK • ${dadosResumoAtual.length} mês(es)`, "success");
   }
 
   function renderResumo(items) {
@@ -352,6 +356,32 @@
       e.preventDefault();
       fecharDetalhes();
     });
+
+    // Exportação
+    const btnExportExcel = document.getElementById("btnExportExcel");
+    const btnExportPDF = document.getElementById("btnExportPDF");
+
+    if (btnExportExcel) {
+      btnExportExcel.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!dadosResumoAtual.length) {
+          setFeedback("Nenhum dado para exportar.", "error");
+          return;
+        }
+        window.EssenzaExport?.resumoExcel(dadosResumoAtual);
+      });
+    }
+
+    if (btnExportPDF) {
+      btnExportPDF.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!dadosResumoAtual.length) {
+          setFeedback("Nenhum dado para exportar.", "error");
+          return;
+        }
+        window.EssenzaExport?.resumoPDF(dadosResumoAtual);
+      });
+    }
   }
 
   bind();

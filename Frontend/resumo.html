@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Resumo Mensal | Salão</title>
   <link rel="stylesheet" href="assets/css/style.css" />
+  <!-- Bibliotecas de exportação -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js"></script>
 </head>
 
 <body>
@@ -57,6 +61,10 @@
       <div class="card__header">
         <h2 class="card__title">Resumo por mês</h2>
         <p class="card__desc">Clique no mês para ver os lançamentos daquele mês.</p>
+        <div class="actions" style="margin-top:0.75rem;">
+          <button type="button" id="btnExportExcel" class="btn btn--secondary">Exportar Excel</button>
+          <button type="button" id="btnExportPDF" class="btn btn--secondary">Exportar PDF</button>
+        </div>
       </div>
 
       <div class="card__body">
@@ -153,6 +161,7 @@
 
   <script src="assets/js/config.js"></script>
   <script src="assets/js/auth.js"></script>
+  <script src="assets/js/export.js"></script>
   <script src="assets/js/resumo.js" defer></script>
 </body>
 </html>

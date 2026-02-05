@@ -66,6 +66,7 @@
 
   // ---------- Estado ----------
   let selectedRowIndex = null;
+  let dadosListaAtual = []; // para exportação
 
   // Clientes
   let clientesDebounce = null;
@@ -567,8 +568,9 @@
 
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao listar.");
 
-      renderTable(data.items || []);
-      setFeedback(feedbackLanc, `OK • ${(data.items || []).length} itens`, "success");
+      dadosListaAtual = data.items || [];
+      renderTable(dadosListaAtual);
+      setFeedback(feedbackLanc, `OK • ${dadosListaAtual.length} itens`, "success");
     } catch (err) {
       setFeedback(feedbackLanc, err.message || "Erro ao listar.", "error");
     }
@@ -668,6 +670,32 @@
     if (formFiltro) formFiltro.addEventListener("submit", (e) => (e.preventDefault(), listar()));
     if (formLanc) formLanc.addEventListener("submit", (e) => (e.preventDefault(), salvar()));
     if (btnNovo) btnNovo.addEventListener("click", (e) => (e.preventDefault(), clearForm()));
+
+    // Exportação
+    const btnExportExcel = document.getElementById("btnExportExcel");
+    const btnExportPDF = document.getElementById("btnExportPDF");
+
+    if (btnExportExcel) {
+      btnExportExcel.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!dadosListaAtual.length) {
+          setFeedback(feedbackLanc, "Nenhum dado para exportar.", "error");
+          return;
+        }
+        window.EssenzaExport?.lancamentosExcel(dadosListaAtual);
+      });
+    }
+
+    if (btnExportPDF) {
+      btnExportPDF.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!dadosListaAtual.length) {
+          setFeedback(feedbackLanc, "Nenhum dado para exportar.", "error");
+          return;
+        }
+        window.EssenzaExport?.lancamentosPDF(dadosListaAtual);
+      });
+    }
   }
 
   // init
