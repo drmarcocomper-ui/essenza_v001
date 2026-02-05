@@ -28,6 +28,8 @@ var RM_INST_FIXAS = [
   "Cortesia",
 ];
 
+var RM_TITULARIDADES = ["PF", "PJ"];
+
 // ============================================================
 // ACUMULADOR
 // ============================================================
@@ -38,6 +40,14 @@ function RM_newAcc_() {
   var insts = {};
   RM_INST_FIXAS.forEach(function (k) { insts[k] = 0; });
 
+  // Instituição + Titularidade (ex: "Nubank_PF", "Nubank_PJ")
+  var instTit = {};
+  RM_INST_FIXAS.forEach(function (inst) {
+    RM_TITULARIDADES.forEach(function (tit) {
+      instTit[inst + "_" + tit] = 0;
+    });
+  });
+
   return {
     entradasPagas: 0,
     entradasPendentes: 0,
@@ -46,6 +56,7 @@ function RM_newAcc_() {
     // ✅ breakdowns (somente entradas pagas)
     porForma: formas,
     porInstituicao: insts,
+    porInstituicaoTitularidade: instTit,
   };
 }
 
@@ -76,6 +87,13 @@ function RM_accumulate_(acc, it) {
       // ✅ Instituicao_Financeira (fixa)
       var inst = RM_pickFromFixed_(it.inst, RM_INST_FIXAS);
       if (inst) acc.porInstituicao[inst] = (acc.porInstituicao[inst] || 0) + valor;
+
+      // ✅ Instituicao + Titularidade (ex: "Nubank_PF")
+      var tit = RM_pickFromFixed_(it.titularidade, RM_TITULARIDADES);
+      if (inst && tit) {
+        var key = inst + "_" + tit;
+        acc.porInstituicaoTitularidade[key] = (acc.porInstituicaoTitularidade[key] || 0) + valor;
+      }
 
     } else if (statusN === "pendente" || statusN === "a receber" || statusN === "areceber") {
       acc.entradasPendentes += valor;

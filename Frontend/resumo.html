@@ -9,6 +9,16 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    @media print {
+      .app-header, .app-footer, .app-nav, #feedbackResumo,
+      .btn, button, .actions, section.card:not(#cardDetalhes) { display: none !important; }
+      #cardDetalhes { display: block !important; box-shadow: none; border: none; }
+      .card { box-shadow: none; border: none; }
+      body { background: white; }
+      .app-main { padding: 0; }
+    }
+  </style>
 </head>
 
 <body>
@@ -94,6 +104,19 @@
                 <th>Entrada Terceiro</th>
                 <th>Entrada Dinheiro Inst</th>
                 <th>Entrada Cortesia Inst</th>
+
+                <th>Nubank PF</th>
+                <th>Nubank PJ</th>
+                <th>PicPay PF</th>
+                <th>PicPay PJ</th>
+                <th>SumUp PF</th>
+                <th>SumUp PJ</th>
+                <th>Terceiro PF</th>
+                <th>Terceiro PJ</th>
+                <th>Dinheiro PF</th>
+                <th>Dinheiro PJ</th>
+                <th>Cortesia PF</th>
+                <th>Cortesia PJ</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -119,12 +142,32 @@
               <div class="field"><span class="label">Resultado</span><strong id="detResultado">—</strong></div>
             </div>
 
-            <div class="form-row" style="margin-bottom:0;">
+            <div class="form-row" style="margin-bottom:.75rem;">
               <div class="field"><span class="label">Entradas Pagas • Pix</span><strong id="detPix">—</strong></div>
               <div class="field"><span class="label">Entradas Pagas • Dinheiro</span><strong id="detDinheiro">—</strong></div>
               <div class="field"><span class="label">Entradas Pagas • Crédito</span><strong id="detCredito">—</strong></div>
               <div class="field"><span class="label">Entradas Pagas • Débito</span><strong id="detDebito">—</strong></div>
               <div class="field"><span class="label">Entradas Pagas • Outros</span><strong id="detOutros">—</strong></div>
+            </div>
+
+            <h4 style="margin: 0.75rem 0 0.5rem; font-size: 0.9rem; color: var(--cor-muted);">Por Instituição + Titularidade</h4>
+            <div class="form-row" style="margin-bottom:.5rem;">
+              <div class="field"><span class="label">Nubank PF</span><strong id="detNubankPF">—</strong></div>
+              <div class="field"><span class="label">Nubank PJ</span><strong id="detNubankPJ">—</strong></div>
+              <div class="field"><span class="label">PicPay PF</span><strong id="detPicPayPF">—</strong></div>
+              <div class="field"><span class="label">PicPay PJ</span><strong id="detPicPayPJ">—</strong></div>
+            </div>
+            <div class="form-row" style="margin-bottom:.5rem;">
+              <div class="field"><span class="label">SumUp PF</span><strong id="detSumUpPF">—</strong></div>
+              <div class="field"><span class="label">SumUp PJ</span><strong id="detSumUpPJ">—</strong></div>
+              <div class="field"><span class="label">Terceiro PF</span><strong id="detTerceiroPF">—</strong></div>
+              <div class="field"><span class="label">Terceiro PJ</span><strong id="detTerceiroPJ">—</strong></div>
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+              <div class="field"><span class="label">Dinheiro PF</span><strong id="detDinheiroPF">—</strong></div>
+              <div class="field"><span class="label">Dinheiro PJ</span><strong id="detDinheiroPJ">—</strong></div>
+              <div class="field"><span class="label">Cortesia PF</span><strong id="detCortesiaPF">—</strong></div>
+              <div class="field"><span class="label">Cortesia PJ</span><strong id="detCortesiaPJ">—</strong></div>
             </div>
           </div>
         </div>
@@ -140,6 +183,7 @@
                 <th>Cliente_Fornecedor</th>
                 <th>Forma_Pagamento</th>
                 <th>Instituicao_Financeira</th>
+                <th>Titularidade</th>
                 <th>Valor</th>
                 <th>Status</th>
               </tr>
@@ -149,6 +193,7 @@
         </div>
 
         <div class="actions" style="margin-top:1rem;">
+          <button type="button" id="btnImprimirDetalhes" class="btn btn--primary">Imprimir</button>
           <button type="button" id="btnFecharDetalhes" class="btn">Fechar detalhes</button>
         </div>
       </div>

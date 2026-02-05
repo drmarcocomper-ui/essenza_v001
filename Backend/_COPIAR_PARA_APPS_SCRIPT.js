@@ -404,6 +404,113 @@ function doPost(e) {
 
 
 // ============================================================
+// ARQUIVO: ResumoMensal.Utils (ATUALIZAR - adicionar Titularidade)
+// Adicione/atualize as seguintes variáveis e funções:
+// ============================================================
+
+/*
+// Adicionar após RM_INST_FIXAS:
+var RM_TITULARIDADES = ["PF", "PJ"];
+
+// Atualizar RM_newAcc_ para incluir porInstituicaoTitularidade:
+function RM_newAcc_() {
+  var formas = {};
+  RM_FORMAS_FIXAS.forEach(function (k) { formas[k] = 0; });
+
+  var insts = {};
+  RM_INST_FIXAS.forEach(function (k) { insts[k] = 0; });
+
+  // Instituição + Titularidade (ex: "Nubank_PF", "Nubank_PJ")
+  var instTit = {};
+  RM_INST_FIXAS.forEach(function (inst) {
+    RM_TITULARIDADES.forEach(function (tit) {
+      instTit[inst + "_" + tit] = 0;
+    });
+  });
+
+  return {
+    entradasPagas: 0,
+    entradasPendentes: 0,
+    saidas: 0,
+    porForma: formas,
+    porInstituicao: insts,
+    porInstituicaoTitularidade: instTit,
+  };
+}
+
+// Atualizar RM_accumulate_ para incluir tracking por Inst+Titularidade:
+// Dentro do bloco "if (statusN === 'pago'...)", APÓS o tracking de instituição, adicionar:
+      // ✅ Instituicao + Titularidade (ex: "Nubank_PF")
+      var tit = RM_pickFromFixed_(it.titularidade, RM_TITULARIDADES);
+      if (inst && tit) {
+        var key = inst + "_" + tit;
+        acc.porInstituicaoTitularidade[key] = (acc.porInstituicaoTitularidade[key] || 0) + valor;
+      }
+*/
+
+
+// ============================================================
+// ARQUIVO: ResumoMensal (ATUALIZAR - adicionar Titularidade)
+// Atualize as seguintes partes:
+// ============================================================
+
+/*
+// 1. Em RM_requireCols_, adicionar "Titularidade":
+  RM_requireCols_(idx, [
+    "Data_Caixa",
+    "Tipo",
+    "Status",
+    "Valor",
+    "Forma_Pagamento",
+    "Instituicao_Financeira",
+    "Titularidade",
+  ]);
+
+// 2. Em RM_accumulate_ call, passar titularidade:
+    RM_accumulate_(buckets[mes], {
+      tipo: row[idx["Tipo"]],
+      status: row[idx["Status"]],
+      valor: row[idx["Valor"]],
+      forma: row[idx["Forma_Pagamento"]],
+      inst: row[idx["Instituicao_Financeira"]],
+      titularidade: row[idx["Titularidade"]],
+    });
+
+// 3. No rowOut, adicionar as novas colunas de Inst+Titularidade:
+      // ✅ Instituicao + Titularidade (PF/PJ)
+      "Nubank PF": RM_round2_(acc.porInstituicaoTitularidade.Nubank_PF || 0),
+      "Nubank PJ": RM_round2_(acc.porInstituicaoTitularidade.Nubank_PJ || 0),
+      "PicPay PF": RM_round2_(acc.porInstituicaoTitularidade.PicPay_PF || 0),
+      "PicPay PJ": RM_round2_(acc.porInstituicaoTitularidade.PicPay_PJ || 0),
+      "SumUp PF": RM_round2_(acc.porInstituicaoTitularidade.SumUp_PF || 0),
+      "SumUp PJ": RM_round2_(acc.porInstituicaoTitularidade.SumUp_PJ || 0),
+      "Terceiro PF": RM_round2_(acc.porInstituicaoTitularidade.Terceiro_PF || 0),
+      "Terceiro PJ": RM_round2_(acc.porInstituicaoTitularidade.Terceiro_PJ || 0),
+      "Dinheiro PF": RM_round2_(acc.porInstituicaoTitularidade.Dinheiro_PF || 0),
+      "Dinheiro PJ": RM_round2_(acc.porInstituicaoTitularidade.Dinheiro_PJ || 0),
+      "Cortesia PF": RM_round2_(acc.porInstituicaoTitularidade.Cortesia_PF || 0),
+      "Cortesia PJ": RM_round2_(acc.porInstituicaoTitularidade.Cortesia_PJ || 0),
+
+// 4. Em ResumoMensal_DetalharMes, adicionar Titularidade ao output:
+    items.push({
+      Data_Caixa: RM_dateOut_(row[idx["Data_Caixa"]]),
+      Tipo: RM_safeStr_(row[idx["Tipo"]]),
+      Categoria: RM_safeStr_(row[idx["Categoria"]]),
+      Descricao: RM_safeStr_(row[idx["Descricao"]]),
+      Cliente_Fornecedor: RM_safeStr_(row[idx["Cliente_Fornecedor"]]),
+      Forma_Pagamento: RM_safeStr_(row[idx["Forma_Pagamento"]]),
+      Instituicao_Financeira: RM_safeStr_(row[idx["Instituicao_Financeira"]]),
+      Titularidade: RM_safeStr_(row[idx["Titularidade"]]),
+      Valor: RM_round2_(RM_parseNumber_(row[idx["Valor"]])),
+      Status: RM_safeStr_(row[idx["Status"]]),
+    });
+
+// 5. Atualizar requireCols em DetalharMes:
+  RM_requireCols_(idx, ["Data_Caixa", "Tipo", "Valor", "Status", "Titularidade"]);
+*/
+
+
+// ============================================================
 // ARQUIVO: Registry (adicionar Auth e Busca no REGISTRY_PREFIX)
 // Adicione estes blocos DENTRO do array REGISTRY_PREFIX:
 // ============================================================

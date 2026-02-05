@@ -32,6 +32,20 @@
   const detDebito = document.getElementById("detDebito");
   const detOutros = document.getElementById("detOutros");
 
+  // Inst + Titularidade
+  const detNubankPF = document.getElementById("detNubankPF");
+  const detNubankPJ = document.getElementById("detNubankPJ");
+  const detPicPayPF = document.getElementById("detPicPayPF");
+  const detPicPayPJ = document.getElementById("detPicPayPJ");
+  const detSumUpPF = document.getElementById("detSumUpPF");
+  const detSumUpPJ = document.getElementById("detSumUpPJ");
+  const detTerceiroPF = document.getElementById("detTerceiroPF");
+  const detTerceiroPJ = document.getElementById("detTerceiroPJ");
+  const detDinheiroPF = document.getElementById("detDinheiroPF");
+  const detDinheiroPJ = document.getElementById("detDinheiroPJ");
+  const detCortesiaPF = document.getElementById("detCortesiaPF");
+  const detCortesiaPJ = document.getElementById("detCortesiaPJ");
+
   // Estado para exportação
   let dadosResumoAtual = [];
 
@@ -129,6 +143,19 @@
         <td>${escapeHtml(formatMoneyBR(it["Entrada Terceiro"]))}</td>
         <td>${escapeHtml(formatMoneyBR(it["Entrada Dinheiro Inst"]))}</td>
         <td>${escapeHtml(formatMoneyBR(it["Entrada Cortesia Inst"]))}</td>
+
+        <td>${escapeHtml(formatMoneyBR(it["Nubank PF"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Nubank PJ"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["PicPay PF"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["PicPay PJ"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["SumUp PF"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["SumUp PJ"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Terceiro PF"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Terceiro PJ"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Dinheiro PF"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Dinheiro PJ"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Cortesia PF"]))}</td>
+        <td>${escapeHtml(formatMoneyBR(it["Cortesia PJ"]))}</td>
       `;
       tbodyResumo.appendChild(tr);
 
@@ -173,11 +200,25 @@
     if (detDebito) detDebito.textContent = formatMoneyBR(resumo.pagDebito);
     if (detOutros) detOutros.textContent = formatMoneyBR(resumo.pagOutros);
 
+    // Inst + Titularidade
+    if (detNubankPF) detNubankPF.textContent = formatMoneyBR(resumo.instTit.Nubank_PF);
+    if (detNubankPJ) detNubankPJ.textContent = formatMoneyBR(resumo.instTit.Nubank_PJ);
+    if (detPicPayPF) detPicPayPF.textContent = formatMoneyBR(resumo.instTit.PicPay_PF);
+    if (detPicPayPJ) detPicPayPJ.textContent = formatMoneyBR(resumo.instTit.PicPay_PJ);
+    if (detSumUpPF) detSumUpPF.textContent = formatMoneyBR(resumo.instTit.SumUp_PF);
+    if (detSumUpPJ) detSumUpPJ.textContent = formatMoneyBR(resumo.instTit.SumUp_PJ);
+    if (detTerceiroPF) detTerceiroPF.textContent = formatMoneyBR(resumo.instTit.Terceiro_PF);
+    if (detTerceiroPJ) detTerceiroPJ.textContent = formatMoneyBR(resumo.instTit.Terceiro_PJ);
+    if (detDinheiroPF) detDinheiroPF.textContent = formatMoneyBR(resumo.instTit.Dinheiro_PF);
+    if (detDinheiroPJ) detDinheiroPJ.textContent = formatMoneyBR(resumo.instTit.Dinheiro_PJ);
+    if (detCortesiaPF) detCortesiaPF.textContent = formatMoneyBR(resumo.instTit.Cortesia_PF);
+    if (detCortesiaPJ) detCortesiaPJ.textContent = formatMoneyBR(resumo.instTit.Cortesia_PJ);
+
     tbodyDetalhes.innerHTML = "";
 
     if (!Array.isArray(sorted) || sorted.length === 0) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="9">Nenhum lançamento neste mês.</td>`;
+      tr.innerHTML = `<td colspan="10">Nenhum lançamento neste mês.</td>`;
       tbodyDetalhes.appendChild(tr);
       cardDetalhes.scrollIntoView({ behavior: "smooth" });
       return;
@@ -193,6 +234,7 @@
         <td>${escapeHtml(it.Cliente_Fornecedor || "")}</td>
         <td>${escapeHtml(it.Forma_Pagamento || "")}</td>
         <td>${escapeHtml(it.Instituicao_Financeira || "")}</td>
+        <td>${escapeHtml(it.Titularidade || "")}</td>
         <td>${escapeHtml(formatMoneyBR(it.Valor))}</td>
         <td>${escapeHtml(it.Status || "")}</td>
       `;
@@ -232,6 +274,19 @@
     let pagDebito = 0;
     let pagOutros = 0;
 
+    // Inst + Titularidade
+    const instTit = {
+      Nubank_PF: 0, Nubank_PJ: 0,
+      PicPay_PF: 0, PicPay_PJ: 0,
+      SumUp_PF: 0, SumUp_PJ: 0,
+      Terceiro_PF: 0, Terceiro_PJ: 0,
+      Dinheiro_PF: 0, Dinheiro_PJ: 0,
+      Cortesia_PF: 0, Cortesia_PJ: 0,
+    };
+
+    const instFixas = ["Nubank", "PicPay", "SumUp", "Terceiro", "Dinheiro", "Cortesia"];
+    const titFixas = ["PF", "PJ"];
+
     (items || []).forEach((it) => {
       const tipo = String(it.Tipo || "").trim();
       const status = String(it.Status || "").trim();
@@ -247,6 +302,14 @@
           else if (fp === "Cartao_Credito") pagCredito += valor;
           else if (fp === "Cartao_Debito") pagDebito += valor;
           else pagOutros += valor;
+
+          // Inst + Titularidade
+          const inst = String(it.Instituicao_Financeira || "").trim();
+          const tit = String(it.Titularidade || "").trim();
+          if (instFixas.includes(inst) && titFixas.includes(tit)) {
+            const key = inst + "_" + tit;
+            instTit[key] = (instTit[key] || 0) + valor;
+          }
 
         } else if (status === "Pendente") {
           entradasPendentes += valor;
@@ -266,6 +329,7 @@
       pagCredito,
       pagDebito,
       pagOutros,
+      instTit,
     };
   }
 
@@ -284,6 +348,20 @@
     if (detCredito) detCredito.textContent = "—";
     if (detDebito) detDebito.textContent = "—";
     if (detOutros) detOutros.textContent = "—";
+
+    // Inst + Titularidade
+    if (detNubankPF) detNubankPF.textContent = "—";
+    if (detNubankPJ) detNubankPJ.textContent = "—";
+    if (detPicPayPF) detPicPayPF.textContent = "—";
+    if (detPicPayPJ) detPicPayPJ.textContent = "—";
+    if (detSumUpPF) detSumUpPF.textContent = "—";
+    if (detSumUpPJ) detSumUpPJ.textContent = "—";
+    if (detTerceiroPF) detTerceiroPF.textContent = "—";
+    if (detTerceiroPJ) detTerceiroPJ.textContent = "—";
+    if (detDinheiroPF) detDinheiroPF.textContent = "—";
+    if (detDinheiroPJ) detDinheiroPJ.textContent = "—";
+    if (detCortesiaPF) detCortesiaPF.textContent = "—";
+    if (detCortesiaPJ) detCortesiaPJ.textContent = "—";
   }
 
   function bind() {
@@ -311,6 +389,13 @@
     if (btnFecharDetalhes) btnFecharDetalhes.addEventListener("click", (e) => {
       e.preventDefault();
       fecharDetalhes();
+    });
+
+    // Imprimir detalhes
+    const btnImprimirDetalhes = document.getElementById("btnImprimirDetalhes");
+    if (btnImprimirDetalhes) btnImprimirDetalhes.addEventListener("click", (e) => {
+      e.preventDefault();
+      window.print();
     });
 
     // Exportação

@@ -45,6 +45,7 @@ function ResumoMensal_Calcular(mesYYYYMM) {
     "Valor",
     "Forma_Pagamento",
     "Instituicao_Financeira",
+    "Titularidade",
   ]);
 
   var buckets = {}; // { "YYYY-MM": acc }
@@ -64,6 +65,7 @@ function ResumoMensal_Calcular(mesYYYYMM) {
       valor: row[idx["Valor"]],
       forma: row[idx["Forma_Pagamento"]],
       inst: row[idx["Instituicao_Financeira"]],
+      titularidade: row[idx["Titularidade"]],
     });
   }
 
@@ -107,6 +109,20 @@ function ResumoMensal_Calcular(mesYYYYMM) {
       "Entrada Terceiro": RM_round2_(acc.porInstituicao.Terceiro || 0),
       "Entrada Dinheiro Inst": RM_round2_(acc.porInstituicao.Dinheiro || 0),
       "Entrada Cortesia Inst": RM_round2_(acc.porInstituicao.Cortesia || 0),
+
+      // ✅ Instituicao + Titularidade (PF/PJ)
+      "Nubank PF": RM_round2_(acc.porInstituicaoTitularidade.Nubank_PF || 0),
+      "Nubank PJ": RM_round2_(acc.porInstituicaoTitularidade.Nubank_PJ || 0),
+      "PicPay PF": RM_round2_(acc.porInstituicaoTitularidade.PicPay_PF || 0),
+      "PicPay PJ": RM_round2_(acc.porInstituicaoTitularidade.PicPay_PJ || 0),
+      "SumUp PF": RM_round2_(acc.porInstituicaoTitularidade.SumUp_PF || 0),
+      "SumUp PJ": RM_round2_(acc.porInstituicaoTitularidade.SumUp_PJ || 0),
+      "Terceiro PF": RM_round2_(acc.porInstituicaoTitularidade.Terceiro_PF || 0),
+      "Terceiro PJ": RM_round2_(acc.porInstituicaoTitularidade.Terceiro_PJ || 0),
+      "Dinheiro PF": RM_round2_(acc.porInstituicaoTitularidade.Dinheiro_PF || 0),
+      "Dinheiro PJ": RM_round2_(acc.porInstituicaoTitularidade.Dinheiro_PJ || 0),
+      "Cortesia PF": RM_round2_(acc.porInstituicaoTitularidade.Cortesia_PF || 0),
+      "Cortesia PJ": RM_round2_(acc.porInstituicaoTitularidade.Cortesia_PJ || 0),
     };
 
     items.push(rowOut);
@@ -129,7 +145,7 @@ function ResumoMensal_DetalharMes(mesYYYYMM) {
   var header = data[0];
   var idx = RM_indexMap_(header);
 
-  RM_requireCols_(idx, ["Data_Caixa", "Tipo", "Valor", "Status"]);
+  RM_requireCols_(idx, ["Data_Caixa", "Tipo", "Valor", "Status", "Titularidade"]);
 
   var items = [];
   for (var i = 1; i < data.length; i++) {
@@ -146,6 +162,7 @@ function ResumoMensal_DetalharMes(mesYYYYMM) {
       Cliente_Fornecedor: RM_safeStr_(row[idx["Cliente_Fornecedor"]]),
       Forma_Pagamento: RM_safeStr_(row[idx["Forma_Pagamento"]]),
       Instituicao_Financeira: RM_safeStr_(row[idx["Instituicao_Financeira"]]),
+      Titularidade: RM_safeStr_(row[idx["Titularidade"]]),
       Valor: RM_round2_(RM_parseNumber_(row[idx["Valor"]])),
       Status: RM_safeStr_(row[idx["Status"]]),
     });
