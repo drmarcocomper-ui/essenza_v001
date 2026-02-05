@@ -23,6 +23,7 @@
 
   const detEntradasPagas = document.getElementById("detEntradasPagas");
   const detEntradasPend = document.getElementById("detEntradasPend");
+  const detTotalEntradas = document.getElementById("detTotalEntradas");
   const detSaidas = document.getElementById("detSaidas");
   const detResultado = document.getElementById("detResultado");
 
@@ -48,6 +49,7 @@
 
   // Estado para exportação
   let dadosResumoAtual = [];
+  let dadosDetalhesAtual = { mes: "", items: [], resumo: null };
 
   function setFeedback(msg, type = "info") {
     if (!feedback) return;
@@ -189,8 +191,12 @@
 
     const resumo = calcularResumoMes(sorted);
 
+    // Salvar para exportação
+    dadosDetalhesAtual = { mes: mesYYYYMM, items: sorted, resumo };
+
     if (detEntradasPagas) detEntradasPagas.textContent = formatMoneyBR(resumo.entradasPagas);
     if (detEntradasPend) detEntradasPend.textContent = formatMoneyBR(resumo.entradasPendentes);
+    if (detTotalEntradas) detTotalEntradas.textContent = formatMoneyBR(resumo.totalEntradas);
     if (detSaidas) detSaidas.textContent = formatMoneyBR(resumo.saidas);
     if (detResultado) detResultado.textContent = formatMoneyBR(resumo.resultado);
 
@@ -322,6 +328,7 @@
     return {
       entradasPagas,
       entradasPendentes,
+      totalEntradas: entradasPagas + entradasPendentes,
       saidas,
       resultado: entradasPagas - saidas,
       pagPix,
@@ -333,13 +340,80 @@
     };
   }
 
+  function exportarDetalhesPDF(dados) {
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) {
+      setFeedback("jsPDF não carregado.", "error");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "landscape" });
+    const r = dados.resumo;
+
+    // Título
+    doc.setFontSize(16);
+    doc.text(`Detalhes do Mês: ${dados.mes}`, 14, 15);
+
+    // Resumo
+    doc.setFontSize(10);
+    let y = 25;
+    doc.text(`Entradas Pagas: ${formatMoneyBR(r.entradasPagas)}`, 14, y);
+    doc.text(`Entradas Pendentes: ${formatMoneyBR(r.entradasPendentes)}`, 80, y);
+    doc.text(`Total Entradas: ${formatMoneyBR(r.totalEntradas)}`, 150, y);
+    doc.text(`Saídas: ${formatMoneyBR(r.saidas)}`, 220, y);
+    y += 6;
+    doc.text(`Resultado: ${formatMoneyBR(r.resultado)}`, 14, y);
+    doc.text(`Pix: ${formatMoneyBR(r.pagPix)}`, 80, y);
+    doc.text(`Dinheiro: ${formatMoneyBR(r.pagDinheiro)}`, 130, y);
+    doc.text(`Crédito: ${formatMoneyBR(r.pagCredito)}`, 180, y);
+    doc.text(`Débito: ${formatMoneyBR(r.pagDebito)}`, 230, y);
+    y += 6;
+    doc.text(`Nubank PF: ${formatMoneyBR(r.instTit.Nubank_PF)}`, 14, y);
+    doc.text(`Nubank PJ: ${formatMoneyBR(r.instTit.Nubank_PJ)}`, 70, y);
+    doc.text(`PicPay PF: ${formatMoneyBR(r.instTit.PicPay_PF)}`, 126, y);
+    doc.text(`PicPay PJ: ${formatMoneyBR(r.instTit.PicPay_PJ)}`, 182, y);
+    doc.text(`SumUp PF: ${formatMoneyBR(r.instTit.SumUp_PF)}`, 238, y);
+    y += 6;
+    doc.text(`SumUp PJ: ${formatMoneyBR(r.instTit.SumUp_PJ)}`, 14, y);
+    doc.text(`Terceiro PF: ${formatMoneyBR(r.instTit.Terceiro_PF)}`, 70, y);
+    doc.text(`Terceiro PJ: ${formatMoneyBR(r.instTit.Terceiro_PJ)}`, 126, y);
+
+    // Tabela de lançamentos
+    const headers = ["Data", "Tipo", "Categoria", "Descrição", "Cliente/Forn.", "Forma Pag.", "Instituição", "Titular.", "Valor", "Status"];
+    const rows = dados.items.map(it => [
+      it.Data_Caixa || "",
+      it.Tipo || "",
+      it.Categoria || "",
+      (it.Descricao || "").substring(0, 25),
+      (it.Cliente_Fornecedor || "").substring(0, 20),
+      it.Forma_Pagamento || "",
+      it.Instituicao_Financeira || "",
+      it.Titularidade || "",
+      formatMoneyBR(it.Valor),
+      it.Status || "",
+    ]);
+
+    doc.autoTable({
+      head: [headers],
+      body: rows,
+      startY: y + 8,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [60, 60, 60] },
+    });
+
+    doc.save(`Detalhes_${dados.mes}.pdf`);
+    setFeedback("PDF exportado.", "success");
+  }
+
   function fecharDetalhes() {
     if (cardDetalhes) cardDetalhes.style.display = "none";
     if (tbodyDetalhes) tbodyDetalhes.innerHTML = "";
     if (mesSelecionado) mesSelecionado.textContent = "";
+    dadosDetalhesAtual = { mes: "", items: [], resumo: null };
 
     if (detEntradasPagas) detEntradasPagas.textContent = "—";
     if (detEntradasPend) detEntradasPend.textContent = "—";
+    if (detTotalEntradas) detTotalEntradas.textContent = "—";
     if (detSaidas) detSaidas.textContent = "—";
     if (detResultado) detResultado.textContent = "—";
 
@@ -396,6 +470,17 @@
     if (btnImprimirDetalhes) btnImprimirDetalhes.addEventListener("click", (e) => {
       e.preventDefault();
       window.print();
+    });
+
+    // Exportar PDF detalhes
+    const btnExportDetalhesPDF = document.getElementById("btnExportDetalhesPDF");
+    if (btnExportDetalhesPDF) btnExportDetalhesPDF.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (!dadosDetalhesAtual.items.length) {
+        setFeedback("Nenhum dado para exportar.", "error");
+        return;
+      }
+      exportarDetalhesPDF(dadosDetalhesAtual);
     });
 
     // Exportação
