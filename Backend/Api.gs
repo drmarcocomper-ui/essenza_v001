@@ -7,10 +7,12 @@
  * - action obrigatório
  * - callback opcional (JSONP)
  * - roteamento feito pelo Registry.gs
+ * - autenticação via token (exceto ações públicas)
  *
  * Dependências:
  * - Api.Utils.gs   (safeStr_, jsonp_, parseBody_)
  * - Registry.gs    (Registry_dispatch_)
+ * - Auth.gs        (Auth_isPublicAction_, Auth_requireToken_)
  */
 
 function doGet(e) {
@@ -25,8 +27,16 @@ function doGet(e) {
         ok: true,
         message: "Web App ativo",
         now: new Date().toISOString(),
-        version: "2026-02-01-categoria-v1"
+        version: "2026-02-04-auth-v1"
       });
+    }
+
+    // Verificar autenticação (exceto ações públicas)
+    if (!Auth_isPublicAction_(action)) {
+      var authError = Auth_requireToken_(e);
+      if (authError) {
+        return jsonp_(callback, authError);
+      }
     }
 
     // Dispatch central

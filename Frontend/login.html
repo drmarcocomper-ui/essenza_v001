@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login | Essenza</title>
+
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--cor-primaria), #9a6fb3);
+      padding: 1rem;
+    }
+
+    .login-card {
+      background: var(--cor-bg);
+      border-radius: var(--raio);
+      box-shadow: var(--sombra);
+      width: 100%;
+      max-width: 400px;
+      overflow: hidden;
+    }
+
+    .login-header {
+      background: var(--cor-primaria);
+      color: #fff;
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+
+    .login-header h1 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+
+    .login-header p {
+      font-size: 0.95rem;
+      opacity: 0.9;
+    }
+
+    .login-body {
+      padding: 2rem 1.5rem;
+    }
+
+    .login-body .field {
+      margin-bottom: 1.5rem;
+    }
+
+    .login-body .btn--primary {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+    }
+
+    .login-feedback {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
+      background: #f7f7f7;
+      border: 1px solid var(--cor-borda);
+      text-align: center;
+    }
+
+    .login-feedback:empty {
+      display: none;
+    }
+
+    .login-feedback[data-type="error"] {
+      background: #fff0f0;
+      border-color: rgba(220, 20, 60, 0.25);
+      color: #c41e3a;
+    }
+
+    .login-feedback[data-type="success"] {
+      background: #f0fff0;
+      border-color: rgba(0, 128, 0, 0.25);
+      color: #228b22;
+    }
+
+    .login-feedback[data-type="info"] {
+      background: #f0f8ff;
+      border-color: rgba(70, 130, 180, 0.25);
+      color: #4169e1;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <h1>Essenza</h1>
+        <p>Sistema de Gestao</p>
+      </div>
+
+      <div class="login-body">
+        <form id="formLogin" autocomplete="on">
+          <div class="field">
+            <label class="label" for="senha">Senha</label>
+            <input
+              class="input"
+              type="password"
+              id="senha"
+              name="senha"
+              required
+              autofocus
+              placeholder="Digite sua senha"
+            />
+          </div>
+
+          <button type="submit" id="btnEntrar" class="btn btn--primary">
+            Entrar
+          </button>
+
+          <div id="loginFeedback" class="login-feedback" aria-live="polite" role="status"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/login.js" defer></script>
+</body>
+</html>

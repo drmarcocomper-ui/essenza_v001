@@ -5,6 +5,11 @@
  * - ações exatas  -> handler(e)
  * - ações por prefixo -> dispatcher(action, e)
  *
+ * ✅ Auth:
+ * - Auth.Login
+ * - Auth.Logout
+ * - Auth.Validate
+ *
  * ✅ Categoria:
  * - Categoria.Criar
  * - Categoria.Editar
@@ -60,6 +65,26 @@ function Registry_init_() {
   };
 
   REGISTRY_PREFIX = [
+    // ---- AUTH (prefixo) ----
+    {
+      prefix: "Auth.",
+      fn: function (action, e) {
+        if (typeof Auth_dispatch_ !== "function") {
+          throw new Error("Auth_dispatch_ não encontrado. Verifique Auth.gs.");
+        }
+
+        if (
+          action !== "Auth.Login" &&
+          action !== "Auth.Logout" &&
+          action !== "Auth.Validate"
+        ) {
+          return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
+        }
+
+        return Auth_dispatch_(action, e);
+      }
+    },
+
     // ---- LANÇAMENTOS (prefixo) ----
     {
       prefix: "Lancamentos.",

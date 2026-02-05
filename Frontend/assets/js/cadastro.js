@@ -1,5 +1,6 @@
 // cadastro.js (JSONP - sem CORS)
 // Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
+// Requer: assets/js/auth.js (window.EssenzaAuth)
 // ✅ ID_Cliente é gerado automaticamente AO SALVAR (sem botão Gerar ID)
 // ✅ ID não é exibido ao usuário (input hidden no HTML)
 
@@ -100,10 +101,21 @@
 
       window[cb] = (data) => {
         cleanup();
+
+        // Verificar se erro de autenticação
+        if (data && data.code === "AUTH_ERROR" && window.EssenzaAuth) {
+          window.EssenzaAuth.redirectToLogin();
+          return;
+        }
+
         resolve(data);
       };
 
-      const qs = new URLSearchParams({ ...params, callback: cb }).toString();
+      // Injetar token de autenticação
+      const token = window.EssenzaAuth?.getToken?.() || "";
+      const paramsWithToken = { ...params, token, callback: cb };
+
+      const qs = new URLSearchParams(paramsWithToken).toString();
       const url = `${SCRIPT_URL}?${qs}`;
 
       script = document.createElement("script");

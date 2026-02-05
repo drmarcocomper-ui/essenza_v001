@@ -1,5 +1,6 @@
 // resumo.js (JSONP - sem CORS) — Resumo mensal + Drill-down
 // Requer: config.js (window.APP_CONFIG.SCRIPT_URL)
+// Requer: auth.js (window.EssenzaAuth)
 
 (() => {
   "use strict";
@@ -88,10 +89,21 @@
 
       window[cb] = (data) => {
         cleanup();
+
+        // Verificar se erro de autenticação
+        if (data && data.code === "AUTH_ERROR" && window.EssenzaAuth) {
+          window.EssenzaAuth.redirectToLogin();
+          return;
+        }
+
         resolve(data);
       };
 
-      const qs = new URLSearchParams({ ...params, callback: cb }).toString();
+      // Injetar token de autenticação
+      const token = window.EssenzaAuth?.getToken?.() || "";
+      const paramsWithToken = { ...params, token, callback: cb };
+
+      const qs = new URLSearchParams(paramsWithToken).toString();
       const url = `${SCRIPT_URL}?${qs}`;
 
       script = document.createElement("script");

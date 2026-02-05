@@ -1,5 +1,6 @@
 // categoria.js (JSONP - sem CORS)
 // Requer: assets/js/config.js (window.APP_CONFIG.SCRIPT_URL)
+// Requer: assets/js/auth.js (window.EssenzaAuth)
 // Backend: Categoria.gs (via Api/Registry)
 // Actions esperadas:
 // - Categoria.Criar
@@ -84,10 +85,21 @@
 
       window[cb] = (data) => {
         cleanup();
+
+        // Verificar se erro de autenticação
+        if (data && data.code === "AUTH_ERROR" && window.EssenzaAuth) {
+          window.EssenzaAuth.redirectToLogin();
+          return;
+        }
+
         resolve(data);
       };
 
-      const qs = new URLSearchParams({ ...params, callback: cb }).toString();
+      // Injetar token de autenticação
+      const token = window.EssenzaAuth?.getToken?.() || "";
+      const paramsWithToken = { ...params, token, callback: cb };
+
+      const qs = new URLSearchParams(paramsWithToken).toString();
       const url = `${SCRIPT_URL}?${qs}`;
 
       script = document.createElement("script");
