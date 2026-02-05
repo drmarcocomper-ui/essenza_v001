@@ -1,0 +1,386 @@
+// dashboard.js — Dashboard com gráficos
+// Requer: config.js, auth.js, Chart.js (CDN)
+
+(() => {
+  "use strict";
+
+  const SCRIPT_URL = window.APP_CONFIG?.SCRIPT_URL || "";
+
+  // DOM
+  const dashboardCards = document.getElementById("dashboardCards");
+  const feedback = document.getElementById("feedbackDash");
+
+  // Charts
+  let chartEvolucao = null;
+  let chartPagamentos = null;
+
+  // ============================
+  // Helpers
+  // ============================
+  function setFeedback(msg, type = "info") {
+    if (!feedback) return;
+    feedback.textContent = msg || "";
+    feedback.dataset.type = type;
+  }
+
+  function formatMoneyBR(v) {
+    const num = parseFloat(v) || 0;
+    return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
+
+  function toNumber(v) {
+    const s = String(v ?? "").trim();
+    if (!s) return 0;
+    const num = Number(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s.replace(",", "."));
+    return Number.isNaN(num) ? 0 : num;
+  }
+
+  function getMesAtual() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+  }
+
+  function getMesAnterior() {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+  }
+
+  function calcVariacao(atual, anterior) {
+    if (!anterior || anterior === 0) return null;
+    return ((atual - anterior) / anterior) * 100;
+  }
+
+  function formatVariacao(variacao) {
+    if (variacao === null) return "";
+    const sinal = variacao >= 0 ? "+" : "";
+    return `${sinal}${variacao.toFixed(1)}%`;
+  }
+
+  // ============================
+  // JSONP
+  // ============================
+  function jsonpRequest(params) {
+    return new Promise((resolve, reject) => {
+      const cb = "dash_cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error("Timeout na chamada ao Apps Script."));
+      }, 20000);
+
+      let script;
+
+      function cleanup() {
+        clearTimeout(timeout);
+        try { delete window[cb]; } catch (_) {}
+        if (script && script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[cb] = (data) => {
+        cleanup();
+
+        if (data && data.code === "AUTH_ERROR" && window.EssenzaAuth) {
+          window.EssenzaAuth.redirectToLogin();
+          return;
+        }
+
+        resolve(data);
+      };
+
+      const token = window.EssenzaAuth?.getToken?.() || "";
+      const paramsWithToken = { ...params, token, callback: cb };
+
+      const qs = new URLSearchParams(paramsWithToken).toString();
+      const url = `${SCRIPT_URL}?${qs}`;
+
+      script = document.createElement("script");
+      script.src = url;
+      script.onerror = () => {
+        cleanup();
+        reject(new Error("Falha ao carregar dados."));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  // ============================
+  // Carregar Dados
+  // ============================
+  async function carregarDados() {
+    setFeedback("Carregando dados...", "info");
+
+    try {
+      const data = await jsonpRequest({
+        action: "ResumoMensal.Calcular"
+      });
+
+      if (!data || data.ok !== true) {
+        throw new Error(data?.message || "Erro ao carregar dados.");
+      }
+
+      const items = data.items || [];
+      processarDados(items);
+      setFeedback("", "info");
+
+    } catch (err) {
+      setFeedback(err.message || "Erro ao carregar dashboard.", "error");
+    }
+  }
+
+  // ============================
+  // Processar Dados
+  // ============================
+  function processarDados(items) {
+    const mesAtual = getMesAtual();
+    const mesAnterior = getMesAnterior();
+
+    // Ordenar por mês decrescente
+    const sorted = [...items].sort((a, b) => {
+      const ma = a["Mês"] || "";
+      const mb = b["Mês"] || "";
+      return mb.localeCompare(ma);
+    });
+
+    // Encontrar dados do mês atual e anterior
+    const dadosAtual = sorted.find(x => x["Mês"] === mesAtual) || null;
+    const dadosAnterior = sorted.find(x => x["Mês"] === mesAnterior) || null;
+
+    // Últimos 6 meses para gráficos
+    const ultimos6 = sorted.slice(0, 6).reverse();
+
+    renderCards(dadosAtual, dadosAnterior, mesAtual);
+    renderChartEvolucao(ultimos6);
+    renderChartPagamentos(dadosAtual);
+  }
+
+  // ============================
+  // Renderizar Cards
+  // ============================
+  function renderCards(atual, anterior, mesLabel) {
+    if (!dashboardCards) return;
+
+    const entradasPagas = toNumber(atual?.["Entradas Pagas"]);
+    const entradasPend = toNumber(atual?.["Entradas Pendentes"]);
+    const saidas = toNumber(atual?.["Saidas"]);
+    const resultado = toNumber(atual?.["Resultado (Caixa)"]);
+
+    const entAnterior = toNumber(anterior?.["Entradas Pagas"]);
+    const saiAnterior = toNumber(anterior?.["Saidas"]);
+    const resAnterior = toNumber(anterior?.["Resultado (Caixa)"]);
+
+    const varEntradas = calcVariacao(entradasPagas, entAnterior);
+    const varSaidas = calcVariacao(saidas, saiAnterior);
+    const varResultado = calcVariacao(resultado, resAnterior);
+
+    const mesFormatado = mesLabel.replace("-", "/");
+
+    dashboardCards.innerHTML = `
+      <div class="dash-card dash-card--positive">
+        <div class="dash-card__label">Entradas Pagas (${mesFormatado})</div>
+        <div class="dash-card__value">${formatMoneyBR(entradasPagas)}</div>
+        <div class="dash-card__compare ${varEntradas >= 0 ? 'compare-up' : 'compare-down'}">
+          ${varEntradas !== null ? formatVariacao(varEntradas) + ' vs anterior' : ''}
+        </div>
+      </div>
+
+      <div class="dash-card dash-card--neutral">
+        <div class="dash-card__label">Entradas Pendentes</div>
+        <div class="dash-card__value">${formatMoneyBR(entradasPend)}</div>
+        <div class="dash-card__compare compare-neutral">a receber</div>
+      </div>
+
+      <div class="dash-card dash-card--negative">
+        <div class="dash-card__label">Saidas (${mesFormatado})</div>
+        <div class="dash-card__value">${formatMoneyBR(saidas)}</div>
+        <div class="dash-card__compare ${varSaidas <= 0 ? 'compare-up' : 'compare-down'}">
+          ${varSaidas !== null ? formatVariacao(varSaidas) + ' vs anterior' : ''}
+        </div>
+      </div>
+
+      <div class="dash-card ${resultado >= 0 ? 'dash-card--positive' : 'dash-card--negative'}">
+        <div class="dash-card__label">Resultado</div>
+        <div class="dash-card__value">${formatMoneyBR(resultado)}</div>
+        <div class="dash-card__compare ${varResultado >= 0 ? 'compare-up' : 'compare-down'}">
+          ${varResultado !== null ? formatVariacao(varResultado) + ' vs anterior' : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  // ============================
+  // Gráfico Evolução (Linha)
+  // ============================
+  function renderChartEvolucao(dados) {
+    const ctx = document.getElementById("chartEvolucao");
+    if (!ctx) return;
+
+    if (chartEvolucao) {
+      chartEvolucao.destroy();
+    }
+
+    const labels = dados.map(d => {
+      const mes = d["Mês"] || "";
+      return mes.replace("-", "/");
+    });
+
+    const entradas = dados.map(d => toNumber(d["Entradas Pagas"]));
+    const saidas = dados.map(d => toNumber(d["Saidas"]));
+    const resultado = dados.map(d => toNumber(d["Resultado (Caixa)"]));
+
+    chartEvolucao = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Entradas",
+            data: entradas,
+            borderColor: "#228b22",
+            backgroundColor: "rgba(34, 139, 34, 0.1)",
+            fill: true,
+            tension: 0.3
+          },
+          {
+            label: "Saidas",
+            data: saidas,
+            borderColor: "#c41e3a",
+            backgroundColor: "rgba(196, 30, 58, 0.1)",
+            fill: true,
+            tension: 0.3
+          },
+          {
+            label: "Resultado",
+            data: resultado,
+            borderColor: "#4169e1",
+            backgroundColor: "rgba(65, 105, 225, 0.1)",
+            fill: false,
+            tension: 0.3,
+            borderDash: [5, 5]
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom"
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return "R$ " + value.toLocaleString("pt-BR");
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ============================
+  // Gráfico Pagamentos (Donut)
+  // ============================
+  function renderChartPagamentos(dados) {
+    const ctx = document.getElementById("chartPagamentos");
+    if (!ctx) return;
+
+    if (chartPagamentos) {
+      chartPagamentos.destroy();
+    }
+
+    if (!dados) {
+      chartPagamentos = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["Sem dados"],
+          datasets: [{
+            data: [1],
+            backgroundColor: ["#e0e0e0"]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+      return;
+    }
+
+    const formas = [
+      { key: "Entrada Pix", label: "Pix", color: "#00d4aa" },
+      { key: "Entrada Dinheiro", label: "Dinheiro", color: "#228b22" },
+      { key: "Entrada Cartao_Credito", label: "Credito", color: "#4169e1" },
+      { key: "Entrada Cartao_Debito", label: "Debito", color: "#9370db" },
+      { key: "Entrada Boleto", label: "Boleto", color: "#ff8c00" },
+      { key: "Entrada Transferencia", label: "Transf.", color: "#20b2aa" },
+      { key: "Entrada Confianca", label: "Confianca", color: "#daa520" },
+      { key: "Entrada Cortesia", label: "Cortesia", color: "#808080" }
+    ];
+
+    const labels = [];
+    const values = [];
+    const colors = [];
+
+    formas.forEach(f => {
+      const v = toNumber(dados[f.key]);
+      if (v > 0) {
+        labels.push(f.label);
+        values.push(v);
+        colors.push(f.color);
+      }
+    });
+
+    if (values.length === 0) {
+      labels.push("Sem dados");
+      values.push(1);
+      colors.push("#e0e0e0");
+    }
+
+    chartPagamentos = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 2,
+          borderColor: "#fff"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: {
+              boxWidth: 12,
+              padding: 8
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const value = context.raw || 0;
+                return context.label + ": " + formatMoneyBR(value);
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ============================
+  // Init
+  // ============================
+  carregarDados();
+})();

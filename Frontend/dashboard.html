@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard | Essenza</title>
+
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    .dashboard-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .dash-card {
+      background: var(--cor-bg);
+      border-radius: var(--raio);
+      box-shadow: var(--sombra);
+      padding: 1.25rem;
+      text-align: center;
+    }
+
+    .dash-card__label {
+      font-size: 0.85rem;
+      color: var(--cor-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .dash-card__value {
+      font-size: 1.6rem;
+      font-weight: 600;
+    }
+
+    .dash-card__compare {
+      font-size: 0.75rem;
+      margin-top: 0.4rem;
+    }
+
+    .dash-card--positive .dash-card__value { color: #228b22; }
+    .dash-card--negative .dash-card__value { color: #c41e3a; }
+    .dash-card--neutral .dash-card__value { color: var(--cor-texto); }
+
+    .compare-up { color: #228b22; }
+    .compare-down { color: #c41e3a; }
+    .compare-neutral { color: var(--cor-muted); }
+
+    .charts-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .charts-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-container {
+      background: var(--cor-bg);
+      border-radius: var(--raio);
+      box-shadow: var(--sombra);
+      padding: 1.25rem;
+    }
+
+    .chart-container h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--cor-texto);
+    }
+
+    .chart-canvas-wrap {
+      position: relative;
+      height: 280px;
+    }
+  </style>
+</head>
+
+<body>
+  <header class="app-header">
+    <div class="app-header__inner">
+      <h1 class="app-title">Dashboard</h1>
+
+      <nav class="app-nav" aria-label="Navegacao principal">
+        <a class="app-nav__link app-nav__link--active" href="dashboard.html">Dashboard</a>
+        <a class="app-nav__link" href="index.html">Cadastro</a>
+        <a class="app-nav__link" href="lancamentos.html">Lancamentos</a>
+        <a class="app-nav__link" href="resumo.html">Resumo</a>
+        <a class="app-nav__link" href="categoria.html">Categoria</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- CARDS RESUMO -->
+    <section>
+      <div class="dashboard-cards" id="dashboardCards">
+        <div class="dash-card dash-card--neutral">
+          <div class="dash-card__label">Carregando...</div>
+          <div class="dash-card__value">--</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GRAFICOS -->
+    <section class="charts-row">
+      <div class="chart-container">
+        <h3>Evolucao Mensal (Ultimos 6 meses)</h3>
+        <div class="chart-canvas-wrap">
+          <canvas id="chartEvolucao"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <h3>Entradas por Forma de Pagamento</h3>
+        <div class="chart-canvas-wrap">
+          <canvas id="chartPagamentos"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <div id="feedbackDash" class="feedback" aria-live="polite" role="status" style="margin-top:1.5rem;"></div>
+  </main>
+
+  <footer class="app-footer">
+    <small>Dashboard - Essenza</small>
+  </footer>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/dashboard.js" defer></script>
+</body>
+</html>

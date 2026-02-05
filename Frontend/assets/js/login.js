@@ -134,9 +134,9 @@
       setToken(data.token);
       setFeedback("Login realizado! Redirecionando...", "success");
 
-      // Redirecionar para página principal
+      // Redirecionar para dashboard
       setTimeout(() => {
-        window.location.href = "index.html";
+        window.location.href = "dashboard.html";
       }, 500);
 
     } catch (err) {
@@ -162,7 +162,7 @@
 
       if (data && data.ok === true && data.valid === true) {
         // Já está logado, redirecionar
-        window.location.href = "index.html";
+        window.location.href = "dashboard.html";
       }
     } catch (_) {
       // Token inválido ou erro, continuar na página de login
