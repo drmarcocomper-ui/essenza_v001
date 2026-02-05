@@ -56,6 +56,18 @@ function Lancamentos_dispatch_(action, p) {
     return resEdit;
   }
 
+  if (action === "Lancamentos.PorCliente") {
+    var filtrosCliente = LANC_parseJsonParam_(p.filtros);
+    if (!filtrosCliente || typeof filtrosCliente !== "object") filtrosCliente = {};
+    var resultCliente = Lancamentos_porCliente_(sheet, filtrosCliente);
+    return {
+      ok: true,
+      items: resultCliente.items,
+      total: resultCliente.total,
+      message: "OK"
+    };
+  }
+
   if (action === "Lancamentos.Listar") {
     var filtros = LANC_parseJsonParam_(p.filtros);
     if (!filtros || typeof filtros !== "object") filtros = LANC_parseJsonParam_(p.filtro);
@@ -341,6 +353,98 @@ function Lancamentos_listar_(sheet, filtros, page, limit) {
       totalPages: totalPages
     }
   };
+}
+
+/**
+ * Agrupa entradas pagas por Cliente_Fornecedor
+ * Retorna ranking dos clientes com maior valor
+ */
+function Lancamentos_porCliente_(sheet, filtros) {
+  filtros = filtros || {};
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return { items: [], total: 0 };
+  }
+
+  var header = data[0];
+  var idx = LANC_indexMap_(header);
+
+  var fMes = LANC_safeStr_(filtros.mes || "");
+  var limite = parseInt(filtros.limite, 10) || 20;
+
+  var clientes = {};
+  var totalGeral = 0;
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+
+    var tipo = LANC_safeStr_(row[idx["Tipo"]]);
+    var status = LANC_safeStr_(row[idx["Status"]]);
+
+    // Só entradas pagas
+    if (tipo !== "Entrada") continue;
+    if (status !== "Pago") continue;
+
+    // Filtro por mês (Data_Caixa)
+    if (fMes) {
+      var dataCaixa = row[idx["Data_Caixa"]];
+      var mesRow = LANC_getMesFromDate_(dataCaixa);
+      if (mesRow !== fMes) continue;
+    }
+
+    var cliente = LANC_safeStr_(row[idx["Cliente_Fornecedor"]]) || "(Sem cliente)";
+    var valor = LANC_parseNumberSafe_(row[idx["Valor"]]);
+
+    if (!clientes[cliente]) {
+      clientes[cliente] = { nome: cliente, total: 0, qtd: 0 };
+    }
+    clientes[cliente].total += valor;
+    clientes[cliente].qtd += 1;
+    totalGeral += valor;
+  }
+
+  // Converter para array e ordenar por total decrescente
+  var arr = [];
+  for (var nome in clientes) {
+    arr.push(clientes[nome]);
+  }
+  arr.sort(function(a, b) { return b.total - a.total; });
+
+  // Limitar quantidade
+  var items = arr.slice(0, limite);
+
+  // Calcular percentual
+  items.forEach(function(it) {
+    it.percentual = totalGeral > 0 ? Math.round((it.total / totalGeral) * 1000) / 10 : 0;
+    it.total = Math.round(it.total * 100) / 100;
+  });
+
+  return { items: items, total: Math.round(totalGeral * 100) / 100 };
+}
+
+function LANC_getMesFromDate_(value) {
+  if (!value) return "";
+
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return value.getFullYear() + "-" + String(value.getMonth() + 1).padStart(2, "0");
+  }
+
+  var s = LANC_safeStr_(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.slice(0, 7);
+
+  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m) return m[3] + "-" + m[2];
+
+  return "";
+}
+
+function LANC_parseNumberSafe_(v) {
+  try {
+    return LANC_parseNumber_(v);
+  } catch (_) {
+    return 0;
+  }
 }
 
 // ============================================================

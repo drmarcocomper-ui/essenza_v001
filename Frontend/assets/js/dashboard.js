@@ -11,6 +11,8 @@
   const feedback = document.getElementById("feedbackDash");
   const comparativoResumo = document.getElementById("comparativoResumo");
   const comparativoInstituicao = document.getElementById("comparativoInstituicao");
+  const rankingClientes = document.getElementById("rankingClientes");
+  const selectMesCliente = document.getElementById("selectMesCliente");
 
   // Charts
   let chartEvolucao = null;
@@ -81,6 +83,7 @@
 
       const items = data.items || [];
       processarDados(items);
+      popularSelectMeses(items);
       setFeedback("", "info");
 
     } catch (err) {
@@ -464,7 +467,126 @@
   }
 
   // ============================
+  // Ranking Clientes
+  // ============================
+  async function carregarRankingClientes(mes = "") {
+    if (!rankingClientes) return;
+
+    rankingClientes.innerHTML = `<p style="color: var(--cor-muted);">Carregando...</p>`;
+
+    try {
+      const filtros = {};
+      if (mes) filtros.mes = mes;
+
+      const data = await jsonpRequest({
+        action: "Lancamentos.PorCliente",
+        filtros: JSON.stringify(filtros)
+      });
+
+      if (!data || data.ok !== true) {
+        throw new Error(data?.message || "Erro ao carregar ranking.");
+      }
+
+      renderRankingClientes(data.items || [], data.total || 0);
+
+    } catch (err) {
+      rankingClientes.innerHTML = `<p style="color: #c41e3a;">${err.message || "Erro"}</p>`;
+    }
+  }
+
+  function renderRankingClientes(items, totalGeral) {
+    if (!rankingClientes) return;
+
+    if (!items.length) {
+      rankingClientes.innerHTML = `<p style="color: var(--cor-muted);">Nenhum cliente encontrado.</p>`;
+      return;
+    }
+
+    const maxPerc = items[0]?.percentual || 100;
+
+    let html = `
+      <table class="comparativo-table">
+        <thead>
+          <tr>
+            <th style="width: 40%;">Cliente</th>
+            <th>Qtd</th>
+            <th>Total</th>
+            <th>%</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    items.forEach((it, idx) => {
+      const barWidth = maxPerc > 0 ? (it.percentual / maxPerc) * 100 : 0;
+      html += `
+        <tr>
+          <td>
+            <strong>${idx + 1}.</strong> ${escapeHtml(it.nome)}
+            <div class="ranking-bar"><div class="ranking-bar__fill" style="width: ${barWidth}%;"></div></div>
+          </td>
+          <td style="text-align: center;">${it.qtd}</td>
+          <td>${formatMoneyBR(it.total)}</td>
+          <td style="text-align: center;">${it.percentual}%</td>
+        </tr>
+      `;
+    });
+
+    html += `
+        </tbody>
+        <tfoot>
+          <tr style="font-weight: 600; background: var(--cor-bg-alt, #f5f5f5);">
+            <td>Total Geral</td>
+            <td></td>
+            <td>${formatMoneyBR(totalGeral)}</td>
+            <td style="text-align: center;">100%</td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+
+    rankingClientes.innerHTML = html;
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function popularSelectMeses(items) {
+    if (!selectMesCliente) return;
+
+    // Extrair meses únicos dos dados
+    const meses = new Set();
+    items.forEach(it => {
+      const mes = it["Mês"];
+      if (mes) meses.add(mes);
+    });
+
+    const sorted = [...meses].sort().reverse();
+
+    selectMesCliente.innerHTML = `<option value="">Todos</option>`;
+    sorted.forEach(mes => {
+      const opt = document.createElement("option");
+      opt.value = mes;
+      opt.textContent = formatMesLabel(mes);
+      selectMesCliente.appendChild(opt);
+    });
+  }
+
+  function bindSelectMes() {
+    if (!selectMesCliente) return;
+    selectMesCliente.addEventListener("change", () => {
+      carregarRankingClientes(selectMesCliente.value);
+    });
+  }
+
+  // ============================
   // Init
   // ============================
+  bindSelectMes();
   carregarDados();
+  carregarRankingClientes();
 })();

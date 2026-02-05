@@ -113,6 +113,20 @@
 
     .comparativo-table .arrow { font-size: 0.8rem; margin-right: 0.25rem; }
 
+    .ranking-bar {
+      height: 8px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.25rem;
+    }
+
+    .ranking-bar__fill {
+      height: 100%;
+      background: linear-gradient(90deg, #228b22, #32cd32);
+      border-radius: 4px;
+    }
+
     .comparativo-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -185,6 +199,22 @@
           <div id="comparativoInstituicao">
             <p style="color: var(--cor-muted);">Carregando...</p>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RANKING CLIENTES -->
+    <section class="comparativo-section">
+      <div class="chart-container">
+        <h3>Ranking de Clientes (Entradas Pagas)</h3>
+        <div style="margin-bottom: 1rem;">
+          <label style="font-size: 0.85rem; color: var(--cor-muted);">Filtrar por mês:</label>
+          <select id="selectMesCliente" class="select" style="width: auto; display: inline-block; margin-left: 0.5rem;">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div id="rankingClientes">
+          <p style="color: var(--cor-muted);">Carregando...</p>
         </div>
       </div>
     </section>
