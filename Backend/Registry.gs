@@ -85,6 +85,22 @@ function Registry_init_() {
       }
     },
 
+    // ---- BUSCA (prefixo) ----
+    {
+      prefix: "Busca.",
+      fn: function (action, e) {
+        if (typeof Busca_dispatch_ !== "function") {
+          throw new Error("Busca_dispatch_ não encontrado. Verifique Busca.gs.");
+        }
+
+        if (action !== "Busca.Global") {
+          return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
+        }
+
+        return Busca_dispatch_(action, e);
+      }
+    },
+
     // ---- LANÇAMENTOS (prefixo) ----
     {
       prefix: "Lancamentos.",
