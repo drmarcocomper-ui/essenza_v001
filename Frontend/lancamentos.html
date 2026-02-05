@@ -304,6 +304,14 @@
         <small class="hint" style="margin-top:.75rem; display:block;">
           Dica: após clicar em uma linha, o formulário entra em modo <strong>Editar</strong>. Use <strong>Novo</strong> para voltar ao modo criação.
         </small>
+
+        <!-- Paginação -->
+        <div class="pagination" id="paginacao" style="margin-top:1rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+          <button type="button" id="btnPrevPage" class="btn" disabled>Anterior</button>
+          <span id="paginaInfo" style="font-size:0.9rem; color:var(--cor-muted);">Página 1 de 1</span>
+          <button type="button" id="btnNextPage" class="btn" disabled>Próxima</button>
+          <span id="totalInfo" style="font-size:0.85rem; color:var(--cor-muted); margin-left:auto;">Total: 0</span>
+        </div>
       </div>
     </section>
 

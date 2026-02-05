@@ -67,8 +67,20 @@ function Lancamentos_dispatch_(action, p) {
     if (LANC_safeStr_(p.fStatus)) filtros.fStatus = p.fStatus;
     if (LANC_safeStr_(p.q)) filtros.q = p.q;
 
-    var items = Lancamentos_listar_(sheet, filtros);
-    return { ok: true, items: items, message: "OK" };
+    // Paginação
+    var page = parseInt(p.page, 10) || 1;
+    var limit = parseInt(p.limit, 10) || 50;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 50;
+    if (limit > 200) limit = 200;
+
+    var result = Lancamentos_listar_(sheet, filtros, page, limit);
+    return {
+      ok: true,
+      items: result.items,
+      pagination: result.pagination,
+      message: "OK"
+    };
   }
 
   return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
@@ -209,11 +221,18 @@ function Lancamentos_editar_(sheet, payload) {
   return { message: "Lançamento atualizado.", rowIndex: rowIndex };
 }
 
-function Lancamentos_listar_(sheet, filtros) {
+function Lancamentos_listar_(sheet, filtros, page, limit) {
   filtros = filtros || {};
+  page = page || 1;
+  limit = limit || 50;
 
   var data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return [];
+  if (data.length <= 1) {
+    return {
+      items: [],
+      pagination: { page: 1, limit: limit, total: 0, totalPages: 0 }
+    };
+  }
 
   var header = data[0];
   var idx = LANC_indexMap_(header);
@@ -231,7 +250,7 @@ function Lancamentos_listar_(sheet, filtros) {
   var fimDate = fFim ? LANC_parseIsoDateToDate_(fFim) : null;
   var qNorm = q ? LANC_normalize_(q) : "";
 
-  var out = [];
+  var all = [];
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
 
@@ -265,12 +284,11 @@ function Lancamentos_listar_(sheet, filtros) {
 
     var obj = LANC_rowToObj_(header, row);
     obj.rowIndex = i + 1;
-    out.push(obj);
-
-    if (out.length >= 300) break;
+    all.push(obj);
   }
 
-  out.sort(function (a, b) {
+  // Ordenar por data decrescente
+  all.sort(function (a, b) {
     var da = LANC_parseAnyToDate_(a.Data_Competencia);
     var db = LANC_parseAnyToDate_(b.Data_Competencia);
     if (!da && !db) return 0;
@@ -279,7 +297,24 @@ function Lancamentos_listar_(sheet, filtros) {
     return db.getTime() - da.getTime();
   });
 
-  return out;
+  // Paginação
+  var total = all.length;
+  var totalPages = Math.ceil(total / limit) || 1;
+  if (page > totalPages) page = totalPages;
+
+  var startIdx = (page - 1) * limit;
+  var endIdx = startIdx + limit;
+  var items = all.slice(startIdx, endIdx);
+
+  return {
+    items: items,
+    pagination: {
+      page: page,
+      limit: limit,
+      total: total,
+      totalPages: totalPages
+    }
+  };
 }
 
 // ============================================================

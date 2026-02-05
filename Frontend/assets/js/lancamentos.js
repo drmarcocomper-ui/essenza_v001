@@ -67,6 +67,9 @@
   // ---------- Estado ----------
   let selectedRowIndex = null;
   let dadosListaAtual = []; // para exportação
+  let paginaAtual = 1;
+  let totalPaginas = 1;
+  const ITENS_POR_PAGINA = 50;
 
   // Clientes
   let clientesDebounce = null;
@@ -553,7 +556,7 @@
     });
   }
 
-  async function listar() {
+  async function listar(page = 1) {
     if (!requireScriptUrl()) return;
 
     setFeedback(feedbackLanc, "Carregando...", "info");
@@ -564,15 +567,47 @@
         action: "Lancamentos.Listar",
         sheet: SHEET_NAME,
         filtros: JSON.stringify(filtros),
+        page: page,
+        limit: ITENS_POR_PAGINA
       });
 
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao listar.");
 
       dadosListaAtual = data.items || [];
       renderTable(dadosListaAtual);
-      setFeedback(feedbackLanc, `OK • ${dadosListaAtual.length} itens`, "success");
+
+      // Atualizar paginação
+      const pagination = data.pagination || { page: 1, totalPages: 1, total: 0 };
+      paginaAtual = pagination.page;
+      totalPaginas = pagination.totalPages;
+      atualizarControlesPaginacao(pagination);
+
+      setFeedback(feedbackLanc, `OK • ${dadosListaAtual.length} de ${pagination.total} itens`, "success");
     } catch (err) {
       setFeedback(feedbackLanc, err.message || "Erro ao listar.", "error");
+    }
+  }
+
+  function atualizarControlesPaginacao(pagination) {
+    const btnPrev = document.getElementById("btnPrevPage");
+    const btnNext = document.getElementById("btnNextPage");
+    const paginaInfo = document.getElementById("paginaInfo");
+    const totalInfo = document.getElementById("totalInfo");
+
+    if (paginaInfo) {
+      paginaInfo.textContent = `Página ${pagination.page} de ${pagination.totalPages}`;
+    }
+
+    if (totalInfo) {
+      totalInfo.textContent = `Total: ${pagination.total}`;
+    }
+
+    if (btnPrev) {
+      btnPrev.disabled = pagination.page <= 1;
+    }
+
+    if (btnNext) {
+      btnNext.disabled = pagination.page >= pagination.totalPages;
     }
   }
 
@@ -635,12 +670,12 @@
       if (selectedRowIndex && Number(selectedRowIndex) >= 2) {
         const resp = await editar(selectedRowIndex, payload);
         setFeedback(feedbackSalvar, resp.message || "Atualizado.", "success");
+        await listar(paginaAtual); // mantém na página atual ao editar
       } else {
         const resp = await criar(payload);
         setFeedback(feedbackSalvar, resp.message || "Salvo.", "success");
+        await listar(1); // vai para primeira página ao criar
       }
-
-      await listar();
     } catch (err) {
       setFeedback(feedbackSalvar, err.message || "Erro ao salvar.", "error");
     }
@@ -649,7 +684,8 @@
   function limparFiltro() {
     if (formFiltro) formFiltro.reset();
     setFeedback(feedbackLanc, "", "info");
-    listar();
+    paginaAtual = 1;
+    listar(1);
   }
 
   function initDefaults() {
@@ -665,11 +701,33 @@
   }
 
   function bind() {
-    if (btnFiltrar) btnFiltrar.addEventListener("click", (e) => (e.preventDefault(), listar()));
+    if (btnFiltrar) btnFiltrar.addEventListener("click", (e) => (e.preventDefault(), listar(1)));
     if (btnLimparFiltro) btnLimparFiltro.addEventListener("click", (e) => (e.preventDefault(), limparFiltro()));
-    if (formFiltro) formFiltro.addEventListener("submit", (e) => (e.preventDefault(), listar()));
+    if (formFiltro) formFiltro.addEventListener("submit", (e) => (e.preventDefault(), listar(1)));
     if (formLanc) formLanc.addEventListener("submit", (e) => (e.preventDefault(), salvar()));
     if (btnNovo) btnNovo.addEventListener("click", (e) => (e.preventDefault(), clearForm()));
+
+    // Paginação
+    const btnPrevPage = document.getElementById("btnPrevPage");
+    const btnNextPage = document.getElementById("btnNextPage");
+
+    if (btnPrevPage) {
+      btnPrevPage.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (paginaAtual > 1) {
+          listar(paginaAtual - 1);
+        }
+      });
+    }
+
+    if (btnNextPage) {
+      btnNextPage.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (paginaAtual < totalPaginas) {
+          listar(paginaAtual + 1);
+        }
+      });
+    }
 
     // Exportação
     const btnExportExcel = document.getElementById("btnExportExcel");
@@ -706,5 +764,5 @@
 
   // carrega categorias pro tipo atual (se vazio, carrega geral ao focar)
   carregarCategoriasAtivas(getTipoAtual()).catch(() => {});
-  listar();
+  listar(1);
 })();
