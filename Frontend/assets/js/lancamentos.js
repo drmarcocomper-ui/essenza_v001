@@ -23,7 +23,12 @@
   const fDataFim = document.getElementById("fDataFim");
   const fTipo = document.getElementById("fTipo");
   const fStatus = document.getElementById("fStatus");
+  const fCategoria = document.getElementById("fCategoria");
+  const fFormaPagamento = document.getElementById("fFormaPagamento");
+  const fInstituicao = document.getElementById("fInstituicao");
+  const fTitularidade = document.getElementById("fTitularidade");
   const fQ = document.getElementById("fQ");
+  const datalistCategoriasF = document.getElementById("listaCategoriasF");
 
   const tabela = document.getElementById("tabelaLancamentos");
   const tbody = tabela ? tabela.querySelector("tbody") : null;
@@ -196,6 +201,16 @@
       opt.value = cat;
       datalistCategorias.appendChild(opt);
     });
+
+    // Também preenche o datalist do filtro
+    if (datalistCategoriasF) {
+      datalistCategoriasF.innerHTML = "";
+      [...set].slice(0, 200).forEach((cat) => {
+        const opt = document.createElement("option");
+        opt.value = cat;
+        datalistCategoriasF.appendChild(opt);
+      });
+    }
   }
 
   async function carregarCategoriasAtivas(tipo) {
@@ -217,6 +232,33 @@
 
     categoriasCache = Array.isArray(data.items) ? data.items : [];
     renderCategoriasDatalist(categoriasCache);
+  }
+
+  async function carregarTodasCategorias() {
+    if (!requireScriptUrl()) return;
+
+    const data = await jsonpRequest({
+      action: "Categoria.Listar",
+      sheet: "Categoria",
+      filtros: JSON.stringify({ somenteAtivos: "1" }),
+    });
+
+    if (!data || data.ok !== true) return;
+
+    const items = Array.isArray(data.items) ? data.items : [];
+    if (datalistCategoriasF) {
+      datalistCategoriasF.innerHTML = "";
+      const set = new Set();
+      items.forEach((it) => {
+        const cat = String(it?.Categoria || "").trim();
+        if (cat) set.add(cat);
+      });
+      [...set].slice(0, 200).forEach((cat) => {
+        const opt = document.createElement("option");
+        opt.value = cat;
+        datalistCategoriasF.appendChild(opt);
+      });
+    }
   }
 
   function findCategoriaAll(tipo, categoriaNome) {
@@ -448,6 +490,10 @@
       fDataFim: (fDataFim?.value || "").trim(),
       fTipo: (fTipo?.value || "").trim(),
       fStatus: (fStatus?.value || "").trim(),
+      fCategoria: (fCategoria?.value || "").trim(),
+      fFormaPagamento: (fFormaPagamento?.value || "").trim(),
+      fInstituicao: (fInstituicao?.value || "").trim(),
+      fTitularidade: (fTitularidade?.value || "").trim(),
       q: (fQ?.value || "").trim(),
     };
   }
@@ -721,5 +767,7 @@
 
   // carrega categorias pro tipo atual (se vazio, carrega geral ao focar)
   carregarCategoriasAtivas(getTipoAtual()).catch(() => {});
+  // carrega categorias para o filtro
+  carregarTodasCategorias().catch(() => {});
   listar(1);
 })();

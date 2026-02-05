@@ -65,6 +65,10 @@ function Lancamentos_dispatch_(action, p) {
     if (LANC_safeStr_(p.fDataFim)) filtros.fDataFim = p.fDataFim;
     if (LANC_safeStr_(p.fTipo)) filtros.fTipo = p.fTipo;
     if (LANC_safeStr_(p.fStatus)) filtros.fStatus = p.fStatus;
+    if (LANC_safeStr_(p.fCategoria)) filtros.fCategoria = p.fCategoria;
+    if (LANC_safeStr_(p.fFormaPagamento)) filtros.fFormaPagamento = p.fFormaPagamento;
+    if (LANC_safeStr_(p.fInstituicao)) filtros.fInstituicao = p.fInstituicao;
+    if (LANC_safeStr_(p.fTitularidade)) filtros.fTitularidade = p.fTitularidade;
     if (LANC_safeStr_(p.q)) filtros.q = p.q;
 
     // Paginação
@@ -244,6 +248,10 @@ function Lancamentos_listar_(sheet, filtros, page, limit) {
   var fFim = LANC_safeStr_(filtros.fDataFim || "");
   var fTipo = LANC_safeStr_(filtros.fTipo || "");
   var fStatus = LANC_safeStr_(filtros.fStatus || "");
+  var fCategoria = LANC_safeStr_(filtros.fCategoria || "");
+  var fFormaPagamento = LANC_safeStr_(filtros.fFormaPagamento || "");
+  var fInstituicao = LANC_safeStr_(filtros.fInstituicao || "");
+  var fTitularidade = LANC_safeStr_(filtros.fTitularidade || "");
   var q = LANC_safeStr_(filtros.q || "");
 
   var iniDate = fIni ? LANC_parseIsoDateToDate_(fIni) : null;
@@ -267,6 +275,24 @@ function Lancamentos_listar_(sheet, filtros, page, limit) {
 
     if (fTipo && tipo !== fTipo) continue;
     if (fStatus && status !== fStatus) continue;
+
+    // Filtros avançados
+    if (fCategoria) {
+      var categoria = LANC_safeStr_(row[idx["Categoria"]]);
+      if (categoria !== fCategoria) continue;
+    }
+    if (fFormaPagamento) {
+      var formaPag = LANC_safeStr_(row[idx["Forma_Pagamento"]]);
+      if (formaPag !== fFormaPagamento) continue;
+    }
+    if (fInstituicao) {
+      var instituicao = LANC_safeStr_(row[idx["Instituicao_Financeira"]]);
+      if (instituicao !== fInstituicao) continue;
+    }
+    if (fTitularidade) {
+      var titularidade = LANC_safeStr_(row[idx["Titularidade"]]);
+      if (titularidade !== fTitularidade) continue;
+    }
 
     if (qNorm) {
       var desc = LANC_normalize_(row[idx["Descricao"]] || "");
