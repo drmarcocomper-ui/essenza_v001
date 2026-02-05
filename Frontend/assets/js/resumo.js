@@ -83,6 +83,14 @@
     return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   }
 
+  function formatMesDisplay(mesYYYYMM) {
+    if (!mesYYYYMM || !/^\d{4}-\d{2}$/.test(mesYYYYMM)) return mesYYYYMM;
+    const [ano, mes] = mesYYYYMM.split("-");
+    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const mesNome = meses[parseInt(mes, 10) - 1] || mes;
+    return `${mesNome}/${ano}`;
+  }
+
   function toNumber(v) {
     const s = String(v ?? "").trim();
     if (!s) return 0;
@@ -119,10 +127,11 @@
 
     items.forEach((it) => {
       const mes = it["Mês"] || "";
+      const mesDisplay = formatMesDisplay(mes);
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td><button type="button" class="btn btn--secondary btn-mes" data-mes="${escapeHtml(mes)}">${escapeHtml(mes)}</button></td>
+        <td><button type="button" class="btn btn--secondary btn-mes" data-mes="${escapeHtml(mes)}">${escapeHtml(mesDisplay)}</button></td>
 
         <td>${escapeHtml(formatMoneyBR(it["Entradas Pagas"]))}</td>
         <td>${escapeHtml(formatMoneyBR(it["Entradas Pendentes"]))}</td>
@@ -186,7 +195,7 @@
 
     const sorted = sortByDataDesc(items || []);
 
-    if (mesSelecionado) mesSelecionado.textContent = mesYYYYMM;
+    if (mesSelecionado) mesSelecionado.textContent = formatMesDisplay(mesYYYYMM);
     if (cardDetalhes) cardDetalhes.style.display = "block";
 
     const resumo = calcularResumoMes(sorted);
