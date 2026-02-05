@@ -15,6 +15,9 @@
  * - Categoria.Editar
  * - Categoria.Listar
  *
+ * ✅ Backup:
+ * - Backup.ExportarTodos
+ *
  * Usado por:
  * - Api.gs
  */
@@ -133,6 +136,22 @@ function Registry_init_() {
         }
 
         return Categoria_dispatch_(action, p);
+      }
+    },
+
+    // ---- BACKUP (prefixo) ----
+    {
+      prefix: "Backup.",
+      fn: function (action, e) {
+        if (typeof Backup_dispatch_ !== "function") {
+          throw new Error("Backup_dispatch_ não encontrado. Verifique Backup.gs.");
+        }
+
+        if (action !== "Backup.ExportarTodos") {
+          return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
+        }
+
+        return Backup_dispatch_(action, e);
       }
     }
   ];

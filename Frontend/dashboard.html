@@ -7,6 +7,7 @@
 
   <link rel="stylesheet" href="assets/css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     .dashboard-cards {
       display: grid;
@@ -293,6 +294,20 @@
       </div>
     </section>
 
+    <!-- BACKUP -->
+    <section class="comparativo-section">
+      <div class="chart-container">
+        <h3>Backup Completo</h3>
+        <p style="color: var(--cor-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+          Exporte todos os dados do sistema (Clientes, Lancamentos, Categorias) em um único arquivo Excel.
+        </p>
+        <div class="actions">
+          <button type="button" id="btnBackup" class="btn btn--primary">Exportar Backup Excel</button>
+        </div>
+        <div id="feedbackBackup" class="feedback" aria-live="polite" role="status" style="margin-top: 0.75rem;"></div>
+      </div>
+    </section>
+
     <div id="feedbackDash" class="feedback" aria-live="polite" role="status" style="margin-top:1.5rem;"></div>
   </main>
 
@@ -305,6 +320,7 @@
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="assets/js/search.js"></script>
+  <script src="assets/js/export.js"></script>
   <script src="assets/js/dashboard.js" defer></script>
 </body>
 </html>

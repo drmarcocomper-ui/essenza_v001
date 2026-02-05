@@ -161,6 +161,66 @@
   ];
 
   // ============================
+  // Exportar Backup Completo (múltiplas abas)
+  // ============================
+  function exportBackupExcel(sheetsData, filename) {
+    if (typeof XLSX === "undefined") {
+      alert("Biblioteca XLSX não carregada. Recarregue a página.");
+      return;
+    }
+
+    const wb = XLSX.utils.book_new();
+    const sheetOrder = ["Clientes", "Lancamentos", "Categorias"];
+
+    sheetOrder.forEach(sheetName => {
+      const sheetInfo = sheetsData[sheetName];
+      if (!sheetInfo || !sheetInfo.exists) {
+        // Criar aba vazia com mensagem
+        const ws = XLSX.utils.aoa_to_sheet([["Aba não encontrada ou vazia"]]);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        return;
+      }
+
+      const headers = sheetInfo.headers || [];
+      const data = sheetInfo.data || [];
+
+      if (headers.length === 0) {
+        const ws = XLSX.utils.aoa_to_sheet([["Sem dados"]]);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        return;
+      }
+
+      // Converter objetos para array de arrays
+      const rows = data.map(row => {
+        return headers.map(h => {
+          let val = row[h] ?? "";
+          // Formatar datas
+          if (h.includes("Data") && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+            val = formatDateBR(val);
+          }
+          return val;
+        });
+      });
+
+      const wsData = [headers, ...rows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      // Ajustar largura das colunas
+      const colWidths = headers.map(h => {
+        const len = Math.max(h.length, 15);
+        return { wch: Math.min(len, 30) };
+      });
+      ws["!cols"] = colWidths;
+
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    // Download
+    const finalName = `${filename}_${getTimestamp()}.xlsx`;
+    XLSX.writeFile(wb, finalName);
+  }
+
+  // ============================
   // API Pública
   // ============================
   window.EssenzaExport = {
@@ -179,6 +239,9 @@
     resumoPDF: function(data) {
       exportToPDF(data, COLUMNS_RESUMO, "resumo_mensal", "Resumo Mensal");
     },
+
+    // Backup completo
+    backupExcel: exportBackupExcel,
 
     // Genérico (para uso customizado)
     toExcel: exportToExcel,

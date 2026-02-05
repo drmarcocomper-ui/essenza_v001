@@ -14,6 +14,8 @@
   const rankingClientes = document.getElementById("rankingClientes");
   const selectMesCliente = document.getElementById("selectMesCliente");
   const alertaPendencias = document.getElementById("alertaPendencias");
+  const btnBackup = document.getElementById("btnBackup");
+  const feedbackBackup = document.getElementById("feedbackBackup");
 
   // Charts
   let chartEvolucao = null;
@@ -694,9 +696,58 @@
   }
 
   // ============================
+  // Backup Completo
+  // ============================
+  function setFeedbackBackup(msg, type = "info") {
+    if (!feedbackBackup) return;
+    feedbackBackup.textContent = msg || "";
+    feedbackBackup.dataset.type = type;
+  }
+
+  async function executarBackup() {
+    if (!btnBackup) return;
+
+    btnBackup.disabled = true;
+    btnBackup.textContent = "Exportando...";
+    setFeedbackBackup("Carregando dados do servidor...", "info");
+
+    try {
+      const data = await jsonpRequest({
+        action: "Backup.ExportarTodos"
+      });
+
+      if (!data || data.ok !== true) {
+        throw new Error(data?.message || "Erro ao carregar dados para backup.");
+      }
+
+      setFeedbackBackup("Gerando arquivo Excel...", "info");
+
+      // Usar o EssenzaExport para gerar o arquivo
+      if (typeof window.EssenzaExport?.backupExcel === "function") {
+        window.EssenzaExport.backupExcel(data.sheets, "backup_essenza");
+        setFeedbackBackup("Backup exportado com sucesso!", "success");
+      } else {
+        throw new Error("Módulo de exportação não carregado.");
+      }
+
+    } catch (err) {
+      setFeedbackBackup(err.message || "Erro ao exportar backup.", "error");
+    } finally {
+      btnBackup.disabled = false;
+      btnBackup.textContent = "Exportar Backup Excel";
+    }
+  }
+
+  function bindBackup() {
+    if (!btnBackup) return;
+    btnBackup.addEventListener("click", executarBackup);
+  }
+
+  // ============================
   // Init
   // ============================
   bindSelectMes();
+  bindBackup();
   carregarDados();
   carregarRankingClientes();
   carregarPendencias();
