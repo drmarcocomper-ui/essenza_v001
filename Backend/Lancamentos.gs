@@ -22,7 +22,6 @@ var LANC_HEADERS = [
   "Categoria",
   "Descricao",
   "ID_Cliente",
-  "Cliente_Fornecedor",
   "Forma_Pagamento",
   "Instituicao_Financeira",
   "Titularidade",
@@ -319,7 +318,7 @@ function Lancamentos_listar_(sheet, filtros, page, limit) {
 
     if (qNorm) {
       var desc = LANC_normalize_(row[idx["Descricao"]] || "");
-      var cli = LANC_normalize_(row[idx["Cliente_Fornecedor"]] || "");
+      var cli = LANC_normalize_(row[idx["ID_Cliente"]] || "");
       var cat = LANC_normalize_(row[idx["Categoria"]] || "");
       var org = LANC_normalize_(row[idx["Origem"]] || "");
 
@@ -385,7 +384,7 @@ function Lancamentos_excluir_(sheet, rowIndex) {
 }
 
 /**
- * Agrupa entradas pagas por Cliente_Fornecedor
+ * Agrupa entradas pagas por ID_Cliente
  * Retorna ranking dos clientes com maior valor
  */
 function Lancamentos_porCliente_(sheet, filtros) {
@@ -422,7 +421,7 @@ function Lancamentos_porCliente_(sheet, filtros) {
       if (mesRow !== fMes) continue;
     }
 
-    var cliente = LANC_safeStr_(row[idx["Cliente_Fornecedor"]]) || "(Sem cliente)";
+    var cliente = LANC_safeStr_(row[idx["ID_Cliente"]]) || "(Sem cliente)";
     var valor = LANC_parseNumberSafe_(row[idx["Valor"]]);
 
     if (!clientes[cliente]) {
@@ -494,7 +493,6 @@ function LANC_buildRowObj_(payload, dc, dcaixa, parcelamentoStr, valorNum, statu
     Categoria: LANC_safeStr_(payload.Categoria),
     Descricao: LANC_safeStr_(payload.Descricao),
     ID_Cliente: LANC_safeStr_(payload.ID_Cliente),
-    Cliente_Fornecedor: LANC_safeStr_(payload.Cliente_Fornecedor),
     Forma_Pagamento: LANC_safeStr_(payload.Forma_Pagamento),
     Instituicao_Financeira: LANC_safeStr_(payload.Instituicao_Financeira),
     Titularidade: LANC_safeStr_(payload.Titularidade),

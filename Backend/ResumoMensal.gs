@@ -159,7 +159,7 @@ function ResumoMensal_DetalharMes(mesYYYYMM) {
       Tipo: RM_safeStr_(row[idx["Tipo"]]),
       Categoria: RM_safeStr_(row[idx["Categoria"]]),
       Descricao: RM_safeStr_(row[idx["Descricao"]]),
-      Cliente_Fornecedor: RM_safeStr_(row[idx["Cliente_Fornecedor"]]),
+      ID_Cliente: RM_safeStr_(row[idx["ID_Cliente"]]),
       Forma_Pagamento: RM_safeStr_(row[idx["Forma_Pagamento"]]),
       Instituicao_Financeira: RM_safeStr_(row[idx["Instituicao_Financeira"]]),
       Titularidade: RM_safeStr_(row[idx["Titularidade"]]),

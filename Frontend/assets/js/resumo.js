@@ -246,7 +246,7 @@
         <td>${escapeHtml(it.Tipo || "")}</td>
         <td>${escapeHtml(it.Categoria || "")}</td>
         <td>${escapeHtml(it.Descricao || "")}</td>
-        <td>${escapeHtml(it.Cliente_Fornecedor || "")}</td>
+        <td>${escapeHtml(it.ID_Cliente || "")}</td>
         <td>${escapeHtml(it.Forma_Pagamento || "")}</td>
         <td>${escapeHtml(it.Instituicao_Financeira || "")}</td>
         <td>${escapeHtml(it.Titularidade || "")}</td>
@@ -394,7 +394,7 @@
       it.Tipo || "",
       it.Categoria || "",
       (it.Descricao || "").substring(0, 25),
-      (it.Cliente_Fornecedor || "").substring(0, 20),
+      (it.ID_Cliente || "").substring(0, 20),
       it.Forma_Pagamento || "",
       it.Instituicao_Financeira || "",
       it.Titularidade || "",

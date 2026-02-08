@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd consolidated file for Apps Script copy\n\nAll new code in one file with instructions for manual copy to Apps Script\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(clasp push:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

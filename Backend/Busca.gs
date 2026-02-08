@@ -96,7 +96,7 @@ function Busca_emLancamentos_(qNorm) {
     var row = data[i];
 
     var desc = Busca_normalize_(row[idx["Descricao"]] || "");
-    var cli = Busca_normalize_(row[idx["Cliente_Fornecedor"]] || "");
+    var cli = Busca_normalize_(row[idx["ID_Cliente"]] || "");
     var cat = Busca_normalize_(row[idx["Categoria"]] || "");
     var obs = Busca_normalize_(row[idx["Observacoes"]] || "");
 
@@ -113,7 +113,7 @@ function Busca_emLancamentos_(qNorm) {
         Tipo: Busca_safeStr_(row[idx["Tipo"]]),
         Categoria: Busca_safeStr_(row[idx["Categoria"]]),
         Descricao: Busca_safeStr_(row[idx["Descricao"]]),
-        Cliente_Fornecedor: Busca_safeStr_(row[idx["Cliente_Fornecedor"]]),
+        ID_Cliente: Busca_safeStr_(row[idx["ID_Cliente"]]),
         Valor: row[idx["Valor"]] || 0
       });
     }

@@ -45,7 +45,7 @@
   const btnConfirmarExcluir = document.getElementById("btnConfirmarExcluir");
 
   // Clientes (opcional)
-  const inputCliente = document.getElementById("Cliente_Fornecedor");
+  const inputCliente = document.getElementById("ID_Cliente");
   const datalistClientes = document.getElementById("listaClientes");
 
   // Categoria (padronização)
@@ -63,7 +63,7 @@
     Origem: document.getElementById("Origem"),
     Categoria: inputCategoria,
     Descricao: document.getElementById("Descricao"),
-    Cliente_Fornecedor: inputCliente,
+    ID_Cliente: inputCliente,
     Forma_Pagamento: document.getElementById("Forma_Pagamento"),
     Instituicao_Financeira: document.getElementById("Instituicao_Financeira"),
     Titularidade: document.getElementById("Titularidade"),
@@ -491,7 +491,7 @@
       Origem: (el.Origem?.value || "").trim(),
       Categoria: (el.Categoria?.value || "").trim(),
       Descricao: (el.Descricao?.value || "").trim(),
-      Cliente_Fornecedor: (el.Cliente_Fornecedor?.value || "").trim(),
+      ID_Cliente: (el.ID_Cliente?.value || "").trim(),
       Forma_Pagamento: (el.Forma_Pagamento?.value || "").trim(),
       Instituicao_Financeira: (el.Instituicao_Financeira?.value || "").trim(),
       Titularidade: (el.Titularidade?.value || "").trim(),
@@ -626,7 +626,7 @@
         <td>${escapeHtml(it.Tipo || "")}</td>
         <td>${escapeHtml(it.Categoria || "")}</td>
         <td>${escapeHtml(it.Descricao || "")}</td>
-        <td>${escapeHtml(it.Cliente_Fornecedor || "")}</td>
+        <td>${escapeHtml(it.ID_Cliente || "")}</td>
         <td>${escapeHtml(it.Forma_Pagamento || "")}</td>
         <td>${escapeHtml(formatMoneyBR(it.Valor))}</td>
         <td>${escapeHtml(it.Status || "")}</td>

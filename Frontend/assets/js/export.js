@@ -145,7 +145,7 @@
     { key: "Tipo", label: "Tipo", width: 10 },
     { key: "Categoria", label: "Categoria", width: 15 },
     { key: "Descricao", label: "Descricao", width: 20 },
-    { key: "Cliente_Fornecedor", label: "Cliente/Forn.", width: 18 },
+    { key: "ID_Cliente", label: "Cliente/Forn.", width: 18 },
     { key: "Forma_Pagamento", label: "Forma Pgto", width: 12 },
     { key: "Valor", label: "Valor", type: "money", width: 12 },
     { key: "Status", label: "Status", width: 10 }
