@@ -516,14 +516,15 @@
   function atualizarVisibilidadeCampos() {
     const tipo = getTipoAtual();
 
+    // Sem tipo: esconde ambos
     // Entrada: mostra Cliente, esconde Fornecedor
     // Saida: mostra Fornecedor, esconde Cliente
-    // Outros: mostra ambos
+    // Outros (Transferência): esconde ambos
     if (fieldCliente) {
-      fieldCliente.style.display = (tipo === "Saida") ? "none" : "";
+      fieldCliente.style.display = (tipo === "Entrada") ? "" : "none";
     }
     if (fieldFornecedor) {
-      fieldFornecedor.style.display = (tipo === "Entrada") ? "none" : "";
+      fieldFornecedor.style.display = (tipo === "Saida") ? "" : "none";
     }
   }
 
