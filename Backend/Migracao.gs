@@ -1420,6 +1420,140 @@ function Migracao_gerarIDFornecedorParaSaidas() {
 }
 
 /**
+ * Popula a aba Fornecedores com os IDs gerados na aba Lancamentos
+ * Usa a Categoria ou Descricao como nome do fornecedor
+ */
+function Migracao_popularFornecedores() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetLanc = ss.getSheetByName("Lancamentos");
+  var sheetForn = ss.getSheetByName("Fornecedores");
+
+  if (!sheetLanc) {
+    Logger.log("ERRO: Aba 'Lancamentos' não encontrada!");
+    return;
+  }
+
+  if (!sheetForn) {
+    Logger.log("ERRO: Aba 'Fornecedores' não encontrada!");
+    return;
+  }
+
+  Logger.log("========== POPULANDO ABA FORNECEDORES ==========");
+
+  // Ler dados de Lancamentos
+  var dataLanc = sheetLanc.getDataRange().getValues();
+  if (dataLanc.length <= 1) {
+    Logger.log("Nenhum dado em Lancamentos.");
+    return;
+  }
+
+  var headerLanc = dataLanc[0];
+  var idxLanc = Migracao_indexMap_(headerLanc);
+
+  var idxTipo = idxLanc["Tipo"];
+  var idxIdFornecedor = idxLanc["ID_Fornecedor"];
+  var idxCategoria = idxLanc["Categoria"];
+  var idxDescricao = idxLanc["Descricao"];
+
+  if (idxIdFornecedor === undefined) {
+    Logger.log("ERRO: Coluna 'ID_Fornecedor' não encontrada em Lancamentos!");
+    return;
+  }
+
+  // Ler dados existentes de Fornecedores
+  var dataForn = sheetForn.getDataRange().getValues();
+  var headerForn = dataForn[0];
+  var idxForn = Migracao_indexMap_(headerForn);
+
+  // Criar mapa de IDs já existentes em Fornecedores
+  var idsExistentes = {};
+  for (var f = 1; f < dataForn.length; f++) {
+    var idExistente = String(dataForn[f][idxForn["ID_Fornecedor"]] || "").trim();
+    if (idExistente) {
+      idsExistentes[idExistente] = true;
+    }
+  }
+
+  Logger.log("Fornecedores já cadastrados: " + Object.keys(idsExistentes).length);
+
+  // Coletar IDs únicos de Lancamentos (Saida) que não existem em Fornecedores
+  var novosForncedores = {};
+
+  for (var r = 1; r < dataLanc.length; r++) {
+    var tipo = String(dataLanc[r][idxTipo] || "").trim();
+    var idFornecedor = String(dataLanc[r][idxIdFornecedor] || "").trim();
+
+    if (tipo === "Saida" && idFornecedor && !idsExistentes[idFornecedor] && !novosForncedores[idFornecedor]) {
+      var categoria = String(dataLanc[r][idxCategoria] || "").trim();
+      var descricao = String(dataLanc[r][idxDescricao] || "").trim();
+
+      // Usar Categoria ou Descricao como nome do fornecedor
+      var nomeFornecedor = categoria || descricao || "(Sem nome)";
+
+      novosForncedores[idFornecedor] = {
+        id: idFornecedor,
+        nome: nomeFornecedor,
+        categoria: categoria
+      };
+    }
+  }
+
+  var idsNovos = Object.keys(novosForncedores);
+  Logger.log("Novos fornecedores a cadastrar: " + idsNovos.length);
+
+  if (idsNovos.length === 0) {
+    Logger.log("Nenhum novo fornecedor para cadastrar.");
+    return;
+  }
+
+  // Inserir novos fornecedores
+  var dataHoje = Migracao_getDataFormatadaISO_();
+  var inseridos = 0;
+
+  for (var i = 0; i < idsNovos.length; i++) {
+    var forn = novosForncedores[idsNovos[i]];
+
+    // Formato: ID_Fornecedor, NomeFornecedor, Telefone, E-mail, CNPJ_CPF, Categoria, Endereco, DataCadastro, Observacao
+    var novaLinha = [
+      forn.id,           // ID_Fornecedor
+      forn.nome,         // NomeFornecedor
+      "",                // Telefone
+      "",                // E-mail
+      "",                // CNPJ_CPF
+      forn.categoria,    // Categoria
+      "",                // Endereco
+      dataHoje,          // DataCadastro
+      ""                 // Observacao
+    ];
+
+    sheetForn.appendRow(novaLinha);
+    inseridos++;
+
+    if (inseridos % 50 === 0) {
+      Logger.log("Inseridos: " + inseridos);
+      SpreadsheetApp.flush();
+    }
+  }
+
+  SpreadsheetApp.flush();
+
+  Logger.log("========================================");
+  Logger.log("✅ MIGRAÇÃO CONCLUÍDA!");
+  Logger.log("Fornecedores inseridos: " + inseridos);
+}
+
+/**
+ * Retorna data formatada YYYY-MM-DD
+ */
+function Migracao_getDataFormatadaISO_() {
+  var d = new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, "0");
+  var day = String(d.getDate()).padStart(2, "0");
+  return y + "-" + m + "-" + day;
+}
+
+/**
  * Retorna data formatada YYYYMMDD
  */
 function Migracao_getDataFormatada_() {
