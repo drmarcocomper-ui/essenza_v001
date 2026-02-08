@@ -187,6 +187,37 @@ function RM_pickFromFixed_(raw, fixedList) {
 // ============================================================
 // UTIL — Datas
 // ============================================================
+
+/**
+ * Extrai YYYY-MM de qualquer formato de data
+ * Suporta: Date object, YYYY-MM, YYYY-MM-DD, ISO string, DD/MM/YYYY
+ */
+function RM_extractMonth_(value) {
+  if (!value) return "";
+
+  // Se for objeto Date do JS
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return value.getFullYear() + "-" + String(value.getMonth() + 1).padStart(2, "0");
+  }
+
+  var s = RM_safeStr_(value);
+  if (!s) return "";
+
+  // Já está no formato YYYY-MM
+  if (/^\d{4}-\d{2}$/.test(s)) return s;
+
+  // Formato YYYY-MM-DD ou YYYY-MM-DDTHH:mm:ss (ISO)
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 7);
+
+  // Formato DD/MM/YYYY
+  var m = s.match(/^\d{1,2}\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    return m[2] + "-" + String(parseInt(m[1], 10)).padStart(2, "0");
+  }
+
+  return "";
+}
+
 function RM_monthKeyFromDate_(value) {
   if (!value) return "";
 

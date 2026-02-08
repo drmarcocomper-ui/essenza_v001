@@ -53,9 +53,9 @@ function ResumoMensal_Calcular(mesYYYYMM) {
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
 
-    // Usar Mes_a_receber diretamente (já está em YYYY-MM)
-    var mes = RM_safeStr_(row[idx["Mes_a_receber"]]);
-    if (!mes || !/^\d{4}-\d{2}$/.test(mes)) continue;
+    // Extrair mês de Mes_a_receber (pode ser YYYY-MM, YYYY-MM-DD ou Date)
+    var mes = RM_extractMonth_(row[idx["Mes_a_receber"]]);
+    if (!mes) continue;
     if (mesYYYYMM && mes !== mesYYYYMM) continue;
 
     if (!buckets[mes]) buckets[mes] = RM_newAcc_();
@@ -152,8 +152,8 @@ function ResumoMensal_DetalharMes(mesYYYYMM) {
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
 
-    // Usar Mes_a_receber diretamente
-    var mes = RM_safeStr_(row[idx["Mes_a_receber"]]);
+    // Extrair mês de Mes_a_receber
+    var mes = RM_extractMonth_(row[idx["Mes_a_receber"]]);
     if (!mes || mes !== mesYYYYMM) continue;
 
     items.push({
