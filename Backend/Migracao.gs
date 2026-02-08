@@ -990,11 +990,22 @@ function Migracao_importarLancamentos2026() {
  * Corrige ID_Cliente buscando pelo nome na aba Cadastro
  */
 function Migracao_importarLancamentos2026_v2() {
+  Logger.log("Use Migracao_importarLancamentos2026_v3() - versão atualizada");
+}
+
+/**
+ * Importa lançamentos de Lancamentos_2026 para Lancamentos
+ * - Converte nome do cliente para ID_Cliente
+ * - Converte nome do fornecedor para ID_Fornecedor (se Tipo=Saida)
+ * - Loga nomes não encontrados para debug
+ */
+function Migracao_importarLancamentos2026_v3() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
   var abaOrigem = ss.getSheetByName("Lancamentos_2026");
   var abaDestino = ss.getSheetByName("Lancamentos");
   var abaClientes = ss.getSheetByName("Cadastro");
+  var abaFornecedores = ss.getSheetByName("Fornecedores");
 
   if (!abaOrigem) {
     Logger.log("ERRO: Aba 'Lancamentos_2026' não encontrada!");
@@ -1006,32 +1017,54 @@ function Migracao_importarLancamentos2026_v2() {
     return;
   }
 
-  Logger.log("========== IMPORTANDO LANCAMENTOS_2026 (v2) ==========");
+  Logger.log("========== IMPORTANDO LANCAMENTOS_2026 (v3) ==========");
 
-  // Carregar mapa reverso: Nome -> ID
-  var mapaNomeParaId = {};
+  // Carregar mapa de clientes: Nome -> ID
+  var mapaClientes = {};
   if (abaClientes) {
     var dataClientes = abaClientes.getDataRange().getValues();
     if (dataClientes.length > 1) {
       var headerClientes = dataClientes[0];
       var idxClientes = Migracao_indexMap_(headerClientes);
 
-      var idxId = idxClientes["ID_Cliente"];
-      if (idxId === undefined) idxId = idxClientes["ID"];
-      var idxNome = idxClientes["NomeCliente"];
-      if (idxNome === undefined) idxNome = idxClientes["Nome"];
+      var idxId = idxClientes["ID_Cliente"] !== undefined ? idxClientes["ID_Cliente"] : idxClientes["ID"];
+      var idxNome = idxClientes["NomeCliente"] !== undefined ? idxClientes["NomeCliente"] : idxClientes["Nome"];
 
       if (idxId !== undefined && idxNome !== undefined) {
         for (var c = 1; c < dataClientes.length; c++) {
           var id = String(dataClientes[c][idxId] || "").trim();
           var nome = String(dataClientes[c][idxNome] || "").trim().toLowerCase();
           if (id && nome) {
-            mapaNomeParaId[nome] = id;
+            mapaClientes[nome] = id;
           }
         }
       }
     }
-    Logger.log("Mapa Nome->ID carregado: " + Object.keys(mapaNomeParaId).length + " clientes");
+    Logger.log("Clientes carregados: " + Object.keys(mapaClientes).length);
+  }
+
+  // Carregar mapa de fornecedores: Nome -> ID
+  var mapaFornecedores = {};
+  if (abaFornecedores) {
+    var dataForn = abaFornecedores.getDataRange().getValues();
+    if (dataForn.length > 1) {
+      var headerForn = dataForn[0];
+      var idxForn = Migracao_indexMap_(headerForn);
+
+      var idxIdF = idxForn["ID_Fornecedor"] !== undefined ? idxForn["ID_Fornecedor"] : idxForn["ID"];
+      var idxNomeF = idxForn["NomeFornecedor"] !== undefined ? idxForn["NomeFornecedor"] : idxForn["Nome"];
+
+      if (idxIdF !== undefined && idxNomeF !== undefined) {
+        for (var f = 1; f < dataForn.length; f++) {
+          var idF = String(dataForn[f][idxIdF] || "").trim();
+          var nomeF = String(dataForn[f][idxNomeF] || "").trim().toLowerCase();
+          if (idF && nomeF) {
+            mapaFornecedores[nomeF] = idF;
+          }
+        }
+      }
+    }
+    Logger.log("Fornecedores carregados: " + Object.keys(mapaFornecedores).length);
   }
 
   // Ler dados da origem
@@ -1047,19 +1080,11 @@ function Migracao_importarLancamentos2026_v2() {
   Logger.log("Colunas origem: " + headerOrigem.join(" | "));
   Logger.log("Total de linhas para importar: " + (dadosOrigem.length - 1));
 
-  // Verificar estrutura (deve ter 15-16 colunas da estrutura nova)
-  var colunasEsperadas = ["Data_Competencia", "Data_Caixa", "Tipo", "Categoria", "Descricao", "ID_Cliente", "Valor", "Status"];
-  for (var i = 0; i < colunasEsperadas.length; i++) {
-    if (idxOrigem[colunasEsperadas[i]] === undefined) {
-      Logger.log("ERRO: Coluna '" + colunasEsperadas[i] + "' não encontrada!");
-      return;
-    }
-  }
-
   // Importar cada linha
   var importados = 0;
-  var corrigidos = 0;
-  var erros = [];
+  var clientesCorrigidos = 0;
+  var fornecedoresCorrigidos = 0;
+  var nomesNaoEncontrados = {};
 
   for (var r = 1; r < dadosOrigem.length; r++) {
     var row = dadosOrigem[r];
@@ -1071,7 +1096,16 @@ function Migracao_importarLancamentos2026_v2() {
       var origem = String(row[idxOrigem["Origem"]] || "").trim();
       var categoria = String(row[idxOrigem["Categoria"]] || "").trim();
       var descricao = String(row[idxOrigem["Descricao"]] || "").trim();
-      var idClienteOriginal = String(row[idxOrigem["ID_Cliente"]] || "").trim();
+
+      // Coluna ID_Cliente pode ter nome de cliente OU fornecedor
+      var nomeOriginal = String(row[idxOrigem["ID_Cliente"]] || "").trim();
+
+      // Coluna Cliente_Fornecedor (se existir)
+      var clienteFornecedor = "";
+      if (idxOrigem["Cliente_Fornecedor"] !== undefined) {
+        clienteFornecedor = String(row[idxOrigem["Cliente_Fornecedor"]] || "").trim();
+      }
+
       var formaPagamento = String(row[idxOrigem["Forma_Pagamento"]] || "").trim();
       var instituicao = String(row[idxOrigem["Instituicao_Financeira"]] || "").trim();
       var titularidade = String(row[idxOrigem["Titularidade"]] || "").trim();
@@ -1079,22 +1113,37 @@ function Migracao_importarLancamentos2026_v2() {
       var valor = Migracao_parseNumber_(row[idxOrigem["Valor"]]);
       var status = String(row[idxOrigem["Status"]] || "").trim();
       var observacoes = String(row[idxOrigem["Observacoes"]] || "").trim();
-      var mesAReceber = String(row[idxOrigem["Mes_a_receber"]] || "").trim();
+      var mesAReceber = Migracao_formatarMes_(row[idxOrigem["Mes_a_receber"]]);
 
       // Ignorar linhas vazias
-      if (!dataCompetencia && !descricao && !valor) {
+      if (!dataCompetencia && !dataCaixa && !descricao && !valor) {
         continue;
       }
 
-      // Corrigir ID_Cliente: buscar ID pelo nome
-      var idClienteCorrigido = idClienteOriginal;
-      var nomeNormalizado = idClienteOriginal.toLowerCase();
-      if (mapaNomeParaId[nomeNormalizado]) {
-        idClienteCorrigido = mapaNomeParaId[nomeNormalizado];
-        corrigidos++;
+      var idCliente = "";
+      var idFornecedor = "";
+      var nomeNorm = nomeOriginal.toLowerCase();
+
+      // Se é Entrada, buscar como cliente
+      if (tipo === "Entrada" || tipo === "Receita") {
+        if (mapaClientes[nomeNorm]) {
+          idCliente = mapaClientes[nomeNorm];
+          clientesCorrigidos++;
+        } else if (nomeOriginal) {
+          nomesNaoEncontrados[nomeOriginal] = (nomesNaoEncontrados[nomeOriginal] || 0) + 1;
+        }
+      }
+      // Se é Saída, buscar como fornecedor
+      else if (tipo === "Saida" || tipo === "Saída" || tipo === "Despesa") {
+        if (mapaFornecedores[nomeNorm]) {
+          idFornecedor = mapaFornecedores[nomeNorm];
+          fornecedoresCorrigidos++;
+        } else if (nomeOriginal) {
+          nomesNaoEncontrados[nomeOriginal] = (nomesNaoEncontrados[nomeOriginal] || 0) + 1;
+        }
       }
 
-      // Montar linha no formato novo (16 colunas)
+      // Montar linha no formato destino (16 colunas)
       var novaLinha = [
         dataCompetencia,      // Data_Competencia
         dataCaixa,            // Data_Caixa
@@ -1102,8 +1151,8 @@ function Migracao_importarLancamentos2026_v2() {
         origem,               // Origem
         categoria,            // Categoria
         descricao,            // Descricao
-        idClienteCorrigido,   // ID_Cliente (corrigido)
-        "",                   // ID_Fornecedor
+        idCliente,            // ID_Cliente
+        idFornecedor,         // ID_Fornecedor
         formaPagamento,       // Forma_Pagamento
         instituicao,          // Instituicao_Financeira
         titularidade,         // Titularidade
@@ -1117,13 +1166,13 @@ function Migracao_importarLancamentos2026_v2() {
       abaDestino.appendRow(novaLinha);
       importados++;
 
-      if (importados % 100 === 0) {
-        Logger.log("Importados: " + importados + " (corrigidos: " + corrigidos + ")");
+      if (importados % 50 === 0) {
+        Logger.log("Importados: " + importados);
         SpreadsheetApp.flush();
       }
 
     } catch (e) {
-      erros.push("Linha " + (r + 1) + ": " + e.message);
+      Logger.log("Erro linha " + (r + 1) + ": " + e.message);
     }
   }
 
@@ -1132,14 +1181,38 @@ function Migracao_importarLancamentos2026_v2() {
   Logger.log("========================================");
   Logger.log("✅ IMPORTAÇÃO CONCLUÍDA!");
   Logger.log("Registros importados: " + importados);
-  Logger.log("IDs corrigidos: " + corrigidos);
-  Logger.log("Erros: " + erros.length);
+  Logger.log("Clientes convertidos: " + clientesCorrigidos);
+  Logger.log("Fornecedores convertidos: " + fornecedoresCorrigidos);
 
-  if (erros.length > 0 && erros.length <= 10) {
-    for (var i = 0; i < erros.length; i++) {
-      Logger.log("  - " + erros[i]);
+  var nomesNaoEnc = Object.keys(nomesNaoEncontrados);
+  if (nomesNaoEnc.length > 0) {
+    Logger.log("⚠️ Nomes NÃO encontrados (" + nomesNaoEnc.length + "):");
+    for (var i = 0; i < Math.min(nomesNaoEnc.length, 20); i++) {
+      Logger.log("  - " + nomesNaoEnc[i] + " (" + nomesNaoEncontrados[nomesNaoEnc[i]] + "x)");
     }
   }
+}
+
+/**
+ * Formata mês para YYYY-MM
+ */
+function Migracao_formatarMes_(value) {
+  if (!value) return "";
+
+  // Se já é Date object
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return value.getFullYear() + "-" + String(value.getMonth() + 1).padStart(2, "0");
+  }
+
+  var s = String(value).trim();
+
+  // Já está no formato YYYY-MM
+  if (/^\d{4}-\d{2}$/.test(s)) return s;
+
+  // Formato YYYY-MM-DD ou ISO
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 7);
+
+  return s;
 }
 
 /**
