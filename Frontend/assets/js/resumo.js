@@ -64,11 +64,35 @@
     return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   }
 
-  function formatMesDisplay(mesYYYYMM) {
-    if (!mesYYYYMM || !/^\d{4}-\d{2}$/.test(mesYYYYMM)) return mesYYYYMM;
-    const [ano, mes] = mesYYYYMM.split("-");
+  function formatMesDisplay(mesInput) {
+    if (!mesInput) return "";
+    const s = String(mesInput).trim();
+
     const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-    return `${meses[parseInt(mes, 10) - 1]}/${ano}`;
+
+    // Formato YYYY-MM (2025-01)
+    if (/^\d{4}-\d{2}$/.test(s)) {
+      const [ano, mes] = s.split("-");
+      const idx = parseInt(mes, 10) - 1;
+      return idx >= 0 && idx < 12 ? `${meses[idx]}/${ano}` : s;
+    }
+
+    // Formato MM/YYYY (01/2025)
+    if (/^\d{1,2}\/\d{4}$/.test(s)) {
+      const [mes, ano] = s.split("/");
+      const idx = parseInt(mes, 10) - 1;
+      return idx >= 0 && idx < 12 ? `${meses[idx]}/${ano}` : s;
+    }
+
+    // Formato YYYY/MM (2025/01)
+    if (/^\d{4}\/\d{1,2}$/.test(s)) {
+      const [ano, mes] = s.split("/");
+      const idx = parseInt(mes, 10) - 1;
+      return idx >= 0 && idx < 12 ? `${meses[idx]}/${ano}` : s;
+    }
+
+    // Retorna como está se não reconhecer
+    return s;
   }
 
   function toNumber(v) {
