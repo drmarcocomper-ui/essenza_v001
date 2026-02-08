@@ -190,16 +190,57 @@ function RM_pickFromFixed_(raw, fixedList) {
 function RM_monthKeyFromDate_(value) {
   if (!value) return "";
 
+  // Se for objeto Date do JS
   if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
     return value.getFullYear() + "-" + String(value.getMonth() + 1).padStart(2, "0");
   }
 
   var s = RM_safeStr_(value);
 
+  // Formato YYYY-MM-DD (ISO com hífen)
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.slice(0, 7);
 
-  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (m) return m[3] + "-" + m[2];
+  // Formato YYYY/MM/DD ou YYYY/DD/MM (ano primeiro com barra)
+  var mAno = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (mAno) {
+    var ano = mAno[1];
+    var p1 = parseInt(mAno[2], 10); // pode ser mês ou dia
+    var p2 = parseInt(mAno[3], 10); // pode ser dia ou mês
+
+    // Determinar qual é mês: o que for <= 12
+    // Se p1 > 12, então p1 é dia e p2 é mês
+    // Se p2 > 12, então p2 é dia e p1 é mês
+    // Se ambos <= 12, assumir YYYY/MM/DD (p1 = mês)
+    var mes;
+    if (p1 > 12 && p2 <= 12) {
+      mes = p2;
+    } else if (p2 > 12 && p1 <= 12) {
+      mes = p1;
+    } else {
+      mes = p1; // ambos <= 12, assumir YYYY/MM/DD
+    }
+
+    return ano + "-" + String(mes).padStart(2, "0");
+  }
+
+  // Formato DD/MM/YYYY ou MM/DD/YYYY (ano no final)
+  var mDia = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mDia) {
+    var p1 = parseInt(mDia[1], 10);
+    var p2 = parseInt(mDia[2], 10);
+    var ano = mDia[3];
+
+    var mes;
+    if (p1 > 12 && p2 <= 12) {
+      mes = p2; // p1 é dia, p2 é mês (DD/MM/YYYY)
+    } else if (p2 > 12 && p1 <= 12) {
+      mes = p1; // p1 é mês, p2 é dia (MM/DD/YYYY)
+    } else {
+      mes = p2; // ambos <= 12, assumir DD/MM/YYYY (brasileiro)
+    }
+
+    return ano + "-" + String(mes).padStart(2, "0");
+  }
 
   return "";
 }

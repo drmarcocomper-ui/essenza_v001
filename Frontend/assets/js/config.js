@@ -6,7 +6,7 @@
 
 window.APP_CONFIG = {
   SCRIPT_URL:
-    "https://script.google.com/macros/s/AKfycbyD1L7-rOdLqnSTNVehmEAVc_WWOMQJ7-RMDwcH9OffH9FC-9zLrn3sOjEPm8dy4Hy8zw/exec",
+    "https://script.google.com/macros/s/AKfycbyRkatD_54EBaMdY21S1z1kvWeqnzBdjj10cjvciyBi1OUyFtlbOrOPiCYwicYCQN81yg/exec",
 
   // Configurações de autenticação
   AUTH: {

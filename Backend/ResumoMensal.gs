@@ -39,7 +39,7 @@ function ResumoMensal_Calcular(mesYYYYMM) {
   var idx = RM_indexMap_(header);
 
   RM_requireCols_(idx, [
-    "Data_Caixa",
+    "Mes_a_receber",
     "Tipo",
     "Status",
     "Valor",
@@ -53,8 +53,9 @@ function ResumoMensal_Calcular(mesYYYYMM) {
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
 
-    var mes = RM_monthKeyFromDate_(row[idx["Data_Caixa"]]);
-    if (!mes) continue;
+    // Usar Mes_a_receber diretamente (já está em YYYY-MM)
+    var mes = RM_safeStr_(row[idx["Mes_a_receber"]]);
+    if (!mes || !/^\d{4}-\d{2}$/.test(mes)) continue;
     if (mesYYYYMM && mes !== mesYYYYMM) continue;
 
     if (!buckets[mes]) buckets[mes] = RM_newAcc_();
@@ -145,13 +146,14 @@ function ResumoMensal_DetalharMes(mesYYYYMM) {
   var header = data[0];
   var idx = RM_indexMap_(header);
 
-  RM_requireCols_(idx, ["Data_Caixa", "Tipo", "Valor", "Status", "Titularidade"]);
+  RM_requireCols_(idx, ["Mes_a_receber", "Tipo", "Valor", "Status", "Titularidade"]);
 
   var items = [];
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
 
-    var mes = RM_monthKeyFromDate_(row[idx["Data_Caixa"]]);
+    // Usar Mes_a_receber diretamente
+    var mes = RM_safeStr_(row[idx["Mes_a_receber"]]);
     if (!mes || mes !== mesYYYYMM) continue;
 
     items.push({
