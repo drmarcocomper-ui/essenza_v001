@@ -116,6 +116,64 @@
       background: rgba(139, 92, 165, 0.15) !important;
     }
 
+    /* Botão grande */
+    .btn--large {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+    }
+
+    /* Botões de ação coloridos */
+    .btn--success {
+      background: #228b22;
+      color: white;
+      border: none;
+    }
+    .btn--success:hover {
+      background: #1a6b1a;
+    }
+
+    .btn--warning {
+      background: #daa520;
+      color: white;
+      border: none;
+    }
+    .btn--warning:hover {
+      background: #b8860b;
+    }
+
+    /* Card formulário com destaque */
+    .card-formulario {
+      border: 2px solid var(--cor-primaria);
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Modo edição */
+    .card-formulario.modo-edicao {
+      border-color: #4169e1;
+    }
+
+    .card-formulario.modo-edicao .card__header {
+      background: rgba(65, 105, 225, 0.1);
+    }
+
+    /* Ações do formulário */
+    #acoesFormulario {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
     /* Mobile */
     @media (max-width: 768px) {
       .resumo-rapido {
@@ -123,6 +181,12 @@
       }
       .resumo-rapido__value {
         font-size: 1rem;
+      }
+      #acoesFormulario {
+        flex-direction: column;
+      }
+      #acoesFormulario .btn {
+        width: 100%;
       }
     }
   </style>
@@ -163,11 +227,21 @@
       </div>
     </section>
 
-    <!-- LANÇAMENTO (NOVO / EDITAR) — PRIMEIRO -->
-    <section class="card">
-      <div class="card__header">
-        <h2 class="card__title">Lançamento</h2>
-        <p class="card__desc">Preencha e salve na aba “Lancamentos”. Clique na lista para editar.</p>
+    <!-- BOTÃO NOVO LANÇAMENTO -->
+    <div class="acoes-principais" style="margin-bottom: 1rem;">
+      <button type="button" id="btnAbrirNovoLanc" class="btn btn--primary btn--large">
+        + Novo Lançamento
+      </button>
+    </div>
+
+    <!-- LANÇAMENTO (NOVO / EDITAR) -->
+    <section class="card card-formulario" id="cardFormulario" style="display: none;">
+      <div class="card__header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h2 class="card__title" id="tituloFormulario">Novo Lançamento</h2>
+          <p class="card__desc" id="descFormulario">Preencha os dados do lançamento.</p>
+        </div>
+        <button type="button" id="btnFecharForm" class="btn btn--secondary" title="Fechar formulário">✕</button>
       </div>
 
       <div class="card__body">
@@ -349,9 +423,12 @@
             </div>
           </div>
 
-          <div class="actions">
-            <button type="submit" id="btnSalvarLanc" class="btn btn--primary">Salvar lançamento</button>
-            <button type="button" id="btnNovoLancamento" class="btn btn--secondary">Novo</button>
+          <div class="actions" id="acoesFormulario">
+            <button type="submit" id="btnSalvarLanc" class="btn btn--primary">Salvar</button>
+            <button type="button" id="btnNovoLancamento" class="btn btn--secondary" style="display:none;">Limpar / Novo</button>
+            <button type="button" id="btnDuplicar" class="btn btn--secondary" style="display:none;" title="Criar cópia deste lançamento">Duplicar</button>
+            <button type="button" id="btnMarcarPago" class="btn btn--success" style="display:none;">Marcar Pago</button>
+            <button type="button" id="btnCancelarLanc" class="btn btn--warning" style="display:none;" title="Marcar como Cancelado">Cancelar Lanç.</button>
             <button type="button" id="btnExcluirLanc" class="btn btn--danger" style="display:none;">Excluir</button>
           </div>
 

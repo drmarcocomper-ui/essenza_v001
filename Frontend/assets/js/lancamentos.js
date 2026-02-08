@@ -38,6 +38,16 @@
   const btnNovo = document.getElementById("btnNovoLancamento");
   const btnExcluir = document.getElementById("btnExcluirLanc");
 
+  // Novos elementos do formulário
+  const cardFormulario = document.getElementById("cardFormulario");
+  const btnAbrirNovoLanc = document.getElementById("btnAbrirNovoLanc");
+  const btnFecharForm = document.getElementById("btnFecharForm");
+  const tituloFormulario = document.getElementById("tituloFormulario");
+  const descFormulario = document.getElementById("descFormulario");
+  const btnDuplicar = document.getElementById("btnDuplicar");
+  const btnMarcarPago = document.getElementById("btnMarcarPago");
+  const btnCancelarLanc = document.getElementById("btnCancelarLanc");
+
   // Modal
   const modalExcluir = document.getElementById("modalExcluir");
   const modalExcluirInfo = document.getElementById("modalExcluirInfo");
@@ -561,12 +571,65 @@
     clearDescricoesDatalist();
     atualizarVisibilidadeCampos();
 
-    // Esconder botão excluir
+    // Esconder botões de edição
     if (btnExcluir) btnExcluir.style.display = "none";
+    if (btnNovo) btnNovo.style.display = "none";
+    if (btnDuplicar) btnDuplicar.style.display = "none";
+    if (btnMarcarPago) btnMarcarPago.style.display = "none";
+    if (btnCancelarLanc) btnCancelarLanc.style.display = "none";
   }
+
+  // ============================================================
+  // MOSTRAR / OCULTAR FORMULÁRIO
+  // ============================================================
+  function abrirFormulario(modoEdicao = false) {
+    if (!cardFormulario) return;
+
+    cardFormulario.style.display = "block";
+    cardFormulario.classList.toggle("modo-edicao", modoEdicao);
+
+    if (tituloFormulario) {
+      tituloFormulario.textContent = modoEdicao ? "Editar Lançamento" : "Novo Lançamento";
+    }
+    if (descFormulario) {
+      descFormulario.textContent = modoEdicao
+        ? "Altere os dados e clique em Salvar."
+        : "Preencha os dados do lançamento.";
+    }
+
+    // Scroll suave para o formulário
+    cardFormulario.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function fecharFormulario() {
+    if (!cardFormulario) return;
+    cardFormulario.style.display = "none";
+    clearForm();
+  }
+
+  function mostrarBotoesEdicao(item) {
+    // Mostrar botões de edição
+    if (btnNovo) btnNovo.style.display = "inline-block";
+    if (btnDuplicar) btnDuplicar.style.display = "inline-block";
+    if (btnExcluir) btnExcluir.style.display = "inline-block";
+
+    // Mostrar "Marcar Pago" se status for Pendente
+    if (btnMarcarPago) {
+      btnMarcarPago.style.display = (item?.Status === "Pendente") ? "inline-block" : "none";
+    }
+
+    // Mostrar "Cancelar" se não estiver cancelado
+    if (btnCancelarLanc) {
+      btnCancelarLanc.style.display = (item?.Status !== "Cancelado") ? "inline-block" : "none";
+    }
+  }
+
+  let itemAtualEdicao = null; // Guardar item sendo editado
 
   function fillForm(it) {
     if (!it) return;
+
+    itemAtualEdicao = it; // Guardar referência
 
     Object.keys(el).forEach((k) => {
       if (!el[k]) return;
@@ -586,10 +649,9 @@
     aplicarDescricaoDaCategoria(false);
     atualizarVisibilidadeCampos();
 
-    // Mostrar botão excluir quando em modo edição
-    if (btnExcluir && selectedRowIndex) {
-      btnExcluir.style.display = "inline-block";
-    }
+    // Abrir formulário em modo edição
+    abrirFormulario(true);
+    mostrarBotoesEdicao(it);
   }
 
   function buildLancPayload() {
@@ -915,10 +977,12 @@
         const resp = await editar(selectedRowIndex, payload);
         setFeedback(feedbackSalvar, resp.message || "Atualizado.", "success");
         await listar(paginaAtual); // mantém na página atual ao editar
+        fecharFormulario(); // fecha o formulário após salvar
       } else {
         const resp = await criar(payload);
         setFeedback(feedbackSalvar, resp.message || "Salvo.", "success");
         await listar(1); // vai para primeira página ao criar
+        fecharFormulario(); // fecha o formulário após salvar
       }
     } catch (err) {
       setFeedback(feedbackSalvar, err.message || "Erro ao salvar.", "error");
@@ -969,13 +1033,61 @@
         throw new Error(data?.message || "Erro ao excluir.");
       }
 
-      setFeedback(feedbackSalvar, "Lançamento excluído.", "success");
-      clearForm();
+      setFeedback(feedbackLanc, "Lançamento excluído.", "success");
+      fecharFormulario();
       await listar(paginaAtual);
 
     } catch (err) {
       setFeedback(feedbackSalvar, err.message || "Erro ao excluir.", "error");
     }
+  }
+
+  // ============================================================
+  // AÇÕES RÁPIDAS
+  // ============================================================
+  function duplicarLancamento() {
+    if (!itemAtualEdicao) return;
+
+    // Limpar rowIndex para criar novo
+    selectedRowIndex = null;
+
+    // Manter dados mas mudar título
+    if (tituloFormulario) tituloFormulario.textContent = "Duplicar Lançamento";
+    if (descFormulario) descFormulario.textContent = "Cópia criada. Altere os dados e salve.";
+
+    // Limpar data de caixa se quiser nova data
+    if (el.Data_Competencia) el.Data_Competencia.value = hojeISO();
+    if (el.Data_Caixa) el.Data_Caixa.value = "";
+
+    // Esconder botões de edição, mostrar como novo
+    if (btnNovo) btnNovo.style.display = "none";
+    if (btnDuplicar) btnDuplicar.style.display = "none";
+    if (btnExcluir) btnExcluir.style.display = "none";
+    if (btnMarcarPago) btnMarcarPago.style.display = "none";
+    if (btnCancelarLanc) btnCancelarLanc.style.display = "none";
+
+    setFeedback(feedbackSalvar, "Lançamento duplicado. Clique em Salvar para criar.", "info");
+  }
+
+  async function marcarComoPago() {
+    if (!selectedRowIndex) return;
+
+    el.Status.value = "Pago";
+    if (!el.Data_Caixa.value) el.Data_Caixa.value = hojeISO();
+
+    setFeedback(feedbackSalvar, "Salvando como Pago...", "info");
+    await salvar();
+  }
+
+  async function cancelarLancamento() {
+    if (!selectedRowIndex) return;
+
+    if (!confirm("Deseja marcar este lançamento como Cancelado?")) return;
+
+    el.Status.value = "Cancelado";
+
+    setFeedback(feedbackSalvar, "Cancelando lançamento...", "info");
+    await salvar();
   }
 
   function initDefaults() {
@@ -995,7 +1107,44 @@
     if (btnLimparFiltro) btnLimparFiltro.addEventListener("click", (e) => (e.preventDefault(), limparFiltro()));
     if (formFiltro) formFiltro.addEventListener("submit", (e) => (e.preventDefault(), listar(1)));
     if (formLanc) formLanc.addEventListener("submit", (e) => (e.preventDefault(), salvar()));
-    if (btnNovo) btnNovo.addEventListener("click", (e) => (e.preventDefault(), clearForm()));
+
+    // Botão Novo Lançamento (abre formulário vazio)
+    if (btnAbrirNovoLanc) btnAbrirNovoLanc.addEventListener("click", (e) => {
+      e.preventDefault();
+      clearForm();
+      abrirFormulario(false);
+    });
+
+    // Fechar formulário
+    if (btnFecharForm) btnFecharForm.addEventListener("click", (e) => {
+      e.preventDefault();
+      fecharFormulario();
+    });
+
+    // Limpar / Novo (quando em edição)
+    if (btnNovo) btnNovo.addEventListener("click", (e) => {
+      e.preventDefault();
+      clearForm();
+      abrirFormulario(false);
+    });
+
+    // Duplicar
+    if (btnDuplicar) btnDuplicar.addEventListener("click", (e) => {
+      e.preventDefault();
+      duplicarLancamento();
+    });
+
+    // Marcar como Pago
+    if (btnMarcarPago) btnMarcarPago.addEventListener("click", (e) => {
+      e.preventDefault();
+      marcarComoPago();
+    });
+
+    // Cancelar Lançamento
+    if (btnCancelarLanc) btnCancelarLanc.addEventListener("click", (e) => {
+      e.preventDefault();
+      cancelarLancamento();
+    });
 
     // Excluir
     if (btnExcluir) btnExcluir.addEventListener("click", (e) => (e.preventDefault(), abrirModalExcluir()));
