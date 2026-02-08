@@ -222,7 +222,7 @@ function Migracao_converterRegistro_(row, idx, mapaClientes) {
 
   // Montar registro no formato novo
   // Ordem: Data_Competencia, Data_Caixa, Tipo, Origem, Categoria, Descricao,
-  //        Cliente_Fornecedor, Forma_Pagamento, Instituicao_Financeira, Titularidade,
+  //        ID_Cliente, Cliente_Fornecedor, Forma_Pagamento, Instituicao_Financeira, Titularidade,
   //        Parcelamento, Valor, Status, Observacoes, Mes_a_receber
   return [
     dataAtendimento,           // Data_Competencia
@@ -231,6 +231,7 @@ function Migracao_converterRegistro_(row, idx, mapaClientes) {
     "",                        // Origem (não existe no antigo)
     categoria,                 // Categoria
     descricao,                 // Descricao
+    idCliente,                 // ID_Cliente
     nomeCliente,               // Cliente_Fornecedor
     formaPagamento,            // Forma_Pagamento
     instituicao,               // Instituicao_Financeira
@@ -398,6 +399,64 @@ function Migracao_indexMap_(header) {
     if (key) map[key] = i;
   }
   return map;
+}
+
+/**
+ * Cria o cabeçalho na aba Lancamentos
+ * Execute esta função ANTES da migração se a aba estiver vazia
+ */
+function Migracao_criarCabecalho() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  Logger.log("Planilha: " + ss.getName());
+
+  var abas = ss.getSheets().map(function(s) { return s.getName(); });
+  Logger.log("Abas existentes: " + abas.join(", "));
+
+  var sheet = ss.getSheetByName("Lancamentos");
+
+  if (!sheet) {
+    sheet = ss.insertSheet("Lancamentos");
+    Logger.log("Aba 'Lancamentos' CRIADA.");
+  } else {
+    Logger.log("Aba 'Lancamentos' encontrada.");
+  }
+
+  var headers = [
+    "Data_Competencia",
+    "Data_Caixa",
+    "Tipo",
+    "Origem",
+    "Categoria",
+    "Descricao",
+    "ID_Cliente",
+    "Cliente_Fornecedor",
+    "Forma_Pagamento",
+    "Instituicao_Financeira",
+    "Titularidade",
+    "Parcelamento",
+    "Valor",
+    "Status",
+    "Observacoes",
+    "Mes_a_receber"
+  ];
+
+  // Limpar primeira linha e escrever cabeçalho
+  var range = sheet.getRange(1, 1, 1, headers.length);
+  range.clearContent();
+  range.setValues([headers]);
+  sheet.setFrozenRows(1);
+
+  // Formatar cabeçalho
+  range.setFontWeight("bold");
+  range.setBackground("#8b5ca5");
+  range.setFontColor("#ffffff");
+
+  Logger.log("✅ Cabeçalho escrito com " + headers.length + " colunas.");
+  Logger.log("Verifique a aba 'Lancamentos' na planilha.");
+
+  // Forçar flush
+  SpreadsheetApp.flush();
 }
 
 /**
