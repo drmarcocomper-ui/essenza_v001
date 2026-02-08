@@ -668,7 +668,7 @@
               ${top5.map(it => `
                 <tr>
                   <td>${escapeHtml(formatDataBR(it.Data_Competencia))}</td>
-                  <td>${escapeHtml(it.ID_Cliente || "-")}</td>
+                  <td>${escapeHtml(it.NomeCliente || it.ID_Cliente || "-")}</td>
                   <td>${escapeHtml(it.Descricao || "-")}</td>
                   <td style="text-align:right;">${formatMoneyBR(it.Valor)}</td>
                 </tr>

@@ -354,6 +354,13 @@ function Lancamentos_listar_(sheet, filtros, page, limit) {
   var endIdx = startIdx + limit;
   var items = all.slice(startIdx, endIdx);
 
+  // Adicionar nome do cliente
+  var mapaClientes = LANC_carregarMapaClientes_();
+  items.forEach(function(it) {
+    var idCliente = it.ID_Cliente || "";
+    it.NomeCliente = mapaClientes[idCliente] || idCliente;
+  });
+
   return {
     items: items,
     pagination: {
@@ -386,6 +393,7 @@ function Lancamentos_excluir_(sheet, rowIndex) {
 /**
  * Agrupa entradas pagas por ID_Cliente
  * Retorna ranking dos clientes com maior valor
+ * Inclui nome do cliente buscando na aba Cadastro
  */
 function Lancamentos_porCliente_(sheet, filtros) {
   filtros = filtros || {};
@@ -400,6 +408,9 @@ function Lancamentos_porCliente_(sheet, filtros) {
 
   var fMes = LANC_safeStr_(filtros.mes || "");
   var limite = parseInt(filtros.limite, 10) || 20;
+
+  // Carregar mapa de clientes (ID -> Nome)
+  var mapaClientes = LANC_carregarMapaClientes_();
 
   var clientes = {};
   var totalGeral = 0;
@@ -421,21 +432,22 @@ function Lancamentos_porCliente_(sheet, filtros) {
       if (mesRow !== fMes) continue;
     }
 
-    var cliente = LANC_safeStr_(row[idx["ID_Cliente"]]) || "(Sem cliente)";
+    var idCliente = LANC_safeStr_(row[idx["ID_Cliente"]]) || "(Sem cliente)";
+    var nomeCliente = mapaClientes[idCliente] || idCliente;
     var valor = LANC_parseNumberSafe_(row[idx["Valor"]]);
 
-    if (!clientes[cliente]) {
-      clientes[cliente] = { nome: cliente, total: 0, qtd: 0 };
+    if (!clientes[idCliente]) {
+      clientes[idCliente] = { id: idCliente, nome: nomeCliente, total: 0, qtd: 0 };
     }
-    clientes[cliente].total += valor;
-    clientes[cliente].qtd += 1;
+    clientes[idCliente].total += valor;
+    clientes[idCliente].qtd += 1;
     totalGeral += valor;
   }
 
   // Converter para array e ordenar por total decrescente
   var arr = [];
-  for (var nome in clientes) {
-    arr.push(clientes[nome]);
+  for (var id in clientes) {
+    arr.push(clientes[id]);
   }
   arr.sort(function(a, b) { return b.total - a.total; });
 
@@ -449,6 +461,40 @@ function Lancamentos_porCliente_(sheet, filtros) {
   });
 
   return { items: items, total: Math.round(totalGeral * 100) / 100 };
+}
+
+/**
+ * Carrega mapa de clientes: ID_Cliente -> NomeCliente
+ */
+function LANC_carregarMapaClientes_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Cadastro");
+  if (!sheet) return {};
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return {};
+
+  var header = data[0];
+  var idx = LANC_indexMap_(header);
+
+  // Encontrar colunas
+  var idxId = idx["ID_Cliente"];
+  if (idxId === undefined) idxId = idx["ID"];
+  var idxNome = idx["NomeCliente"];
+  if (idxNome === undefined) idxNome = idx["Nome"];
+
+  if (idxId === undefined || idxNome === undefined) return {};
+
+  var mapa = {};
+  for (var i = 1; i < data.length; i++) {
+    var id = LANC_safeStr_(data[i][idxId]);
+    var nome = LANC_safeStr_(data[i][idxNome]);
+    if (id) {
+      mapa[id] = nome || id;
+    }
+  }
+
+  return mapa;
 }
 
 function LANC_getMesFromDate_(value) {
