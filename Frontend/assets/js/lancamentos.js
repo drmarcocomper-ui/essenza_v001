@@ -153,6 +153,17 @@
     return Number.isNaN(num) ? 0 : num;
   }
 
+  function formatDateBR(v) {
+    if (!v) return "";
+    const s = String(v).trim();
+    // ISO format: YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      const [y, m, d] = s.substring(0, 10).split("-");
+      return `${d}/${m}/${y}`;
+    }
+    return s;
+  }
+
   function parseParcelCount(raw) {
     const s = String(raw ?? "").trim();
     if (!s) return 0;
@@ -638,6 +649,38 @@
     tbody.innerHTML = "";
   }
 
+  function atualizarResumoRapido(items) {
+    const resumoEl = document.getElementById("resumoRapido");
+    const entradasEl = document.getElementById("resumoEntradas");
+    const saidasEl = document.getElementById("resumoSaidas");
+    const saldoEl = document.getElementById("resumoSaldo");
+
+    if (!resumoEl) return;
+
+    let entradas = 0;
+    let saidas = 0;
+
+    items.forEach(it => {
+      const valor = toNumberBR(it.Valor);
+      if (it.Tipo === "Entrada" && it.Status !== "Cancelado") {
+        entradas += valor;
+      } else if (it.Tipo === "Saida" && it.Status !== "Cancelado") {
+        saidas += valor;
+      }
+    });
+
+    const saldo = entradas - saidas;
+
+    if (entradasEl) entradasEl.textContent = formatMoneyBR(entradas);
+    if (saidasEl) saidasEl.textContent = formatMoneyBR(saidas);
+    if (saldoEl) {
+      saldoEl.textContent = formatMoneyBR(saldo);
+      saldoEl.style.color = saldo >= 0 ? "#228b22" : "#c41e3a";
+    }
+
+    resumoEl.style.display = items.length > 0 ? "grid" : "none";
+  }
+
   function markSelectedRow(tr) {
     if (!tbody) return;
     [...tbody.querySelectorAll("tr")].forEach((x) => x.classList.remove("is-selected"));
@@ -732,15 +775,20 @@
         clienteFornecedor = it.NomeCliente || it.ID_Cliente || it.NomeFornecedor || it.ID_Fornecedor || "";
       }
 
+      // Classes para cores
+      const tipoClass = it.Tipo === "Entrada" ? "tipo-entrada" : it.Tipo === "Saida" ? "tipo-saida" : "";
+      const statusClass = it.Status === "Pago" ? "status-pago" : it.Status === "Pendente" ? "status-pendente" : it.Status === "Cancelado" ? "status-cancelado" : "";
+      const valorClass = it.Tipo === "Entrada" ? "valor-positivo" : it.Tipo === "Saida" ? "valor-negativo" : "";
+
       tr.innerHTML = `
-        <td>${escapeHtml(it.Data_Competencia || "")}</td>
-        <td>${escapeHtml(it.Tipo || "")}</td>
+        <td>${escapeHtml(formatDateBR(it.Data_Competencia) || "")}</td>
+        <td class="${tipoClass}">${escapeHtml(it.Tipo || "")}</td>
         <td>${escapeHtml(it.Categoria || "")}</td>
-        <td>${escapeHtml(it.Descricao || "")}</td>
+        <td title="${escapeHtml(it.Descricao || "")}">${escapeHtml((it.Descricao || "").substring(0, 30))}${(it.Descricao || "").length > 30 ? "..." : ""}</td>
         <td>${escapeHtml(clienteFornecedor)}</td>
         <td>${escapeHtml(it.Forma_Pagamento || "")}</td>
-        <td>${escapeHtml(formatMoneyBR(it.Valor))}</td>
-        <td>${escapeHtml(it.Status || "")}</td>
+        <td class="${valorClass}">${escapeHtml(formatMoneyBR(it.Valor))}</td>
+        <td class="${statusClass}">${escapeHtml(it.Status || "")}</td>
       `;
       tbody.appendChild(tr);
 
@@ -770,6 +818,7 @@
 
       dadosListaAtual = data.items || [];
       renderTable(dadosListaAtual);
+      atualizarResumoRapido(dadosListaAtual);
 
       // Atualizar paginação
       const pagination = data.pagination || { page: 1, totalPages: 1, total: 0 };
@@ -777,7 +826,7 @@
       totalPaginas = pagination.totalPages;
       atualizarControlesPaginacao(pagination);
 
-      setFeedback(feedbackLanc, `OK • ${dadosListaAtual.length} de ${pagination.total} itens`, "success");
+      setFeedback(feedbackLanc, `${dadosListaAtual.length} de ${pagination.total} itens`, "success");
     } catch (err) {
       setFeedback(feedbackLanc, err.message || "Erro ao listar.", "error");
     }

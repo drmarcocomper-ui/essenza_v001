@@ -3,13 +3,129 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lançamentos | Salão</title>
+  <title>Lançamentos | Essenza</title>
 
   <link rel="stylesheet" href="assets/css/style.css" />
   <!-- Bibliotecas de exportação -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    /* Cards de resumo */
+    .resumo-rapido {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .resumo-rapido__card {
+      background: var(--cor-bg);
+      border-radius: var(--raio);
+      box-shadow: var(--sombra);
+      padding: 1rem;
+      text-align: center;
+      border-left: 4px solid var(--cor-primaria);
+    }
+
+    .resumo-rapido__card--entrada { border-left-color: #228b22; }
+    .resumo-rapido__card--saida { border-left-color: #c41e3a; }
+    .resumo-rapido__card--saldo { border-left-color: #4169e1; }
+
+    .resumo-rapido__label {
+      font-size: 0.8rem;
+      color: var(--cor-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .resumo-rapido__value {
+      font-size: 1.3rem;
+      font-weight: 600;
+    }
+
+    .resumo-rapido__card--entrada .resumo-rapido__value { color: #228b22; }
+    .resumo-rapido__card--saida .resumo-rapido__value { color: #c41e3a; }
+
+    /* Cores na tabela */
+    .table-lancamentos .tipo-entrada { color: #228b22; font-weight: 500; }
+    .table-lancamentos .tipo-saida { color: #c41e3a; font-weight: 500; }
+    .table-lancamentos .status-pago { color: #228b22; }
+    .table-lancamentos .status-pendente { color: #daa520; font-weight: 500; }
+    .table-lancamentos .status-cancelado { color: #999; text-decoration: line-through; }
+    .table-lancamentos .valor-positivo { color: #228b22; font-weight: 600; }
+    .table-lancamentos .valor-negativo { color: #c41e3a; font-weight: 600; }
+
+    /* Formulário em grupos */
+    .form-group {
+      background: var(--cor-bg-alt, #f9f9f9);
+      border-radius: var(--raio);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--cor-borda);
+    }
+
+    .form-group__title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--cor-primaria);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Filtro colapsável */
+    .card--collapsible .card__body {
+      max-height: 500px;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+    }
+
+    .card--collapsible.collapsed .card__body {
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+
+    .card__toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.2rem;
+      color: var(--cor-muted);
+      transition: transform 0.3s;
+    }
+
+    .collapsed .card__toggle {
+      transform: rotate(-90deg);
+    }
+
+    /* Ações na linha */
+    .table-lancamentos .acoes-linha {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .table-lancamentos .btn-acao {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      border-radius: 4px;
+    }
+
+    /* Destaque linha selecionada */
+    .table-lancamentos tr.selecionada {
+      background: rgba(139, 92, 165, 0.15) !important;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      .resumo-rapido {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .resumo-rapido__value {
+        font-size: 1rem;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -31,6 +147,22 @@
 
   <main class="app-main">
 
+    <!-- RESUMO RÁPIDO -->
+    <section class="resumo-rapido" id="resumoRapido" style="display:none;">
+      <div class="resumo-rapido__card resumo-rapido__card--entrada">
+        <div class="resumo-rapido__label">Entradas</div>
+        <div class="resumo-rapido__value" id="resumoEntradas">R$ 0,00</div>
+      </div>
+      <div class="resumo-rapido__card resumo-rapido__card--saida">
+        <div class="resumo-rapido__label">Saídas</div>
+        <div class="resumo-rapido__value" id="resumoSaidas">R$ 0,00</div>
+      </div>
+      <div class="resumo-rapido__card resumo-rapido__card--saldo">
+        <div class="resumo-rapido__label">Saldo</div>
+        <div class="resumo-rapido__value" id="resumoSaldo">R$ 0,00</div>
+      </div>
+    </section>
+
     <!-- LANÇAMENTO (NOVO / EDITAR) — PRIMEIRO -->
     <section class="card">
       <div class="card__header">
@@ -40,178 +172,180 @@
 
       <div class="card__body">
         <form id="formLancamento" autocomplete="off">
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="Data_Competencia">Data_Competencia *</label>
-              <input class="input" type="date" id="Data_Competencia" name="Data_Competencia" required />
-            </div>
+          <!-- Grupo: Datas e Tipo -->
+          <div class="form-group">
+            <div class="form-group__title">Informações Básicas</div>
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="Data_Competencia">Data Competência *</label>
+                <input class="input" type="date" id="Data_Competencia" name="Data_Competencia" required />
+              </div>
 
-            <div class="field">
-              <label class="label" for="Data_Caixa">Data_Caixa</label>
-              <input class="input" type="date" id="Data_Caixa" name="Data_Caixa" />
-            </div>
-          </div>
+              <div class="field">
+                <label class="label" for="Data_Caixa">Data Caixa</label>
+                <input class="input" type="date" id="Data_Caixa" name="Data_Caixa" />
+              </div>
 
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="Tipo">Tipo *</label>
-              <select class="select" id="Tipo" name="Tipo" required>
-                <option value="">Selecione</option>
-                <option value="Entrada">Entrada</option>
-                <option value="Saida">Saída</option>
-              </select>
-            </div>
+              <div class="field">
+                <label class="label" for="Tipo">Tipo *</label>
+                <select class="select" id="Tipo" name="Tipo" required>
+                  <option value="">Selecione</option>
+                  <option value="Entrada">Entrada</option>
+                  <option value="Saida">Saída</option>
+                </select>
+              </div>
 
-            <div class="field">
-              <label class="label" for="Origem">Origem</label>
-              <select class="select" id="Origem" name="Origem">
-                <option value="">Selecione</option>
-                <option value="Servico">Serviço</option>
-                <option value="Produto">Produto</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- ✅ Categoria padronizada + ✅ opções de Descricao por categoria -->
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="Categoria">Categoria *</label>
-              <input
-                class="input"
-                type="text"
-                id="Categoria"
-                name="Categoria"
-                list="listaCategorias"
-                required
-                placeholder="Selecione uma categoria..."
-                autocomplete="off"
-              />
-              <datalist id="listaCategorias"></datalist>
-              <small class="hint">Categorias são carregadas da aba “Categoria” (somente ativas e do Tipo selecionado).</small>
-            </div>
-
-            <div class="field">
-              <label class="label" for="Descricao">Descricao *</label>
-              <input
-                class="input"
-                type="text"
-                id="Descricao"
-                name="Descricao"
-                list="listaDescricoes"
-                required
-                placeholder="Escolha ou digite..."
-                autocomplete="off"
-              />
-              <datalist id="listaDescricoes"></datalist>
-              <small class="hint">Opções vêm de Descricao_Padrao (separe opções com | na Categoria).</small>
+              <div class="field">
+                <label class="label" for="Origem">Origem</label>
+                <select class="select" id="Origem" name="Origem">
+                  <option value="">Selecione</option>
+                  <option value="Servico">Serviço</option>
+                  <option value="Produto">Produto</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="field" id="fieldCliente">
-              <label class="label" for="ID_Cliente">Cliente</label>
-              <input
-                class="input"
-                type="text"
-                id="ID_Cliente"
-                name="ID_Cliente"
-                list="listaClientes"
-                placeholder="(Entrada) comece a digitar o nome..."
-              />
-              <datalist id="listaClientes"></datalist>
-              <small class="hint">Quando Tipo = Entrada, sugere clientes cadastrados.</small>
+          <!-- Grupo: Categoria e Descrição -->
+          <div class="form-group">
+            <div class="form-group__title">Detalhes</div>
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="Categoria">Categoria *</label>
+                <input
+                  class="input"
+                  type="text"
+                  id="Categoria"
+                  name="Categoria"
+                  list="listaCategorias"
+                  required
+                  placeholder="Selecione..."
+                  autocomplete="off"
+                />
+                <datalist id="listaCategorias"></datalist>
+              </div>
+
+              <div class="field">
+                <label class="label" for="Descricao">Descrição *</label>
+                <input
+                  class="input"
+                  type="text"
+                  id="Descricao"
+                  name="Descricao"
+                  list="listaDescricoes"
+                  required
+                  placeholder="Escolha ou digite..."
+                  autocomplete="off"
+                />
+                <datalist id="listaDescricoes"></datalist>
+              </div>
             </div>
 
-            <div class="field" id="fieldFornecedor">
-              <label class="label" for="ID_Fornecedor">Fornecedor</label>
-              <input
-                class="input"
-                type="text"
-                id="ID_Fornecedor"
-                name="ID_Fornecedor"
-                list="listaFornecedores"
-                placeholder="(Saida) comece a digitar o nome..."
-              />
-              <datalist id="listaFornecedores"></datalist>
-              <small class="hint">Quando Tipo = Saida, sugere fornecedores cadastrados.</small>
-            </div>
+            <div class="form-row">
+              <div class="field" id="fieldCliente">
+                <label class="label" for="ID_Cliente">Cliente</label>
+                <input
+                  class="input"
+                  type="text"
+                  id="ID_Cliente"
+                  name="ID_Cliente"
+                  list="listaClientes"
+                  placeholder="Digite o nome..."
+                />
+                <datalist id="listaClientes"></datalist>
+              </div>
 
-            <div class="field">
-              <label class="label" for="Forma_Pagamento">Forma_Pagamento</label>
-              <select class="select" id="Forma_Pagamento" name="Forma_Pagamento">
-                <option value="">Selecione</option>
-                <option value="Pix">Pix</option>
-                <option value="Dinheiro">Dinheiro</option>
-                <option value="Cartao_Debito">Cartão Débito</option>
-                <option value="Cartao_Credito">Cartão Crédito</option>
-                <option value="Boleto">Boleto</option>
-                <option value="Transferencia">Transferência</option>
-                <option value="Confianca">Confiança</option>
-                <option value="Cortesia">Cortesia</option>
-              </select>
-              <small class="hint">Parcelamento: se Forma_Pagamento = Cartao_Credito, todas parcelas ficam Pago.</small>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="Instituicao_Financeira">Instituicao_Financeira</label>
-              <select class="select" id="Instituicao_Financeira" name="Instituicao_Financeira">
-                <option value="">Selecione</option>
-                <option value="Cortesia">Cortesia</option>
-                <option value="Nubank">Nubank</option>
-                <option value="PicPay">PicPay</option>
-                <option value="SumUp">SumUp</option>
-                <option value="Terceiro">Terceiro</option>
-                <option value="Dinheiro">Dinheiro</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label class="label" for="Titularidade">Titularidade</label>
-              <select class="select" id="Titularidade" name="Titularidade">
-                <option value="">Selecione</option>
-                <option value="Cortesia">Cortesia</option>
-                <option value="PF">PF</option>
-                <option value="PJ">PJ</option>
-              </select>
+              <div class="field" id="fieldFornecedor">
+                <label class="label" for="ID_Fornecedor">Fornecedor</label>
+                <input
+                  class="input"
+                  type="text"
+                  id="ID_Fornecedor"
+                  name="ID_Fornecedor"
+                  list="listaFornecedores"
+                  placeholder="Digite o nome..."
+                />
+                <datalist id="listaFornecedores"></datalist>
+              </div>
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="Parcelamento">Parcelamento</label>
-              <input class="input" type="text" id="Parcelamento" name="Parcelamento" placeholder="Ex.: 1/3, 3/8, à vista ou 4 (gera 4 parcelas)" />
+          <!-- Grupo: Pagamento -->
+          <div class="form-group">
+            <div class="form-group__title">Pagamento</div>
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="Forma_Pagamento">Forma de Pagamento</label>
+                <select class="select" id="Forma_Pagamento" name="Forma_Pagamento">
+                  <option value="">Selecione</option>
+                  <option value="Pix">Pix</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Cartao_Debito">Cartão Débito</option>
+                  <option value="Cartao_Credito">Cartão Crédito</option>
+                  <option value="Boleto">Boleto</option>
+                  <option value="Transferencia">Transferência</option>
+                  <option value="Confianca">Confiança</option>
+                  <option value="Cortesia">Cortesia</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label class="label" for="Instituicao_Financeira">Instituição</label>
+                <select class="select" id="Instituicao_Financeira" name="Instituicao_Financeira">
+                  <option value="">Selecione</option>
+                  <option value="Cortesia">Cortesia</option>
+                  <option value="Nubank">Nubank</option>
+                  <option value="PicPay">PicPay</option>
+                  <option value="SumUp">SumUp</option>
+                  <option value="Terceiro">Terceiro</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label class="label" for="Titularidade">Titularidade</label>
+                <select class="select" id="Titularidade" name="Titularidade">
+                  <option value="">Selecione</option>
+                  <option value="Cortesia">Cortesia</option>
+                  <option value="PF">PF</option>
+                  <option value="PJ">PJ</option>
+                </select>
+              </div>
             </div>
 
-            <div class="field">
-              <label class="label" for="Valor">Valor *</label>
-              <input class="input" type="number" id="Valor" name="Valor" step="0.01" inputmode="decimal" required />
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="Valor">Valor *</label>
+                <input class="input" type="number" id="Valor" name="Valor" step="0.01" inputmode="decimal" required placeholder="0,00" />
+              </div>
+
+              <div class="field">
+                <label class="label" for="Parcelamento">Parcelamento</label>
+                <input class="input" type="text" id="Parcelamento" name="Parcelamento" placeholder="Ex.: 3x, 1/3" />
+              </div>
+
+              <div class="field">
+                <label class="label" for="Status">Status *</label>
+                <select class="select" id="Status" name="Status" required>
+                  <option value="">Selecione</option>
+                  <option value="Pago">Pago</option>
+                  <option value="Pendente">Pendente</option>
+                  <option value="Cancelado">Cancelado</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label class="label" for="Mes_a_receber">Mês a Receber</label>
+                <input class="input" type="month" id="Mes_a_receber" name="Mes_a_receber" />
+              </div>
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="Status">Status *</label>
-              <select class="select" id="Status" name="Status" required>
-                <option value="">Selecione</option>
-                <option value="Pago">Pago</option>
-                <option value="Pendente">Pendente</option>
-                <option value="Cancelado">Cancelado</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label class="label" for="Mes_a_receber">Mes_a_receber</label>
-              <input class="input" type="month" id="Mes_a_receber" name="Mes_a_receber" />
-              <small class="hint">Útil para cartão/pagamento futuro.</small>
-            </div>
-          </div>
-
+          <!-- Observações -->
           <div class="form-row">
             <div class="field field--full">
-              <label class="label" for="Observacoes">Observacoes</label>
-              <textarea class="textarea" id="Observacoes" name="Observacoes" rows="3"></textarea>
+              <label class="label" for="Observacoes">Observações</label>
+              <textarea class="textarea" id="Observacoes" name="Observacoes" rows="2" placeholder="Anotações adicionais..."></textarea>
             </div>
           </div>
 
@@ -227,28 +361,28 @@
     </section>
 
     <!-- FILTROS / BUSCA — DEPOIS -->
-    <section class="card">
-      <div class="card__header">
-        <h2 class="card__title">Filtro</h2>
-        <p class="card__desc">Liste por período e/ou pesquise por descrição, cliente/fornecedor, categoria.</p>
+    <section class="card card--collapsible" id="cardFiltro">
+      <div class="card__header" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="document.getElementById('cardFiltro').classList.toggle('collapsed')">
+        <div>
+          <h2 class="card__title" style="display:inline;">Filtros</h2>
+          <span id="filtroAtivo" style="font-size:0.8rem; color:var(--cor-primaria); margin-left:0.5rem;"></span>
+        </div>
+        <button type="button" class="card__toggle" aria-label="Expandir/Recolher">▼</button>
       </div>
 
       <div class="card__body">
         <form id="formFiltro" autocomplete="off">
           <div class="form-row">
             <div class="field">
-              <label class="label" for="fDataIni">Data (início)</label>
+              <label class="label" for="fDataIni">Data Início</label>
               <input class="input" type="date" id="fDataIni" name="fDataIni" />
-              <small class="hint">Filtra por Data_Competencia (padrão).</small>
             </div>
 
             <div class="field">
-              <label class="label" for="fDataFim">Data (fim)</label>
+              <label class="label" for="fDataFim">Data Fim</label>
               <input class="input" type="date" id="fDataFim" name="fDataFim" />
             </div>
-          </div>
 
-          <div class="form-row">
             <div class="field">
               <label class="label" for="fTipo">Tipo</label>
               <select class="select" id="fTipo" name="fTipo">
@@ -267,17 +401,17 @@
                 <option value="Cancelado">Cancelado</option>
               </select>
             </div>
+          </div>
 
+          <div class="form-row">
             <div class="field">
               <label class="label" for="fCategoria">Categoria</label>
               <input class="input" type="text" id="fCategoria" name="fCategoria" list="listaCategoriasF" placeholder="Todas" />
               <datalist id="listaCategoriasF"></datalist>
             </div>
-          </div>
 
-          <div class="form-row">
             <div class="field">
-              <label class="label" for="fFormaPagamento">Forma Pagamento</label>
+              <label class="label" for="fFormaPagamento">Pagamento</label>
               <select class="select" id="fFormaPagamento" name="fFormaPagamento">
                 <option value="">Todas</option>
                 <option value="Pix">Pix</option>
@@ -317,13 +451,12 @@
 
           <div class="form-row">
             <div class="field field--full">
-              <label class="label" for="fQ">Busca</label>
+              <label class="label" for="fQ">Busca Rápida</label>
               <div class="input-group">
-                <input class="input" type="text" id="fQ" name="fQ" placeholder="Ex.: progressiva, Kamylle, cartão, aluguel..." />
-                <button type="button" id="btnFiltrar" class="btn btn--secondary">Filtrar</button>
-                <button type="button" id="btnLimparFiltro" class="btn">Limpar</button>
+                <input class="input" type="text" id="fQ" name="fQ" placeholder="Digite para buscar..." />
+                <button type="button" id="btnFiltrar" class="btn btn--primary">Filtrar</button>
+                <button type="button" id="btnLimparFiltro" class="btn btn--secondary">Limpar</button>
               </div>
-              <small class="hint">Busca em: Descricao, ID_Cliente, Categoria, Origem.</small>
             </div>
           </div>
         </form>
@@ -345,15 +478,15 @@
 
       <div class="card__body">
         <div class="table-wrap" aria-label="Tabela de lançamentos">
-          <table class="table" id="tabelaLancamentos">
+          <table class="table table-lancamentos" id="tabelaLancamentos">
             <thead>
               <tr>
-                <th class="sortable" data-col="Data_Competencia">Data_Competencia <span class="sort-icon"></span></th>
+                <th class="sortable" data-col="Data_Competencia">Data <span class="sort-icon"></span></th>
                 <th class="sortable" data-col="Tipo">Tipo <span class="sort-icon"></span></th>
                 <th class="sortable" data-col="Categoria">Categoria <span class="sort-icon"></span></th>
-                <th class="sortable" data-col="Descricao">Descricao <span class="sort-icon"></span></th>
-                <th>Cliente/Fornecedor</th>
-                <th class="sortable" data-col="Forma_Pagamento">Forma_Pagamento <span class="sort-icon"></span></th>
+                <th class="sortable" data-col="Descricao">Descrição <span class="sort-icon"></span></th>
+                <th>Cliente/Forn.</th>
+                <th class="sortable" data-col="Forma_Pagamento">Pagamento <span class="sort-icon"></span></th>
                 <th class="sortable" data-col="Valor">Valor <span class="sort-icon"></span></th>
                 <th class="sortable" data-col="Status">Status <span class="sort-icon"></span></th>
               </tr>
@@ -361,10 +494,6 @@
             <tbody></tbody>
           </table>
         </div>
-
-        <small class="hint" style="margin-top:.75rem; display:block;">
-          Dica: após clicar em uma linha, o formulário entra em modo <strong>Editar</strong>. Use <strong>Novo</strong> para voltar ao modo criação.
-        </small>
 
         <!-- Paginação -->
         <div class="pagination" id="paginacao" style="margin-top:1rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
