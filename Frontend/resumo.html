@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Resumo Mensal | Salão</title>
+  <title>Resumo Mensal | Essenza</title>
   <link rel="stylesheet" href="assets/css/style.css" />
   <!-- Bibliotecas de exportação -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -17,6 +17,119 @@
       .card { box-shadow: none; border: none; }
       body { background: white; }
       .app-main { padding: 0; }
+    }
+
+    /* Resumo Cards */
+    .resumo-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .resumo-card {
+      background: var(--cor-bg);
+      border-radius: var(--raio);
+      box-shadow: var(--sombra);
+      padding: 1rem;
+      text-align: center;
+      border-left: 4px solid var(--cor-primaria);
+    }
+
+    .resumo-card--positivo { border-left-color: #228b22; }
+    .resumo-card--negativo { border-left-color: #c41e3a; }
+    .resumo-card--neutro { border-left-color: #4169e1; }
+    .resumo-card--pendente { border-left-color: #daa520; }
+
+    .resumo-card__label {
+      font-size: 0.8rem;
+      color: var(--cor-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .resumo-card__value {
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+
+    .resumo-card--positivo .resumo-card__value { color: #228b22; }
+    .resumo-card--negativo .resumo-card__value { color: #c41e3a; }
+    .resumo-card--pendente .resumo-card__value { color: #daa520; }
+
+    .resumo-card__var {
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+
+    .var-up { color: #228b22; }
+    .var-down { color: #c41e3a; }
+    .var-neutral { color: var(--cor-muted); }
+
+    /* Tabela simplificada */
+    .table-resumo td.valor-positivo { color: #228b22; font-weight: 500; }
+    .table-resumo td.valor-negativo { color: #c41e3a; font-weight: 500; }
+    .table-resumo td.valor-pendente { color: #daa520; }
+
+    .table-resumo tr.mes-atual { background: rgba(139, 92, 165, 0.1); }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      border-bottom: 2px solid var(--cor-borda);
+      padding-bottom: 0.5rem;
+    }
+
+    .tab-btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      background: transparent;
+      color: var(--cor-muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+      border-radius: var(--raio) var(--raio) 0 0;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover { color: var(--cor-texto); background: var(--cor-bg-alt, #f5f5f5); }
+    .tab-btn.active { color: var(--cor-primaria); font-weight: 600; border-bottom: 2px solid var(--cor-primaria); margin-bottom: -2px; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Detalhes melhorados */
+    .det-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .det-item {
+      display: flex;
+      flex-direction: column;
+      min-width: 120px;
+    }
+
+    .det-item__label {
+      font-size: 0.75rem;
+      color: var(--cor-muted);
+    }
+
+    .det-item__value {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .det-item--positivo .det-item__value { color: #228b22; }
+    .det-item--negativo .det-item__value { color: #c41e3a; }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      .resumo-cards {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
   </style>
 </head>
@@ -39,28 +152,27 @@
   </header>
 
   <main class="app-main">
-    <!-- AÇÕES -->
+    <!-- CARDS RESUMO MÊS ATUAL -->
+    <section id="secaoCardsResumo" style="display:none;">
+      <div class="resumo-cards" id="resumoCards"></div>
+    </section>
+
+    <!-- FILTRO -->
     <section class="card">
       <div class="card__header">
-        <h2 class="card__title">Ações</h2>
-        <p class="card__desc">Resumo calculado em tempo real a partir da aba “Lancamentos”.</p>
+        <h2 class="card__title">Filtro</h2>
       </div>
 
       <div class="card__body">
-        <div class="actions">
-          <button type="button" id="btnAtualizarLista" class="btn btn--primary">Atualizar</button>
-        </div>
-
-        <div class="form-row" style="margin-top:1rem;">
+        <div class="form-row">
           <div class="field">
-            <label class="label" for="mes">Filtrar mês (YYYY-MM)</label>
+            <label class="label" for="mes">Mês</label>
             <input class="input" type="month" id="mes" name="mes" />
-            <small class="hint">Deixe vazio para ver todos os meses.</small>
           </div>
 
           <div class="field" style="align-self:end;">
-            <button type="button" id="btnFiltrarMes" class="btn">Filtrar</button>
-            <button type="button" id="btnLimparMes" class="btn btn--secondary">Limpar</button>
+            <button type="button" id="btnFiltrarMes" class="btn btn--primary">Filtrar</button>
+            <button type="button" id="btnLimparMes" class="btn btn--secondary">Ver Todos</button>
           </div>
         </div>
 
@@ -71,58 +183,81 @@
     <!-- TABELA RESUMO -->
     <section class="card">
       <div class="card__header">
-        <h2 class="card__title">Resumo por mês</h2>
-        <p class="card__desc">Clique no mês para ver os lançamentos daquele mês.</p>
-        <div class="actions" style="margin-top:0.75rem;">
-          <button type="button" id="btnExportExcel" class="btn btn--secondary">Exportar Excel</button>
-          <button type="button" id="btnExportPDF" class="btn btn--secondary">Exportar PDF</button>
-        </div>
+        <h2 class="card__title">Resumo por Mês</h2>
+        <p class="card__desc">Clique no mês para ver os lançamentos detalhados.</p>
       </div>
 
       <div class="card__body">
-        <div class="table-wrap" aria-label="Tabela de resumo mensal">
-          <table class="table" id="tabelaResumo">
-            <thead>
-              <tr>
-                <th>Mês</th>
-                <th>Entradas Pagas</th>
-                <th>Entradas Pendentes</th>
-                <th>Total Entradas</th>
-                <th>Saidas</th>
-                <th>Resultado</th>
+        <!-- Tabs -->
+        <div class="tabs">
+          <button type="button" class="tab-btn active" data-tab="principal">Principal</button>
+          <button type="button" class="tab-btn" data-tab="pagamentos">Por Pagamento</button>
+          <button type="button" class="tab-btn" data-tab="instituicoes">Por Instituição</button>
+        </div>
 
-                <th>Entrada Pix</th>
-                <th>Entrada Dinheiro</th>
-                <th>Entrada Cartao_Debito</th>
-                <th>Entrada Cartao_Credito</th>
-                <th>Entrada Boleto</th>
-                <th>Entrada Transferencia</th>
-                <th>Entrada Confianca</th>
-                <th>Entrada Cortesia</th>
+        <!-- Tab Principal -->
+        <div class="tab-content active" id="tab-principal">
+          <div class="table-wrap">
+            <table class="table table-resumo" id="tabelaResumoPrincipal">
+              <thead>
+                <tr>
+                  <th>Mês</th>
+                  <th>Entradas</th>
+                  <th>Pendentes</th>
+                  <th>Saídas</th>
+                  <th>Resultado</th>
+                  <th>Var. %</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
 
-                <th>Entrada Nubank</th>
-                <th>Entrada PicPay</th>
-                <th>Entrada SumUp</th>
-                <th>Entrada Terceiro</th>
-                <th>Entrada Dinheiro Inst</th>
-                <th>Entrada Cortesia Inst</th>
+        <!-- Tab Pagamentos -->
+        <div class="tab-content" id="tab-pagamentos">
+          <div class="table-wrap">
+            <table class="table table-resumo" id="tabelaResumoPagamentos">
+              <thead>
+                <tr>
+                  <th>Mês</th>
+                  <th>Pix</th>
+                  <th>Dinheiro</th>
+                  <th>Crédito</th>
+                  <th>Débito</th>
+                  <th>Boleto</th>
+                  <th>Outros</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
 
-                <th>Nubank PF</th>
-                <th>Nubank PJ</th>
-                <th>PicPay PF</th>
-                <th>PicPay PJ</th>
-                <th>SumUp PF</th>
-                <th>SumUp PJ</th>
-                <th>Terceiro PF</th>
-                <th>Terceiro PJ</th>
-                <th>Dinheiro PF</th>
-                <th>Dinheiro PJ</th>
-                <th>Cortesia PF</th>
-                <th>Cortesia PJ</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+        <!-- Tab Instituições -->
+        <div class="tab-content" id="tab-instituicoes">
+          <div class="table-wrap">
+            <table class="table table-resumo" id="tabelaResumoInstituicoes">
+              <thead>
+                <tr>
+                  <th>Mês</th>
+                  <th>Nubank PF</th>
+                  <th>Nubank PJ</th>
+                  <th>PicPay PF</th>
+                  <th>PicPay PJ</th>
+                  <th>SumUp PF</th>
+                  <th>SumUp PJ</th>
+                  <th>Dinheiro</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="actions" style="margin-top:1rem;">
+          <button type="button" id="btnExportExcel" class="btn btn--secondary">Exportar Excel</button>
+          <button type="button" id="btnExportPDF" class="btn btn--secondary">Exportar PDF</button>
         </div>
       </div>
     </section>
@@ -130,63 +265,64 @@
     <!-- DETALHES DO MÊS -->
     <section class="card" id="cardDetalhes" style="display:none;">
       <div class="card__header">
-        <h2 class="card__title">Detalhes do mês: <span id="mesSelecionado"></span></h2>
-        <p class="card__desc">Lançamentos ordenados por Data_Caixa (mais recentes primeiro).</p>
+        <h2 class="card__title">Detalhes: <span id="mesSelecionado"></span></h2>
       </div>
 
       <div class="card__body">
-        <div class="card" style="box-shadow:none; border:1px solid var(--cor-borda); margin-bottom:1rem;">
-          <div class="card__body" style="padding:1rem;">
-            <div class="form-row" style="margin-bottom:.75rem;">
-              <div class="field"><span class="label">Entradas Pagas</span><strong id="detEntradasPagas">—</strong></div>
-              <div class="field"><span class="label">Entradas Pendentes</span><strong id="detEntradasPend">—</strong></div>
-              <div class="field"><span class="label">Total Entradas</span><strong id="detTotalEntradas">—</strong></div>
-              <div class="field"><span class="label">Saídas</span><strong id="detSaidas">—</strong></div>
-              <div class="field"><span class="label">Resultado</span><strong id="detResultado">—</strong></div>
-            </div>
-
-            <div class="form-row" style="margin-bottom:.75rem;">
-              <div class="field"><span class="label">Entradas Pagas • Pix</span><strong id="detPix">—</strong></div>
-              <div class="field"><span class="label">Entradas Pagas • Dinheiro</span><strong id="detDinheiro">—</strong></div>
-              <div class="field"><span class="label">Entradas Pagas • Crédito</span><strong id="detCredito">—</strong></div>
-              <div class="field"><span class="label">Entradas Pagas • Débito</span><strong id="detDebito">—</strong></div>
-              <div class="field"><span class="label">Entradas Pagas • Outros</span><strong id="detOutros">—</strong></div>
-            </div>
-
-            <h4 style="margin: 0.75rem 0 0.5rem; font-size: 0.9rem; color: var(--cor-muted);">Por Instituição + Titularidade</h4>
-            <div class="form-row" style="margin-bottom:.5rem;">
-              <div class="field"><span class="label">Nubank PF</span><strong id="detNubankPF">—</strong></div>
-              <div class="field"><span class="label">Nubank PJ</span><strong id="detNubankPJ">—</strong></div>
-              <div class="field"><span class="label">PicPay PF</span><strong id="detPicPayPF">—</strong></div>
-              <div class="field"><span class="label">PicPay PJ</span><strong id="detPicPayPJ">—</strong></div>
-            </div>
-            <div class="form-row" style="margin-bottom:.5rem;">
-              <div class="field"><span class="label">SumUp PF</span><strong id="detSumUpPF">—</strong></div>
-              <div class="field"><span class="label">SumUp PJ</span><strong id="detSumUpPJ">—</strong></div>
-              <div class="field"><span class="label">Terceiro PF</span><strong id="detTerceiroPF">—</strong></div>
-              <div class="field"><span class="label">Terceiro PJ</span><strong id="detTerceiroPJ">—</strong></div>
-            </div>
-            <div class="form-row" style="margin-bottom:0;">
-              <div class="field"><span class="label">Dinheiro PF</span><strong id="detDinheiroPF">—</strong></div>
-              <div class="field"><span class="label">Dinheiro PJ</span><strong id="detDinheiroPJ">—</strong></div>
-              <div class="field"><span class="label">Cortesia PF</span><strong id="detCortesiaPF">—</strong></div>
-              <div class="field"><span class="label">Cortesia PJ</span><strong id="detCortesiaPJ">—</strong></div>
-            </div>
+        <!-- Cards de resumo do mês -->
+        <div class="det-row">
+          <div class="det-item det-item--positivo">
+            <span class="det-item__label">Entradas Pagas</span>
+            <strong class="det-item__value" id="detEntradasPagas">—</strong>
+          </div>
+          <div class="det-item">
+            <span class="det-item__label">Pendentes</span>
+            <strong class="det-item__value" id="detEntradasPend" style="color:#daa520;">—</strong>
+          </div>
+          <div class="det-item det-item--negativo">
+            <span class="det-item__label">Saídas</span>
+            <strong class="det-item__value" id="detSaidas">—</strong>
+          </div>
+          <div class="det-item" id="detResultadoWrap">
+            <span class="det-item__label">Resultado</span>
+            <strong class="det-item__value" id="detResultado">—</strong>
           </div>
         </div>
 
-        <div class="table-wrap" aria-label="Tabela de detalhes do mês">
+        <div class="det-row" style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid var(--cor-borda);">
+          <div class="det-item">
+            <span class="det-item__label">Pix</span>
+            <strong class="det-item__value" id="detPix">—</strong>
+          </div>
+          <div class="det-item">
+            <span class="det-item__label">Dinheiro</span>
+            <strong class="det-item__value" id="detDinheiro">—</strong>
+          </div>
+          <div class="det-item">
+            <span class="det-item__label">Crédito</span>
+            <strong class="det-item__value" id="detCredito">—</strong>
+          </div>
+          <div class="det-item">
+            <span class="det-item__label">Débito</span>
+            <strong class="det-item__value" id="detDebito">—</strong>
+          </div>
+          <div class="det-item">
+            <span class="det-item__label">Outros</span>
+            <strong class="det-item__value" id="detOutros">—</strong>
+          </div>
+        </div>
+
+        <!-- Tabela de lançamentos -->
+        <div class="table-wrap" style="margin-top:1rem;">
           <table class="table" id="tabelaDetalhes">
             <thead>
               <tr>
-                <th>Data_Caixa</th>
+                <th>Data</th>
                 <th>Tipo</th>
                 <th>Categoria</th>
-                <th>Descricao</th>
-                <th>ID_Cliente</th>
-                <th>Forma_Pagamento</th>
-                <th>Instituicao_Financeira</th>
-                <th>Titularidade</th>
+                <th>Descrição</th>
+                <th>Cliente/Fornecedor</th>
+                <th>Pagamento</th>
                 <th>Valor</th>
                 <th>Status</th>
               </tr>
@@ -197,15 +333,15 @@
 
         <div class="actions" style="margin-top:1rem;">
           <button type="button" id="btnExportDetalhesPDF" class="btn btn--secondary">Exportar PDF</button>
-          <button type="button" id="btnImprimirDetalhes" class="btn btn--primary">Imprimir</button>
-          <button type="button" id="btnFecharDetalhes" class="btn">Fechar detalhes</button>
+          <button type="button" id="btnImprimirDetalhes" class="btn btn--secondary">Imprimir</button>
+          <button type="button" id="btnFecharDetalhes" class="btn">Fechar</button>
         </div>
       </div>
     </section>
   </main>
 
   <footer class="app-footer">
-    <small>Resumo Mensal • Google Planilhas + Apps Script</small>
+    <small>Resumo Mensal - Essenza</small>
   </footer>
 
   <script src="assets/js/theme.js"></script>

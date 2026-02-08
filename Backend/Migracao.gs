@@ -1797,6 +1797,344 @@ function Migracao_parseTitularidadeCombinada_(valor) {
 }
 
 /**
+ * CORREÇÃO v2: Reorganiza as colunas baseado na estrutura correta
+ *
+ * Problema atual: A planilha tem 18 colunas, dados desalinhados,
+ * e "Mes_a_receber" duplicado 3 vezes.
+ *
+ * Esta função:
+ * 1. Limpa colunas extras (mantém apenas 16)
+ * 2. Move dados para posições corretas baseado no conteúdo
+ */
+function Migracao_reorganizarColunas() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Lancamentos");
+
+  if (!sheet) {
+    Logger.log("ERRO: Aba 'Lancamentos' não encontrada!");
+    return;
+  }
+
+  Logger.log("========== REORGANIZANDO COLUNAS ==========");
+
+  // Cabeçalho correto (16 colunas)
+  var headerCorreto = [
+    "Data_Competencia",
+    "Data_Caixa",
+    "Tipo",
+    "Origem",
+    "Categoria",
+    "Descricao",
+    "ID_Cliente",
+    "ID_Fornecedor",
+    "Forma_Pagamento",
+    "Instituicao_Financeira",
+    "Titularidade",
+    "Parcelamento",
+    "Valor",
+    "Status",
+    "Observacoes",
+    "Mes_a_receber"
+  ];
+
+  var allData = sheet.getDataRange().getValues();
+  Logger.log("Linhas: " + allData.length);
+  Logger.log("Colunas atuais: " + allData[0].length);
+
+  // Mostrar amostra antes
+  Logger.log("");
+  Logger.log("ANTES - Linha 2:");
+  for (var i = 0; i < Math.min(allData[0].length, 18); i++) {
+    Logger.log("  Col " + i + ": [" + allData[1][i] + "]");
+  }
+
+  // Processar cada linha (exceto cabeçalho)
+  var novosDados = [headerCorreto];
+
+  for (var r = 1; r < allData.length; r++) {
+    var row = allData[r];
+    var novaLinha = [];
+
+    // Colunas 0-6: Data_Competencia até ID_Cliente (parecem estar corretas)
+    for (var c = 0; c <= 6; c++) {
+      novaLinha.push(row[c] !== undefined ? row[c] : "");
+    }
+
+    // Coluna 7: ID_Fornecedor
+    // Se a coluna 7 atual parece um ID de fornecedor (começa com FN-) ou está vazia, use
+    // Caso contrário, deixe vazio
+    var col7 = String(row[7] || "").trim();
+    if (col7.indexOf("FN-") === 0 || col7 === "") {
+      novaLinha.push(col7);
+    } else {
+      novaLinha.push("");
+    }
+
+    // Colunas 8-11: Forma_Pagamento, Instituicao, Titularidade, Parcelamento
+    // Verificar onde estão esses dados
+    // Atualmente: col 8 = Forma_Pagamento parece correto
+    var formasPagamento = ["Pix", "Dinheiro", "Cartao_Credito", "Cartao_Debito", "Boleto", "Transferencia", "Confianca", "Cortesia", "cartão de crédito", "cartão de débito"];
+    var instituicoes = ["Nubank", "PicPay", "SumUp", "Terceiro", "Dinheiro", "Cortesia"];
+    var titularidades = ["PF", "PJ"];
+
+    // Procurar Forma_Pagamento (pode estar em col 7 ou 8)
+    var formaPag = "";
+    var instituicao = "";
+    var titularidade = "";
+    var parcelamento = "";
+
+    for (var busca = 7; busca <= 11; busca++) {
+      var val = String(row[busca] || "").trim();
+
+      if (!formaPag && formasPagamento.some(function(fp) { return val.toLowerCase().indexOf(fp.toLowerCase()) !== -1; })) {
+        formaPag = val;
+      } else if (!instituicao && instituicoes.some(function(inst) { return val === inst; })) {
+        instituicao = val;
+      } else if (!titularidade && titularidades.indexOf(val) !== -1) {
+        titularidade = val;
+      } else if (!parcelamento && /^\d+\/\d+$/.test(val)) {
+        parcelamento = val;
+      }
+    }
+
+    // Se não encontrou, usar posições padrão
+    if (!formaPag) formaPag = String(row[8] || "").trim();
+    if (!instituicao) instituicao = String(row[9] || "").trim();
+    if (!titularidade) titularidade = String(row[10] || "").trim();
+    if (!parcelamento) parcelamento = String(row[11] || "").trim();
+
+    novaLinha.push(formaPag);       // 8
+    novaLinha.push(instituicao);    // 9
+    novaLinha.push(titularidade);   // 10
+    novaLinha.push(parcelamento);   // 11
+
+    // Coluna 12: Valor - procurar número que parece valor monetário
+    var valor = "";
+    for (var buscaValor = 12; buscaValor <= 15; buscaValor++) {
+      var v = row[buscaValor];
+      if (typeof v === "number" && v > 0) {
+        valor = v;
+        break;
+      }
+      var vStr = String(v || "").trim();
+      if (vStr && /^[\d.,]+$/.test(vStr.replace("R$", "").trim())) {
+        valor = vStr;
+        break;
+      }
+    }
+    novaLinha.push(valor);  // 12
+
+    // Coluna 13: Status - procurar "Pago" ou "Pendente"
+    var status = "";
+    for (var buscaStatus = 12; buscaStatus <= 16; buscaStatus++) {
+      var s = String(row[buscaStatus] || "").trim();
+      if (s === "Pago" || s === "Pendente") {
+        status = s;
+        break;
+      }
+    }
+    novaLinha.push(status);  // 13
+
+    // Coluna 14: Observacoes (geralmente vazio ou texto livre)
+    var obs = "";
+    // Pegar o que não foi identificado como status ou valor
+    for (var buscaObs = 14; buscaObs <= 16; buscaObs++) {
+      var o = String(row[buscaObs] || "").trim();
+      if (o && o !== "Pago" && o !== "Pendente" && !/^\d+$/.test(o)) {
+        obs = o;
+        break;
+      }
+    }
+    novaLinha.push(obs);  // 14
+
+    // Coluna 15: Mes_a_receber - procurar formato YYYY-MM ou data
+    var mesReceber = "";
+    for (var buscaMes = 15; buscaMes < row.length; buscaMes++) {
+      var m = row[buscaMes];
+      if (m instanceof Date && !isNaN(m.getTime())) {
+        mesReceber = Utilities.formatDate(m, Session.getScriptTimeZone(), "yyyy-MM");
+        break;
+      }
+      var mStr = String(m || "").trim();
+      if (/^\d{4}-\d{2}/.test(mStr)) {
+        mesReceber = mStr.substring(0, 7);
+        break;
+      }
+    }
+    novaLinha.push(mesReceber);  // 15
+
+    novosDados.push(novaLinha);
+  }
+
+  Logger.log("");
+  Logger.log("DEPOIS - Linha 2:");
+  for (var j = 0; j < novosDados[1].length; j++) {
+    Logger.log("  " + headerCorreto[j] + ": [" + novosDados[1][j] + "]");
+  }
+
+  // Limpar planilha
+  sheet.clearContents();
+
+  // Escrever dados corrigidos
+  sheet.getRange(1, 1, novosDados.length, 16).setValues(novosDados);
+
+  // Formatar cabeçalho
+  var headerRange = sheet.getRange(1, 1, 1, 16);
+  headerRange.setFontWeight("bold");
+  headerRange.setBackground("#8b5ca5");
+  headerRange.setFontColor("#ffffff");
+  sheet.setFrozenRows(1);
+
+  // Deletar colunas extras (17, 18, etc.)
+  var lastCol = sheet.getLastColumn();
+  if (lastCol > 16) {
+    sheet.deleteColumns(17, lastCol - 16);
+    Logger.log("Colunas extras deletadas: " + (lastCol - 16));
+  }
+
+  SpreadsheetApp.flush();
+
+  Logger.log("");
+  Logger.log("========================================");
+  Logger.log("✅ REORGANIZAÇÃO CONCLUÍDA!");
+  Logger.log("Linhas processadas: " + (novosDados.length - 1));
+  Logger.log("Colunas: 16");
+}
+
+/**
+ * CORREÇÃO URGENTE: Deslocar colunas de dados para alinhar com novo cabeçalho
+ *
+ * O problema: Quando ID_Fornecedor foi adicionado ao cabeçalho (posição 8),
+ * os dados existentes não foram deslocados. Resultado:
+ * - Forma_Pagamento está sendo lido como ID_Fornecedor
+ * - Valor está sendo lido como Status
+ * - etc.
+ *
+ * Esta função insere uma coluna vazia na posição 8 (após ID_Cliente)
+ * para alinhar os dados com o novo cabeçalho.
+ */
+function Migracao_corrigirColunasDeslocadas() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Lancamentos");
+
+  if (!sheet) {
+    Logger.log("ERRO: Aba 'Lancamentos' não encontrada!");
+    return;
+  }
+
+  Logger.log("========== CORRIGINDO COLUNAS DESLOCADAS ==========");
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+
+  Logger.log("Linhas: " + lastRow);
+  Logger.log("Colunas: " + lastCol);
+
+  // Verificar cabeçalho atual
+  var header = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  Logger.log("Cabeçalho atual: " + header.join(" | "));
+
+  // Verificar se ID_Fornecedor já está no cabeçalho
+  var idxIdFornecedor = -1;
+  for (var i = 0; i < header.length; i++) {
+    if (String(header[i]).trim() === "ID_Fornecedor") {
+      idxIdFornecedor = i;
+      break;
+    }
+  }
+
+  if (idxIdFornecedor === -1) {
+    Logger.log("ERRO: Coluna 'ID_Fornecedor' não encontrada no cabeçalho!");
+    Logger.log("Execute primeiro: Migracao_adicionarFornecedores()");
+    return;
+  }
+
+  Logger.log("ID_Fornecedor está na coluna: " + (idxIdFornecedor + 1));
+
+  // Verificar uma linha de dados para confirmar o problema
+  if (lastRow > 1) {
+    var amostra = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+    Logger.log("Amostra linha 2:");
+    for (var j = 0; j < Math.min(header.length, amostra.length); j++) {
+      Logger.log("  " + header[j] + ": [" + amostra[j] + "]");
+    }
+  }
+
+  // A coluna ID_Fornecedor deve estar na posição 8 (índice 7)
+  // Inserir coluna na posição 8 para deslocar os dados
+  var colunaInserir = idxIdFornecedor + 1; // 1-based
+
+  Logger.log("Inserindo coluna vazia na posição " + colunaInserir + " para deslocar dados...");
+
+  // IMPORTANTE: Inserir coluna ANTES de ID_Fornecedor empurra os dados para a direita
+  // Mas precisamos que o cabeçalho fique no lugar certo
+  // Então vamos fazer diferente: mover os dados da coluna 8 em diante uma posição para a direita
+
+  // Primeiro, vamos ler todos os dados
+  var allData = sheet.getDataRange().getValues();
+
+  // Cabeçalho já está correto, só precisamos ajustar as linhas de dados (linha 2 em diante)
+  // Para cada linha de dados, inserir "" na posição idxIdFornecedor
+
+  for (var r = 1; r < allData.length; r++) {
+    var row = allData[r];
+    // Inserir valor vazio na posição do ID_Fornecedor
+    row.splice(idxIdFornecedor, 0, "");
+    allData[r] = row;
+  }
+
+  // Limpar a aba e reescrever
+  sheet.clearContents();
+
+  // O número de colunas agora é header.length (já correto) para linha 1
+  // e header.length + 1 para as demais (porque adicionamos uma coluna)
+  // Mas queremos que todas tenham o mesmo tamanho
+
+  // Ajustar: o cabeçalho já tem ID_Fornecedor, então ele tem N colunas
+  // Os dados agora também têm N colunas (após o splice)
+  // Precisamos garantir que todos tenham o mesmo tamanho
+
+  var numCols = allData[0].length;
+  for (var r2 = 1; r2 < allData.length; r2++) {
+    // Cortar se tiver mais colunas que o cabeçalho
+    if (allData[r2].length > numCols) {
+      allData[r2] = allData[r2].slice(0, numCols);
+    }
+    // Preencher se tiver menos
+    while (allData[r2].length < numCols) {
+      allData[r2].push("");
+    }
+  }
+
+  // Escrever todos os dados de volta
+  sheet.getRange(1, 1, allData.length, numCols).setValues(allData);
+
+  // Formatar cabeçalho
+  var headerRange = sheet.getRange(1, 1, 1, numCols);
+  headerRange.setFontWeight("bold");
+  headerRange.setBackground("#8b5ca5");
+  headerRange.setFontColor("#ffffff");
+  sheet.setFrozenRows(1);
+
+  SpreadsheetApp.flush();
+
+  // Verificar resultado
+  Logger.log("");
+  Logger.log("Verificando resultado...");
+  var novaAmostra = sheet.getRange(2, 1, 1, numCols).getValues()[0];
+  var novoHeader = sheet.getRange(1, 1, 1, numCols).getValues()[0];
+  Logger.log("Nova amostra linha 2:");
+  for (var k = 0; k < novoHeader.length; k++) {
+    Logger.log("  " + novoHeader[k] + ": [" + novaAmostra[k] + "]");
+  }
+
+  Logger.log("");
+  Logger.log("========================================");
+  Logger.log("✅ CORREÇÃO CONCLUÍDA!");
+  Logger.log("Linhas processadas: " + (allData.length - 1));
+}
+
+/**
  * Debug - mostra os primeiros registros de cada aba para comparar
  */
 function Migracao_debug() {
