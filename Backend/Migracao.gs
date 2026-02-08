@@ -835,6 +835,153 @@ function Migracao_limparERodar() {
 }
 
 /**
+ * Importa dados de Lancamentos_2026 para Lancamentos (sem apagar existentes)
+ * Mesma estrutura de Financeiro_antigo
+ */
+function Migracao_importarLancamentos2026() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  var abaOrigem = ss.getSheetByName("Lancamentos_2026");
+  var abaDestino = ss.getSheetByName("Lancamentos");
+  var abaClientes = ss.getSheetByName("Cadastro");
+
+  if (!abaOrigem) {
+    Logger.log("ERRO: Aba 'Lancamentos_2026' não encontrada!");
+    return;
+  }
+
+  if (!abaDestino) {
+    Logger.log("ERRO: Aba 'Lancamentos' não encontrada!");
+    return;
+  }
+
+  Logger.log("========== IMPORTANDO LANCAMENTOS_2026 ==========");
+  Logger.log("Dados existentes em Lancamentos serão MANTIDOS.");
+
+  // Carregar mapa de clientes
+  var mapaClientes = {};
+  if (abaClientes) {
+    mapaClientes = Migracao_carregarClientes_(abaClientes);
+    Logger.log("Clientes carregados: " + Object.keys(mapaClientes).length);
+  }
+
+  // Ler dados da origem
+  var dadosOrigem = abaOrigem.getDataRange().getValues();
+  if (dadosOrigem.length <= 1) {
+    Logger.log("Nenhum dado para importar.");
+    return;
+  }
+
+  var headerOrigem = dadosOrigem[0];
+  var idxOrigem = Migracao_indexMap_(headerOrigem);
+
+  Logger.log("Colunas origem: " + headerOrigem.join(" | "));
+  Logger.log("Total de linhas para importar: " + (dadosOrigem.length - 1));
+
+  // Importar cada linha
+  var importados = 0;
+  var erros = [];
+
+  for (var r = 1; r < dadosOrigem.length; r++) {
+    var row = dadosOrigem[r];
+
+    try {
+      // Extrair dados da origem (mesma estrutura de Financeiro_antigo)
+      var dataAtendimento = Migracao_formatarData_(row[idxOrigem["DataAtendimento"]]);
+      var dataCompensacao = Migracao_formatarData_(row[idxOrigem["DataCompensacao"]]);
+      var competencia = row[idxOrigem["Competencia"]] || "";
+      var tipo = String(row[idxOrigem["Tipo"]] || "").trim();
+      var idCliente = String(row[idxOrigem["ID_Cliente"]] || "").trim();
+      var descricao = String(row[idxOrigem["Descricao"]] || "").trim();
+      var categoria = String(row[idxOrigem["Categoria"]] || "").trim();
+      var pessoa = String(row[idxOrigem["Pessoa"]] || "").trim();
+      var formaPagamento = String(row[idxOrigem["FormaPagamento"]] || "").trim();
+      var valor = Migracao_parseNumber_(row[idxOrigem["Valor"]]);
+      var status = String(row[idxOrigem["Status"]] || "").trim();
+
+      // Ignorar linhas vazias
+      if (!dataAtendimento && !descricao && !valor) {
+        continue;
+      }
+
+      // Separar Pessoa em Instituicao e Titularidade
+      var parsed = Migracao_separarPessoa_(pessoa);
+
+      // Normalizar Tipo
+      if (tipo.toLowerCase() === "entrada" || tipo.toLowerCase() === "receita") {
+        tipo = "Entrada";
+      } else if (tipo.toLowerCase() === "saida" || tipo.toLowerCase() === "saída" || tipo.toLowerCase() === "despesa") {
+        tipo = "Saida";
+      }
+
+      // Normalizar Status
+      if (status.toLowerCase() === "pago" || status.toLowerCase() === "recebido") {
+        status = "Pago";
+      } else if (status.toLowerCase() === "pendente" || status.toLowerCase() === "a receber") {
+        status = "Pendente";
+      }
+
+      // Normalizar FormaPagamento
+      formaPagamento = Migracao_normalizarFormaPagamento_(formaPagamento);
+
+      // Calcular Mes_a_receber
+      var mesAReceber = "";
+      if (competencia) {
+        mesAReceber = Migracao_extrairMes_(competencia);
+      } else if (dataCompensacao) {
+        mesAReceber = dataCompensacao.substring(0, 7);
+      } else if (dataAtendimento) {
+        mesAReceber = dataAtendimento.substring(0, 7);
+      }
+
+      // Montar linha no formato novo (15 colunas)
+      var novaLinha = [
+        dataAtendimento,                    // Data_Competencia
+        dataCompensacao || dataAtendimento, // Data_Caixa
+        tipo,                               // Tipo
+        "",                                 // Origem
+        categoria,                          // Categoria
+        descricao,                          // Descricao
+        idCliente,                          // ID_Cliente
+        formaPagamento,                     // Forma_Pagamento
+        parsed.instituicao,                 // Instituicao_Financeira
+        parsed.titularidade,                // Titularidade
+        "",                                 // Parcelamento
+        valor,                              // Valor
+        status,                             // Status
+        "",                                 // Observacoes
+        mesAReceber                         // Mes_a_receber
+      ];
+
+      abaDestino.appendRow(novaLinha);
+      importados++;
+
+      if (importados % 100 === 0) {
+        Logger.log("Importados: " + importados);
+        SpreadsheetApp.flush();
+      }
+
+    } catch (e) {
+      erros.push("Linha " + (r + 1) + ": " + e.message);
+    }
+  }
+
+  SpreadsheetApp.flush();
+
+  Logger.log("========================================");
+  Logger.log("✅ IMPORTAÇÃO CONCLUÍDA!");
+  Logger.log("Registros importados: " + importados);
+  Logger.log("Erros: " + erros.length);
+
+  if (erros.length > 0 && erros.length <= 10) {
+    Logger.log("Detalhes dos erros:");
+    for (var i = 0; i < erros.length; i++) {
+      Logger.log("  - " + erros[i]);
+    }
+  }
+}
+
+/**
  * Debug - mostra os primeiros registros de cada aba para comparar
  */
 function Migracao_debug() {
