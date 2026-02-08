@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cadastro de Clientes | Salão</title>
+  <title>Cadastro de Fornecedores | Salão</title>
 
   <!-- CSS -->
   <link rel="stylesheet" href="assets/css/style.css" />
@@ -12,12 +12,12 @@
 <body>
   <header class="app-header">
     <div class="app-header__inner">
-      <h1 class="app-title">Cadastro de Clientes</h1>
+      <h1 class="app-title">Cadastro de Fornecedores</h1>
 
       <nav class="app-nav" aria-label="Navegação principal">
         <a class="app-nav__link" href="dashboard.html">Dashboard</a>
-        <a class="app-nav__link app-nav__link--active" href="index.html">Clientes</a>
-        <a class="app-nav__link" href="fornecedores.html">Fornecedores</a>
+        <a class="app-nav__link" href="index.html">Clientes</a>
+        <a class="app-nav__link app-nav__link--active" href="fornecedores.html">Fornecedores</a>
         <a class="app-nav__link" href="lancamentos.html">Lançamentos</a>
         <a class="app-nav__link" href="resumo.html">Resumo</a>
         <a class="app-nav__link" href="categoria.html">Categoria</a>
@@ -29,31 +29,31 @@
   <main class="app-main">
     <section class="card">
       <div class="card__header">
-        <h2 class="card__title">Novo cliente</h2>
+        <h2 class="card__title">Novo fornecedor</h2>
         <p class="card__desc">Preencha os dados abaixo e salve no banco (Google Planilhas).</p>
       </div>
 
       <div class="card__body">
-        <form id="formCadastro" autocomplete="on">
+        <form id="formFornecedor" autocomplete="on">
 
-          <!-- ID_Cliente (gerado automaticamente no backend) -->
-          <input type="hidden" id="idCliente" name="ID_Cliente" />
+          <!-- ID_Fornecedor (gerado automaticamente no backend) -->
+          <input type="hidden" id="idFornecedor" name="ID_Fornecedor" />
 
           <!-- Nome / Telefone -->
           <div class="form-row">
             <div class="field">
-              <label class="label" for="nomeCliente">NomeCliente *</label>
+              <label class="label" for="nomeFornecedor">Nome Fornecedor *</label>
               <input
                 class="input"
                 type="text"
-                id="nomeCliente"
-                name="NomeCliente"
+                id="nomeFornecedor"
+                name="NomeFornecedor"
                 required
               />
             </div>
 
             <div class="field">
-              <label class="label" for="telefone">Telefone *</label>
+              <label class="label" for="telefone">Telefone</label>
               <input
                 class="input"
                 type="tel"
@@ -61,12 +61,11 @@
                 name="Telefone"
                 inputmode="tel"
                 placeholder="(DDD) 9xxxx-xxxx"
-                required
               />
             </div>
           </div>
 
-          <!-- Email / DataNascimento -->
+          <!-- Email / CNPJ_CPF -->
           <div class="form-row">
             <div class="field">
               <label class="label" for="email">E-mail</label>
@@ -80,43 +79,49 @@
             </div>
 
             <div class="field">
-              <label class="label" for="dataNascimento">DataNascimento</label>
+              <label class="label" for="cnpjCpf">CNPJ / CPF</label>
               <input
                 class="input"
-                type="date"
-                id="dataNascimento"
-                name="DataNascimento"
+                type="text"
+                id="cnpjCpf"
+                name="CNPJ_CPF"
+                placeholder="00.000.000/0000-00"
               />
             </div>
           </div>
 
-          <!-- Município / Bairro -->
+          <!-- Categoria / Endereço -->
           <div class="form-row">
             <div class="field">
-              <label class="label" for="municipio">Município</label>
-              <input
-                class="input"
-                type="text"
-                id="municipio"
-                name="Municipio"
-              />
+              <label class="label" for="categoria">Categoria</label>
+              <select class="select" id="categoria" name="Categoria">
+                <option value="">Selecione</option>
+                <option value="Produtos">Produtos</option>
+                <option value="Serviços">Serviços</option>
+                <option value="Aluguel">Aluguel</option>
+                <option value="Energia">Energia</option>
+                <option value="Água">Água</option>
+                <option value="Internet">Internet</option>
+                <option value="Manutenção">Manutenção</option>
+                <option value="Outros">Outros</option>
+              </select>
             </div>
 
             <div class="field">
-              <label class="label" for="bairro">Bairro</label>
+              <label class="label" for="endereco">Endereço</label>
               <input
                 class="input"
                 type="text"
-                id="bairro"
-                name="Bairro"
+                id="endereco"
+                name="Endereco"
               />
             </div>
           </div>
 
-          <!-- DataCadastro / Profissão -->
+          <!-- DataCadastro -->
           <div class="form-row">
             <div class="field">
-              <label class="label" for="dataCadastro">DataCadastro</label>
+              <label class="label" for="dataCadastro">Data Cadastro</label>
               <input
                 class="input"
                 type="date"
@@ -127,40 +132,7 @@
             </div>
 
             <div class="field">
-              <label class="label" for="profissao">Profissão</label>
-              <input
-                class="input"
-                type="text"
-                id="profissao"
-                name="Profissão"
-              />
-            </div>
-          </div>
-
-          <!-- Preferências / Origem -->
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="preferencias">Preferências</label>
-              <input
-                class="input"
-                type="text"
-                id="preferencias"
-                name="Preferências"
-                placeholder="Ex.: loiro, progressiva, corte curto…"
-              />
-            </div>
-
-            <div class="field">
-              <label class="label" for="origem">Origem</label>
-              <select class="select" id="origem" name="Origem">
-                <option value="">Selecione</option>
-                <option value="Indicação">Indicação</option>
-                <option value="Instagram">Instagram</option>
-                <option value="Google">Google</option>
-                <option value="WhatsApp">WhatsApp</option>
-                <option value="Passou na porta">Passou na porta</option>
-                <option value="Outro">Outro</option>
-              </select>
+              <!-- Espaço vazio para manter alinhamento -->
             </div>
           </div>
 
@@ -171,9 +143,9 @@
               <textarea
                 class="textarea"
                 id="observacao"
-                name="Observação"
+                name="Observacao"
                 rows="4"
-                placeholder="Anotações importantes (alergias, histórico, preferências etc.)"
+                placeholder="Anotações importantes sobre o fornecedor..."
               ></textarea>
             </div>
           </div>
@@ -181,7 +153,7 @@
           <!-- Ações -->
           <div class="actions">
             <button type="submit" id="btnSalvar" class="btn btn--primary">
-              Salvar cadastro
+              Salvar fornecedor
             </button>
             <button type="reset" id="btnLimpar" class="btn">
               Limpar
@@ -197,7 +169,7 @@
     <section class="card">
       <div class="card__header">
         <h2 class="card__title">Busca rápida</h2>
-        <p class="card__desc">Localizar cliente por nome ou telefone.</p>
+        <p class="card__desc">Localizar fornecedor por nome, telefone ou CNPJ/CPF.</p>
       </div>
 
       <div class="card__body">
@@ -211,7 +183,7 @@
                   type="text"
                   id="q"
                   name="q"
-                  placeholder="Nome ou telefone"
+                  placeholder="Nome, telefone ou CNPJ/CPF"
                 />
                 <button type="button" id="btnBuscar" class="btn btn--secondary">
                   Buscar
@@ -226,8 +198,8 @@
                 <tr>
                   <th>Nome</th>
                   <th>Telefone</th>
-                  <th>Município</th>
-                  <th>Bairro</th>
+                  <th>CNPJ/CPF</th>
+                  <th>Categoria</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -239,7 +211,7 @@
   </main>
 
   <footer class="app-footer">
-    <small>Cadastro • Google Planilhas + Apps Script</small>
+    <small>Fornecedores • Google Planilhas + Apps Script</small>
   </footer>
 
   <!-- JS -->
@@ -248,6 +220,6 @@
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="assets/js/search.js"></script>
-  <script src="assets/js/cadastro.js" defer></script>
+  <script src="assets/js/fornecedores.js" defer></script>
 </body>
 </html>
