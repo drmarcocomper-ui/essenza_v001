@@ -1257,6 +1257,236 @@ function Migracao_adicionarFornecedores() {
 }
 
 /**
+ * Separa a coluna K (Titularidade) que contém dados combinados
+ * Ex: "Pessoa Jurídica SumUp" -> Coluna J: "SumUp", Coluna K: "PJ"
+ * Ex: "Pessoa Fisica Nubank" -> Coluna J: "Nubank", Coluna K: "PF"
+ */
+function Migracao_separarTitularidade() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Lancamentos");
+
+  if (!sheet) {
+    Logger.log("ERRO: Aba 'Lancamentos' não encontrada!");
+    return;
+  }
+
+  Logger.log("========== SEPARANDO TITULARIDADE ==========");
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    Logger.log("Nenhum dado para processar.");
+    return;
+  }
+
+  var header = data[0];
+  var idx = Migracao_indexMap_(header);
+
+  // Encontrar colunas J (Instituicao_Financeira) e K (Titularidade)
+  var idxInstituicao = idx["Instituicao_Financeira"];
+  var idxTitularidade = idx["Titularidade"];
+
+  if (idxInstituicao === undefined) {
+    Logger.log("ERRO: Coluna 'Instituicao_Financeira' não encontrada!");
+    Logger.log("Colunas: " + header.join(" | "));
+    return;
+  }
+
+  if (idxTitularidade === undefined) {
+    Logger.log("ERRO: Coluna 'Titularidade' não encontrada!");
+    Logger.log("Colunas: " + header.join(" | "));
+    return;
+  }
+
+  Logger.log("Coluna Instituicao_Financeira: " + (idxInstituicao + 1));
+  Logger.log("Coluna Titularidade: " + (idxTitularidade + 1));
+  Logger.log("Total de linhas: " + (data.length - 1));
+
+  var atualizados = 0;
+
+  for (var r = 1; r < data.length; r++) {
+    var valorTitularidade = String(data[r][idxTitularidade] || "").trim();
+    var valorInstituicao = String(data[r][idxInstituicao] || "").trim();
+
+    // Pular se já está no formato correto (PF, PJ ou vazio)
+    if (valorTitularidade === "PF" || valorTitularidade === "PJ" || valorTitularidade === "" || valorTitularidade === "Cortesia") {
+      continue;
+    }
+
+    // Separar o valor combinado
+    var resultado = Migracao_parseTitularidadeCombinada_(valorTitularidade);
+
+    if (resultado.titularidade || resultado.instituicao) {
+      // Atualizar Instituicao_Financeira (coluna J) se estiver vazia
+      if (!valorInstituicao && resultado.instituicao) {
+        sheet.getRange(r + 1, idxInstituicao + 1).setValue(resultado.instituicao);
+      }
+
+      // Atualizar Titularidade (coluna K)
+      sheet.getRange(r + 1, idxTitularidade + 1).setValue(resultado.titularidade);
+
+      atualizados++;
+
+      if (atualizados % 50 === 0) {
+        Logger.log("Atualizados: " + atualizados);
+        SpreadsheetApp.flush();
+      }
+    }
+  }
+
+  SpreadsheetApp.flush();
+
+  Logger.log("========================================");
+  Logger.log("✅ MIGRAÇÃO CONCLUÍDA!");
+  Logger.log("Registros atualizados: " + atualizados);
+}
+
+/**
+ * Gera ID_Fornecedor para todas as linhas com Tipo = "Saida"
+ * que ainda não têm ID_Fornecedor preenchido
+ */
+function Migracao_gerarIDFornecedorParaSaidas() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Lancamentos");
+
+  if (!sheet) {
+    Logger.log("ERRO: Aba 'Lancamentos' não encontrada!");
+    return;
+  }
+
+  Logger.log("========== GERANDO ID_FORNECEDOR PARA SAÍDAS ==========");
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    Logger.log("Nenhum dado para processar.");
+    return;
+  }
+
+  var header = data[0];
+  var idx = Migracao_indexMap_(header);
+
+  // Encontrar colunas
+  var idxTipo = idx["Tipo"];
+  var idxIdFornecedor = idx["ID_Fornecedor"];
+
+  if (idxTipo === undefined) {
+    Logger.log("ERRO: Coluna 'Tipo' não encontrada!");
+    return;
+  }
+
+  if (idxIdFornecedor === undefined) {
+    Logger.log("ERRO: Coluna 'ID_Fornecedor' não encontrada!");
+    Logger.log("Colunas: " + header.join(" | "));
+    return;
+  }
+
+  Logger.log("Coluna Tipo: " + (idxTipo + 1));
+  Logger.log("Coluna ID_Fornecedor: " + (idxIdFornecedor + 1));
+  Logger.log("Total de linhas: " + (data.length - 1));
+
+  // Obter o último número de sequência
+  var props = PropertiesService.getScriptProperties();
+  var seq = Number(props.getProperty("FORNECEDORES_LANC_SEQ") || "0");
+
+  var atualizados = 0;
+
+  for (var r = 1; r < data.length; r++) {
+    var tipo = String(data[r][idxTipo] || "").trim();
+    var idFornecedor = String(data[r][idxIdFornecedor] || "").trim();
+
+    // Só processa se for Saida e não tiver ID_Fornecedor
+    if (tipo === "Saida" && !idFornecedor) {
+      seq++;
+      var novoId = "FN-" + Migracao_getDataFormatada_() + "-" + String(seq).padStart(4, "0");
+
+      sheet.getRange(r + 1, idxIdFornecedor + 1).setValue(novoId);
+      atualizados++;
+
+      if (atualizados % 50 === 0) {
+        Logger.log("Atualizados: " + atualizados);
+        SpreadsheetApp.flush();
+      }
+    }
+  }
+
+  // Salvar o último número de sequência
+  props.setProperty("FORNECEDORES_LANC_SEQ", String(seq));
+
+  SpreadsheetApp.flush();
+
+  Logger.log("========================================");
+  Logger.log("✅ MIGRAÇÃO CONCLUÍDA!");
+  Logger.log("IDs gerados: " + atualizados);
+  Logger.log("Último seq: " + seq);
+}
+
+/**
+ * Retorna data formatada YYYYMMDD
+ */
+function Migracao_getDataFormatada_() {
+  var d = new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, "0");
+  var day = String(d.getDate()).padStart(2, "0");
+  return y + m + day;
+}
+
+/**
+ * Parse valor combinado de Titularidade
+ * Ex: "Pessoa Jurídica SumUp" -> { titularidade: "PJ", instituicao: "SumUp" }
+ * Ex: "Pessoa Fisica Nubank PF" -> { titularidade: "PF", instituicao: "Nubank" }
+ * Ex: "PJ Nubank" -> { titularidade: "PJ", instituicao: "Nubank" }
+ */
+function Migracao_parseTitularidadeCombinada_(valor) {
+  valor = String(valor || "").trim();
+
+  if (!valor) {
+    return { titularidade: "", instituicao: "" };
+  }
+
+  var titularidade = "";
+  var instituicao = "";
+
+  // Normalizar variações
+  var valorLower = valor.toLowerCase();
+
+  // Detectar Pessoa Física / PF
+  if (valorLower.indexOf("pessoa f") !== -1 || valorLower.indexOf("pessoa f") !== -1) {
+    titularidade = "PF";
+    // Remover "Pessoa Física" ou variações
+    valor = valor.replace(/pessoa\s*f[ií]sica/gi, "").trim();
+  }
+  // Detectar Pessoa Jurídica / PJ
+  else if (valorLower.indexOf("pessoa j") !== -1) {
+    titularidade = "PJ";
+    // Remover "Pessoa Jurídica" ou variações
+    valor = valor.replace(/pessoa\s*jur[ií]dica/gi, "").trim();
+  }
+  // Detectar PF ou PJ no início ou fim
+  else if (/\bPF\b/i.test(valor)) {
+    titularidade = "PF";
+    valor = valor.replace(/\bPF\b/gi, "").trim();
+  }
+  else if (/\bPJ\b/i.test(valor)) {
+    titularidade = "PJ";
+    valor = valor.replace(/\bPJ\b/gi, "").trim();
+  }
+
+  // O que sobrou é a instituição
+  instituicao = valor.trim();
+
+  // Normalizar instituições conhecidas
+  var instLower = instituicao.toLowerCase();
+  if (instLower === "nubank" || instLower.indexOf("nubank") !== -1) instituicao = "Nubank";
+  else if (instLower === "picpay" || instLower.indexOf("picpay") !== -1) instituicao = "PicPay";
+  else if (instLower === "sumup" || instLower.indexOf("sumup") !== -1) instituicao = "SumUp";
+  else if (instLower === "dinheiro") instituicao = "Dinheiro";
+  else if (instLower === "terceiro") instituicao = "Terceiro";
+  else if (instLower === "cortesia") instituicao = "Cortesia";
+
+  return { titularidade: titularidade, instituicao: instituicao };
+}
+
+/**
  * Debug - mostra os primeiros registros de cada aba para comparar
  */
 function Migracao_debug() {
