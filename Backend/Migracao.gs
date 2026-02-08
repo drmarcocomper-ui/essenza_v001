@@ -1543,6 +1543,182 @@ function Migracao_popularFornecedores() {
 }
 
 /**
+ * Remove fornecedores duplicados da aba Fornecedores
+ * Mantém apenas o primeiro registro de cada Categoria (não altera IDs)
+ */
+function Migracao_removerFornecedoresDuplicados() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Fornecedores");
+
+  if (!sheet) {
+    Logger.log("ERRO: Aba 'Fornecedores' não encontrada!");
+    return;
+  }
+
+  Logger.log("========== REMOVENDO FORNECEDORES DUPLICADOS (POR CATEGORIA) ==========");
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    Logger.log("Nenhum dado para processar.");
+    return;
+  }
+
+  var header = data[0];
+  var idx = Migracao_indexMap_(header);
+  var idxCategoria = idx["Categoria"];
+
+  if (idxCategoria === undefined) {
+    Logger.log("ERRO: Coluna 'Categoria' não encontrada!");
+    return;
+  }
+
+  // Identificar linhas únicas e duplicadas por Categoria
+  var categoriasVistas = {};
+  var linhasParaManter = [header]; // Manter cabeçalho
+  var duplicados = 0;
+
+  for (var r = 1; r < data.length; r++) {
+    var categoria = String(data[r][idxCategoria] || "").trim().toLowerCase();
+
+    if (!categoria) {
+      // Linha sem categoria, manter
+      linhasParaManter.push(data[r]);
+      continue;
+    }
+
+    if (categoriasVistas[categoria]) {
+      // Duplicado, não manter
+      duplicados++;
+    } else {
+      // Primeira com esta categoria, manter
+      categoriasVistas[categoria] = true;
+      linhasParaManter.push(data[r]);
+    }
+  }
+
+  Logger.log("Total de linhas originais: " + (data.length - 1));
+  Logger.log("Duplicados encontrados: " + duplicados);
+  Logger.log("Linhas a manter: " + (linhasParaManter.length - 1));
+
+  if (duplicados === 0) {
+    Logger.log("Nenhum duplicado encontrado.");
+    return;
+  }
+
+  // Limpar aba e reescrever dados únicos
+  sheet.clearContents();
+
+  if (linhasParaManter.length > 0) {
+    sheet.getRange(1, 1, linhasParaManter.length, linhasParaManter[0].length)
+         .setValues(linhasParaManter);
+  }
+
+  // Formatar cabeçalho
+  var headerRange = sheet.getRange(1, 1, 1, header.length);
+  headerRange.setFontWeight("bold");
+  headerRange.setBackground("#8b5ca5");
+  headerRange.setFontColor("#ffffff");
+  sheet.setFrozenRows(1);
+
+  SpreadsheetApp.flush();
+
+  Logger.log("========================================");
+  Logger.log("✅ DUPLICADOS REMOVIDOS!");
+  Logger.log("Registros únicos mantidos: " + (linhasParaManter.length - 1));
+}
+
+/**
+ * Corrige os ID_Fornecedor na aba Lancamentos
+ * Usa a Categoria para buscar o ID correto na aba Fornecedores
+ */
+function Migracao_corrigirIDFornecedorEmLancamentos() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetLanc = ss.getSheetByName("Lancamentos");
+  var sheetForn = ss.getSheetByName("Fornecedores");
+
+  if (!sheetLanc) {
+    Logger.log("ERRO: Aba 'Lancamentos' não encontrada!");
+    return;
+  }
+
+  if (!sheetForn) {
+    Logger.log("ERRO: Aba 'Fornecedores' não encontrada!");
+    return;
+  }
+
+  Logger.log("========== CORRIGINDO ID_FORNECEDOR EM LANCAMENTOS ==========");
+
+  // Ler Fornecedores e criar mapa: Categoria -> ID_Fornecedor
+  var dataForn = sheetForn.getDataRange().getValues();
+  var headerForn = dataForn[0];
+  var idxForn = Migracao_indexMap_(headerForn);
+
+  var idxFornId = idxForn["ID_Fornecedor"];
+  var idxFornCategoria = idxForn["Categoria"];
+
+  if (idxFornId === undefined || idxFornCategoria === undefined) {
+    Logger.log("ERRO: Colunas não encontradas em Fornecedores!");
+    return;
+  }
+
+  var mapaCategoria = {};
+  for (var f = 1; f < dataForn.length; f++) {
+    var id = String(dataForn[f][idxFornId] || "").trim();
+    var categoria = String(dataForn[f][idxFornCategoria] || "").trim().toLowerCase();
+
+    if (id && categoria) {
+      mapaCategoria[categoria] = id;
+    }
+  }
+
+  Logger.log("Mapa Categoria->ID criado: " + Object.keys(mapaCategoria).length + " categorias");
+
+  // Ler Lancamentos
+  var dataLanc = sheetLanc.getDataRange().getValues();
+  var headerLanc = dataLanc[0];
+  var idxLanc = Migracao_indexMap_(headerLanc);
+
+  var idxTipo = idxLanc["Tipo"];
+  var idxCategoria = idxLanc["Categoria"];
+  var idxIdFornecedor = idxLanc["ID_Fornecedor"];
+
+  if (idxTipo === undefined || idxCategoria === undefined || idxIdFornecedor === undefined) {
+    Logger.log("ERRO: Colunas não encontradas em Lancamentos!");
+    return;
+  }
+
+  var atualizados = 0;
+
+  for (var r = 1; r < dataLanc.length; r++) {
+    var tipo = String(dataLanc[r][idxTipo] || "").trim();
+
+    if (tipo !== "Saida") continue;
+
+    var categoria = String(dataLanc[r][idxCategoria] || "").trim().toLowerCase();
+    var idAtual = String(dataLanc[r][idxIdFornecedor] || "").trim();
+
+    // Buscar ID correto no mapa
+    var idCorreto = mapaCategoria[categoria];
+
+    if (idCorreto && idCorreto !== idAtual) {
+      sheetLanc.getRange(r + 1, idxIdFornecedor + 1).setValue(idCorreto);
+      atualizados++;
+
+      if (atualizados % 50 === 0) {
+        Logger.log("Atualizados: " + atualizados);
+        SpreadsheetApp.flush();
+      }
+    }
+  }
+
+  SpreadsheetApp.flush();
+
+  Logger.log("========================================");
+  Logger.log("✅ CORREÇÃO CONCLUÍDA!");
+  Logger.log("Lançamentos atualizados: " + atualizados);
+}
+
+/**
  * Retorna data formatada YYYY-MM-DD
  */
 function Migracao_getDataFormatadaISO_() {
