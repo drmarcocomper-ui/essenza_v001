@@ -18,6 +18,11 @@
  * ✅ Backup:
  * - Backup.ExportarTodos
  *
+ * ✅ Fornecedores:
+ * - Fornecedores.GerarID
+ * - Fornecedores.Criar
+ * - Fornecedores.Buscar
+ *
  * Usado por:
  * - Api.gs
  */
@@ -64,6 +69,28 @@ function Registry_init_() {
         throw new Error("Handler ausente: Clientes_BuscarApi_");
       }
       return Clientes_BuscarApi_(e);
+    },
+
+    // ---- FORNECEDORES ----
+    "Fornecedores.GerarID": function (e) {
+      if (typeof Fornecedores_GerarIDApi_ !== "function") {
+        throw new Error("Handler ausente: Fornecedores_GerarIDApi_");
+      }
+      return Fornecedores_GerarIDApi_(e);
+    },
+
+    "Fornecedores.Criar": function (e) {
+      if (typeof Fornecedores_CriarApi_ !== "function") {
+        throw new Error("Handler ausente: Fornecedores_CriarApi_");
+      }
+      return Fornecedores_CriarApi_(e);
+    },
+
+    "Fornecedores.Buscar": function (e) {
+      if (typeof Fornecedores_BuscarApi_ !== "function") {
+        throw new Error("Handler ausente: Fornecedores_BuscarApi_");
+      }
+      return Fornecedores_BuscarApi_(e);
     }
   };
 

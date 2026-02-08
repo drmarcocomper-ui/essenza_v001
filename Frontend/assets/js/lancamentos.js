@@ -47,6 +47,12 @@
   // Clientes (opcional)
   const inputCliente = document.getElementById("ID_Cliente");
   const datalistClientes = document.getElementById("listaClientes");
+  const fieldCliente = document.getElementById("fieldCliente");
+
+  // Fornecedores (opcional)
+  const inputFornecedor = document.getElementById("ID_Fornecedor");
+  const datalistFornecedores = document.getElementById("listaFornecedores");
+  const fieldFornecedor = document.getElementById("fieldFornecedor");
 
   // Categoria (padronização)
   const inputCategoria = document.getElementById("Categoria");
@@ -64,6 +70,7 @@
     Categoria: inputCategoria,
     Descricao: document.getElementById("Descricao"),
     ID_Cliente: inputCliente,
+    ID_Fornecedor: inputFornecedor,
     Forma_Pagamento: document.getElementById("Forma_Pagamento"),
     Instituicao_Financeira: document.getElementById("Instituicao_Financeira"),
     Titularidade: document.getElementById("Titularidade"),
@@ -87,6 +94,9 @@
 
   // Clientes
   let clientesDebounce = null;
+
+  // Fornecedores
+  let fornecedoresDebounce = null;
 
   // Categorias
   let categoriasCache = [];
@@ -430,7 +440,90 @@
     if (el.Tipo) {
       el.Tipo.addEventListener("change", () => {
         if (!isTipoEntrada()) clearClientesDatalist();
+        atualizarVisibilidadeCampos();
       });
+    }
+  }
+
+  // ============================================================
+  // FORNECEDORES — autocomplete
+  // ============================================================
+  function isTipoSaida() {
+    return getTipoAtual() === "Saida";
+  }
+
+  function clearFornecedoresDatalist() {
+    if (!datalistFornecedores) return;
+    datalistFornecedores.innerHTML = "";
+  }
+
+  function renderFornecedoresDatalist(items) {
+    if (!datalistFornecedores) return;
+    datalistFornecedores.innerHTML = "";
+
+    const nomes = new Set();
+    (items || []).forEach((it) => {
+      const nome = String(it?.NomeFornecedor || "").trim();
+      if (nome) nomes.add(nome);
+    });
+
+    [...nomes].slice(0, 50).forEach((nome) => {
+      const opt = document.createElement("option");
+      opt.value = nome;
+      datalistFornecedores.appendChild(opt);
+    });
+  }
+
+  async function buscarFornecedores(q) {
+    if (!requireScriptUrl()) return;
+
+    const data = await jsonpRequest({
+      action: "Fornecedores.Buscar",
+      q: String(q ?? ""),
+    });
+
+    if (!data || data.ok !== true) return;
+    renderFornecedoresDatalist(data.items || []);
+  }
+
+  function bindAutocompleteFornecedores() {
+    if (!inputFornecedor) return;
+
+    inputFornecedor.addEventListener("focus", () => {
+      if (!isTipoSaida()) return;
+      buscarFornecedores(inputFornecedor.value || "").catch(() => {});
+    });
+
+    inputFornecedor.addEventListener("input", () => {
+      if (!isTipoSaida()) return;
+
+      clearTimeout(fornecedoresDebounce);
+      fornecedoresDebounce = setTimeout(() => {
+        buscarFornecedores(inputFornecedor.value || "").catch(() => {});
+      }, 250);
+    });
+
+    if (el.Tipo) {
+      el.Tipo.addEventListener("change", () => {
+        if (!isTipoSaida()) clearFornecedoresDatalist();
+      });
+    }
+  }
+
+  // ============================================================
+  // VISIBILIDADE CAMPOS CLIENTE/FORNECEDOR
+  // ============================================================
+  function atualizarVisibilidadeCampos() {
+    const tipo = getTipoAtual();
+
+    // Entrada: mostra Cliente, esconde Fornecedor
+    // Saida: mostra Fornecedor, esconde Cliente
+    // Outros: mostra ambos
+    if (fieldCliente) {
+      fieldCliente.style.display = (tipo === "Saida") ? "none" : "";
+    }
+    if (fieldFornecedor) {
+      fieldFornecedor.style.display = (tipo === "Entrada") ? "none" : "";
     }
   }
 
@@ -452,7 +545,9 @@
     setTimeout(() => setFeedback(feedbackSalvar, "", "info"), 1200);
 
     clearClientesDatalist();
+    clearFornecedoresDatalist();
     clearDescricoesDatalist();
+    atualizarVisibilidadeCampos();
 
     // Esconder botão excluir
     if (btnExcluir) btnExcluir.style.display = "none";
@@ -473,9 +568,11 @@
     clearDescricoesDatalist();
 
     if (!isTipoEntrada()) clearClientesDatalist();
+    if (!isTipoSaida()) clearFornecedoresDatalist();
 
     // ao carregar, tentar popular descrições
     aplicarDescricaoDaCategoria(false);
+    atualizarVisibilidadeCampos();
 
     // Mostrar botão excluir quando em modo edição
     if (btnExcluir && selectedRowIndex) {
@@ -492,6 +589,7 @@
       Categoria: (el.Categoria?.value || "").trim(),
       Descricao: (el.Descricao?.value || "").trim(),
       ID_Cliente: (el.ID_Cliente?.value || "").trim(),
+      ID_Fornecedor: (el.ID_Fornecedor?.value || "").trim(),
       Forma_Pagamento: (el.Forma_Pagamento?.value || "").trim(),
       Instituicao_Financeira: (el.Instituicao_Financeira?.value || "").trim(),
       Titularidade: (el.Titularidade?.value || "").trim(),
@@ -621,12 +719,24 @@
     sorted.forEach((it) => {
       const tr = document.createElement("tr");
       tr.dataset.rowIndex = String(it.rowIndex ?? "");
+
+      // Mostrar Cliente ou Fornecedor dependendo do Tipo
+      let clienteFornecedor = "";
+      if (it.Tipo === "Entrada") {
+        clienteFornecedor = it.NomeCliente || it.ID_Cliente || "";
+      } else if (it.Tipo === "Saida") {
+        clienteFornecedor = it.NomeFornecedor || it.ID_Fornecedor || "";
+      } else {
+        // Transferência ou outro: mostrar o que tiver
+        clienteFornecedor = it.NomeCliente || it.ID_Cliente || it.NomeFornecedor || it.ID_Fornecedor || "";
+      }
+
       tr.innerHTML = `
         <td>${escapeHtml(it.Data_Competencia || "")}</td>
         <td>${escapeHtml(it.Tipo || "")}</td>
         <td>${escapeHtml(it.Categoria || "")}</td>
         <td>${escapeHtml(it.Descricao || "")}</td>
-        <td>${escapeHtml(it.ID_Cliente || "")}</td>
+        <td>${escapeHtml(clienteFornecedor)}</td>
         <td>${escapeHtml(it.Forma_Pagamento || "")}</td>
         <td>${escapeHtml(formatMoneyBR(it.Valor))}</td>
         <td>${escapeHtml(it.Status || "")}</td>
@@ -902,8 +1012,10 @@
   initDefaults();
   bind();
   bindAutocompleteClientes();
+  bindAutocompleteFornecedores();
   bindCategoriaPadrao();
   bindSortHeaders();
+  atualizarVisibilidadeCampos();
 
   // carrega categorias pro tipo atual (se vazio, carrega geral ao focar)
   carregarCategoriasAtivas(getTipoAtual()).catch(() => {});

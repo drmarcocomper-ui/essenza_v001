@@ -22,6 +22,7 @@ var LANC_HEADERS = [
   "Categoria",
   "Descricao",
   "ID_Cliente",
+  "ID_Fornecedor",
   "Forma_Pagamento",
   "Instituicao_Financeira",
   "Titularidade",
@@ -354,11 +355,14 @@ function Lancamentos_listar_(sheet, filtros, page, limit) {
   var endIdx = startIdx + limit;
   var items = all.slice(startIdx, endIdx);
 
-  // Adicionar nome do cliente
+  // Adicionar nome do cliente e fornecedor
   var mapaClientes = LANC_carregarMapaClientes_();
+  var mapaFornecedores = LANC_carregarMapaFornecedores_();
   items.forEach(function(it) {
     var idCliente = it.ID_Cliente || "";
+    var idFornecedor = it.ID_Fornecedor || "";
     it.NomeCliente = mapaClientes[idCliente] || idCliente;
+    it.NomeFornecedor = mapaFornecedores[idFornecedor] || idFornecedor;
   });
 
   return {
@@ -497,6 +501,40 @@ function LANC_carregarMapaClientes_() {
   return mapa;
 }
 
+/**
+ * Carrega mapa de fornecedores: ID_Fornecedor -> NomeFornecedor
+ */
+function LANC_carregarMapaFornecedores_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Fornecedores");
+  if (!sheet) return {};
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return {};
+
+  var header = data[0];
+  var idx = LANC_indexMap_(header);
+
+  // Encontrar colunas
+  var idxId = idx["ID_Fornecedor"];
+  if (idxId === undefined) idxId = idx["ID"];
+  var idxNome = idx["NomeFornecedor"];
+  if (idxNome === undefined) idxNome = idx["Nome"];
+
+  if (idxId === undefined || idxNome === undefined) return {};
+
+  var mapa = {};
+  for (var i = 1; i < data.length; i++) {
+    var id = LANC_safeStr_(data[i][idxId]);
+    var nome = LANC_safeStr_(data[i][idxNome]);
+    if (id) {
+      mapa[id] = nome || id;
+    }
+  }
+
+  return mapa;
+}
+
 function LANC_getMesFromDate_(value) {
   if (!value) return "";
 
@@ -539,6 +577,7 @@ function LANC_buildRowObj_(payload, dc, dcaixa, parcelamentoStr, valorNum, statu
     Categoria: LANC_safeStr_(payload.Categoria),
     Descricao: LANC_safeStr_(payload.Descricao),
     ID_Cliente: LANC_safeStr_(payload.ID_Cliente),
+    ID_Fornecedor: LANC_safeStr_(payload.ID_Fornecedor),
     Forma_Pagamento: LANC_safeStr_(payload.Forma_Pagamento),
     Instituicao_Financeira: LANC_safeStr_(payload.Instituicao_Financeira),
     Titularidade: LANC_safeStr_(payload.Titularidade),

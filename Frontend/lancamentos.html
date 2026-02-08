@@ -108,8 +108,8 @@
           </div>
 
           <div class="form-row">
-            <div class="field">
-              <label class="label" for="ID_Cliente">ID_Cliente</label>
+            <div class="field" id="fieldCliente">
+              <label class="label" for="ID_Cliente">Cliente</label>
               <input
                 class="input"
                 type="text"
@@ -119,7 +119,21 @@
                 placeholder="(Entrada) comece a digitar o nome..."
               />
               <datalist id="listaClientes"></datalist>
-              <small class="hint">Quando Tipo = Entrada, sugere clientes cadastrados (Cadastro).</small>
+              <small class="hint">Quando Tipo = Entrada, sugere clientes cadastrados.</small>
+            </div>
+
+            <div class="field" id="fieldFornecedor">
+              <label class="label" for="ID_Fornecedor">Fornecedor</label>
+              <input
+                class="input"
+                type="text"
+                id="ID_Fornecedor"
+                name="ID_Fornecedor"
+                list="listaFornecedores"
+                placeholder="(Saida) comece a digitar o nome..."
+              />
+              <datalist id="listaFornecedores"></datalist>
+              <small class="hint">Quando Tipo = Saida, sugere fornecedores cadastrados.</small>
             </div>
 
             <div class="field">
@@ -339,7 +353,7 @@
                 <th class="sortable" data-col="Tipo">Tipo <span class="sort-icon"></span></th>
                 <th class="sortable" data-col="Categoria">Categoria <span class="sort-icon"></span></th>
                 <th class="sortable" data-col="Descricao">Descricao <span class="sort-icon"></span></th>
-                <th class="sortable" data-col="ID_Cliente">ID_Cliente <span class="sort-icon"></span></th>
+                <th>Cliente/Fornecedor</th>
                 <th class="sortable" data-col="Forma_Pagamento">Forma_Pagamento <span class="sort-icon"></span></th>
                 <th class="sortable" data-col="Valor">Valor <span class="sort-icon"></span></th>
                 <th class="sortable" data-col="Status">Status <span class="sort-icon"></span></th>
