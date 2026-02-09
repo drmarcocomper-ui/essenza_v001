@@ -69,8 +69,12 @@ function Backup_exportarTodos_() {
     for (var r = 1; r < allData.length; r++) {
       var row = allData[r];
       var obj = {};
+      var hasData = false;
+
       for (var c = 0; c < headers.length; c++) {
         var key = String(headers[c] || "").trim();
+        if (!key) continue; // Pular colunas sem header
+
         var val = row[c];
 
         // Converter datas para ISO string
@@ -78,9 +82,21 @@ function Backup_exportarTodos_() {
           val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
         }
 
+        // Converter valores para string se necessário
+        if (val === null || val === undefined) {
+          val = "";
+        } else if (typeof val === "number" || typeof val === "boolean") {
+          val = String(val);
+        }
+
         obj[key] = val;
+        if (String(val).trim() !== "") hasData = true;
       }
-      rows.push(obj);
+
+      // Só adiciona linhas que têm pelo menos um dado
+      if (hasData) {
+        rows.push(obj);
+      }
     }
 
     resultado.sheets[sheetName] = {
