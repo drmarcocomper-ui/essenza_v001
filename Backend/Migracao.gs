@@ -11,6 +11,26 @@
  * IMPORTANTE: Faça backup da planilha antes de executar!
  */
 
+// ============================================================
+// CONFIGURAR SENHA DO SISTEMA
+// ============================================================
+/**
+ * Execute esta função para configurar a senha do login.
+ * TROQUE "essenza2025" pela senha que você deseja usar.
+ */
+function ConfigurarSenha() {
+  var SENHA = "essenza2025";  // <-- TROQUE AQUI pela sua senha
+
+  if (!SENHA || SENHA.length < 6) {
+    Logger.log("ERRO: A senha deve ter pelo menos 6 caracteres.");
+    return;
+  }
+
+  Auth_SetupPassword_(SENHA);
+  Logger.log("✅ Senha configurada com sucesso!");
+  Logger.log("Agora você pode fazer login com essa senha.");
+}
+
 /**
  * Função principal de migração
  * Execute esta função no editor do Apps Script

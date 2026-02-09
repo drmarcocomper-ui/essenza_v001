@@ -70,6 +70,7 @@ function LANC_parseIsoDateToDate_(iso) {
 
 /**
  * Aceita Date (da planilha) OU string ISO/BR e retorna Date (sem hora).
+ * Corrige formatos invertidos como YYYY-DD-MM
  */
 function LANC_parseAnyToDate_(v) {
   if (!v) return null;
@@ -81,12 +82,47 @@ function LANC_parseAnyToDate_(v) {
   var s = LANC_safeStr_(v);
   if (!s) return null;
 
-  // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return LANC_parseIsoDateToDate_(s);
+  // YYYY-MM-DD ou YYYY-DD-MM (detectar automaticamente)
+  var isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    var ano = Number(isoMatch[1]);
+    var p1 = Number(isoMatch[2]); // pode ser mês ou dia
+    var p2 = Number(isoMatch[3]); // pode ser dia ou mês
+
+    var mes, dia;
+    if (p1 > 12 && p2 <= 12) {
+      // p1 é dia, p2 é mês (formato YYYY-DD-MM)
+      dia = p1;
+      mes = p2;
+    } else if (p2 > 12 && p1 <= 12) {
+      // p1 é mês, p2 é dia (formato YYYY-MM-DD) - mas dia > 12
+      mes = p1;
+      dia = p2;
+    } else {
+      // ambos <= 12, assumir YYYY-MM-DD (padrão ISO)
+      mes = p1;
+      dia = p2;
+    }
+
+    return new Date(ano, mes - 1, dia);
+  }
 
   // DD/MM/YYYY
-  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    var d1 = Number(m[1]);
+    var d2 = Number(m[2]);
+    var d3 = Number(m[3]);
+
+    // Detectar se é DD/MM ou MM/DD
+    if (d1 > 12 && d2 <= 12) {
+      return new Date(d3, d2 - 1, d1); // DD/MM/YYYY
+    } else if (d2 > 12 && d1 <= 12) {
+      return new Date(d3, d1 - 1, d2); // MM/DD/YYYY
+    } else {
+      return new Date(d3, d2 - 1, d1); // assumir DD/MM/YYYY (BR)
+    }
+  }
 
   var t = Date.parse(s);
   if (isNaN(t)) return null;

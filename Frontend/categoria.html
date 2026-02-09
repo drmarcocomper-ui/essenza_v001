@@ -3,9 +3,135 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Categorias | Salão</title>
+  <title>Categorias | Essenza</title>
 
   <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    /* Resumo */
+    .resumo-categorias {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .resumo-categorias__card {
+      background: var(--cor-bg);
+      border-radius: var(--raio);
+      box-shadow: var(--sombra);
+      padding: 1rem;
+      text-align: center;
+      border-left: 4px solid var(--cor-primaria);
+    }
+
+    .resumo-categorias__card--total { border-left-color: #4169e1; }
+    .resumo-categorias__card--entradas { border-left-color: #228b22; }
+    .resumo-categorias__card--saidas { border-left-color: #c41e3a; }
+    .resumo-categorias__card--inativos { border-left-color: #999; }
+
+    .resumo-categorias__label {
+      font-size: 0.8rem;
+      color: var(--cor-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .resumo-categorias__value {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    /* Botão grande */
+    .btn--large {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+    }
+
+    /* Botões de ação */
+    .btn--success {
+      background: #228b22;
+      color: white;
+      border: none;
+    }
+    .btn--success:hover { background: #1a6b1a; }
+
+    .btn--warning {
+      background: #daa520;
+      color: white;
+      border: none;
+    }
+    .btn--warning:hover { background: #b8860b; }
+
+    /* Card formulário */
+    .card-formulario {
+      border: 2px solid var(--cor-primaria);
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-formulario.modo-edicao {
+      border-color: #4169e1;
+    }
+
+    .card-formulario.modo-edicao .card__header {
+      background: rgba(65, 105, 225, 0.1);
+    }
+
+    /* Formulário em grupos */
+    .form-group {
+      background: var(--cor-bg-alt, #f9f9f9);
+      border-radius: var(--raio);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--cor-borda);
+    }
+
+    .form-group__title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--cor-primaria);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Ações do formulário */
+    #acoesFormulario {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    /* Categoria inativa na tabela */
+    .categoria-inativa {
+      opacity: 0.6;
+    }
+
+    /* Linha selecionada */
+    .table tr.selecionada {
+      background: rgba(139, 92, 165, 0.15) !important;
+    }
+
+    /* Cores por tipo */
+    .tipo-entrada { color: #228b22; font-weight: 500; }
+    .tipo-saida { color: #c41e3a; font-weight: 500; }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      .resumo-categorias {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      #acoesFormulario {
+        flex-direction: column;
+      }
+      #acoesFormulario .btn {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -26,65 +152,103 @@
   </header>
 
   <main class="app-main">
-    <!-- CADASTRO (NOVO / EDITAR) -->
-    <section class="card">
-      <div class="card__header">
-        <h2 class="card__title">Cadastro</h2>
-        <p class="card__desc">Crie categorias e descrições padrão para facilitar os lançamentos.</p>
+    <!-- RESUMO -->
+    <section class="resumo-categorias" id="resumoCategorias" style="display:none;">
+      <div class="resumo-categorias__card resumo-categorias__card--total">
+        <div class="resumo-categorias__label">Total</div>
+        <div class="resumo-categorias__value" id="resumoTotal">0</div>
+      </div>
+      <div class="resumo-categorias__card resumo-categorias__card--entradas">
+        <div class="resumo-categorias__label">Entrada</div>
+        <div class="resumo-categorias__value" id="resumoEntradas">0</div>
+      </div>
+      <div class="resumo-categorias__card resumo-categorias__card--saidas">
+        <div class="resumo-categorias__label">Saída</div>
+        <div class="resumo-categorias__value" id="resumoSaidas">0</div>
+      </div>
+      <div class="resumo-categorias__card resumo-categorias__card--inativos">
+        <div class="resumo-categorias__label">Inativas</div>
+        <div class="resumo-categorias__value" id="resumoInativos">0</div>
+      </div>
+    </section>
+
+    <!-- BOTÃO NOVA CATEGORIA -->
+    <div class="acoes-principais" style="margin-bottom: 1rem;">
+      <button type="button" id="btnAbrirNovaCategoria" class="btn btn--primary btn--large">
+        + Nova Categoria
+      </button>
+    </div>
+
+    <!-- FORMULÁRIO CATEGORIA -->
+    <section class="card card-formulario" id="cardFormulario" style="display: none;">
+      <div class="card__header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h2 class="card__title" id="tituloFormulario">Nova Categoria</h2>
+          <p class="card__desc" id="descFormulario">Crie categorias para organizar seus lançamentos.</p>
+        </div>
+        <button type="button" id="btnFecharForm" class="btn btn--secondary" title="Fechar">✕</button>
       </div>
 
       <div class="card__body">
         <form id="formCategoria" autocomplete="off">
           <input type="hidden" id="ID_Categoria" name="ID_Categoria" />
+          <input type="hidden" id="rowIndex" name="rowIndex" />
 
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="Tipo">Tipo *</label>
-              <select class="select" id="Tipo" name="Tipo" required>
-                <option value="">Selecione</option>
-                <option value="Entrada">Entrada</option>
-                <option value="Saida">Saída</option>
-                <option value="Transferência">Transferência</option>
-              </select>
-              <small class="hint">Ajuda a filtrar na hora do lançamento.</small>
-            </div>
-
-            <div class="field">
-              <label class="label" for="Ativo">Ativo</label>
-              <select class="select" id="Ativo" name="Ativo">
-                <option value="Sim">Sim</option>
-                <option value="Nao">Não</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="Categoria">Categoria *</label>
-              <input class="input" type="text" id="Categoria" name="Categoria" required placeholder="Ex.: Procedimentos, Aluguel, Produtos..." />
-            </div>
-
-            <div class="field">
-              <label class="label" for="Ordem">Ordem</label>
-              <input class="input" type="number" id="Ordem" name="Ordem" min="0" step="1" placeholder="Ex.: 10" />
-              <small class="hint">Opcional: controla a ordem na lista.</small>
+          <!-- Grupo: Dados Principais -->
+          <div class="form-group">
+            <div class="form-group__title">Dados Principais</div>
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="Tipo">Tipo *</label>
+                <select class="select" id="Tipo" name="Tipo" required>
+                  <option value="">Selecione</option>
+                  <option value="Entrada">Entrada</option>
+                  <option value="Saida">Saída</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="Categoria">Categoria *</label>
+                <input class="input" type="text" id="Categoria" name="Categoria" required placeholder="Ex.: Procedimentos, Aluguel..." />
+              </div>
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="field field--full">
-              <label class="label" for="Descricao_Padrao">Descricao padrão</label>
-              <input class="input" type="text" id="Descricao_Padrao" name="Descricao_Padrao" placeholder="Ex.: Progressiva | Manicure | Luzes..." />
-              <small class="hint">Opcional: texto sugerido para o campo Descricao no lançamento.</small>
+          <!-- Grupo: Configurações -->
+          <div class="form-group">
+            <div class="form-group__title">Configurações</div>
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="Ativo">Status</label>
+                <select class="select" id="Ativo" name="Ativo">
+                  <option value="Sim">Ativo</option>
+                  <option value="Nao">Inativo</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="Ordem">Ordem</label>
+                <input class="input" type="number" id="Ordem" name="Ordem" min="0" step="1" placeholder="Ex.: 10" />
+                <small class="hint">Opcional: controla a ordem na lista.</small>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field field--full">
+                <label class="label" for="Descricao_Padrao">Descrição Padrão</label>
+                <input class="input" type="text" id="Descricao_Padrao" name="Descricao_Padrao" placeholder="Ex.: Progressiva | Manicure | Luzes..." />
+                <small class="hint">Sugestões que aparecem no lançamento. Separe com | ou vírgula.</small>
+              </div>
             </div>
           </div>
 
-          <div class="actions">
-            <button type="submit" id="btnSalvarCategoria" class="btn btn--primary">Salvar</button>
-            <button type="button" id="btnNovoCategoria" class="btn btn--secondary">Novo</button>
+          <!-- Ações -->
+          <div class="actions" id="acoesFormulario">
+            <button type="submit" id="btnSalvar" class="btn btn--primary">Salvar</button>
+            <button type="button" id="btnLimpar" class="btn btn--secondary" style="display:none;">Limpar / Nova</button>
+            <button type="button" id="btnInativar" class="btn btn--warning" style="display:none;">Inativar</button>
+            <button type="button" id="btnAtivar" class="btn btn--success" style="display:none;">Ativar</button>
+            <button type="button" id="btnExcluir" class="btn btn--danger" style="display:none;">Excluir</button>
           </div>
 
-          <div id="feedbackCategoriaSalvar" class="feedback" aria-live="polite" role="status"></div>
+          <div id="feedbackSalvar" class="feedback" aria-live="polite" role="status"></div>
         </form>
       </div>
     </section>
@@ -92,8 +256,8 @@
     <!-- FILTRO / BUSCA -->
     <section class="card">
       <div class="card__header">
-        <h2 class="card__title">Filtro</h2>
-        <p class="card__desc">Pesquise por categoria ou descrição padrão.</p>
+        <h2 class="card__title">Categorias</h2>
+        <p class="card__desc">Clique em uma categoria para editar.</p>
       </div>
 
       <div class="card__body">
@@ -105,64 +269,47 @@
                 <option value="">Todos</option>
                 <option value="Entrada">Entrada</option>
                 <option value="Saida">Saída</option>
-                <option value="Transferência">Transferência</option>
               </select>
             </div>
 
             <div class="field field--full">
-              <label class="label" for="fQ">Busca</label>
               <div class="input-group">
-                <input class="input" type="text" id="fQ" name="fQ" placeholder="Ex.: progressiva, aluguel, produtos..." />
-                <button type="button" id="btnFiltrarCategoria" class="btn btn--secondary">Filtrar</button>
-                <button type="button" id="btnLimparFiltroCategoria" class="btn">Limpar</button>
+                <input class="input" type="text" id="fQ" name="fQ" placeholder="Buscar categoria..." />
+                <button type="button" id="btnFiltrar" class="btn btn--primary">Buscar</button>
+                <button type="button" id="btnLimparFiltro" class="btn btn--secondary">Limpar</button>
               </div>
             </div>
           </div>
         </form>
 
-        <div id="feedbackCategoriaLista" class="feedback" aria-live="polite" role="status"></div>
-      </div>
-    </section>
+        <div id="feedbackLista" class="feedback" aria-live="polite" role="status" style="margin: 0.5rem 0;"></div>
 
-    <!-- LISTA -->
-    <section class="card">
-      <div class="card__header">
-        <h2 class="card__title">Lista</h2>
-        <p class="card__desc">Clique em uma linha para editar.</p>
-      </div>
-
-      <div class="card__body">
         <div class="table-wrap" aria-label="Tabela de categorias">
           <table class="table" id="tabelaCategorias">
             <thead>
               <tr>
                 <th>Tipo</th>
                 <th>Categoria</th>
-                <th>Descricao padrão</th>
-                <th>Ativo</th>
+                <th>Descrição Padrão</th>
+                <th>Status</th>
                 <th>Ordem</th>
               </tr>
             </thead>
             <tbody></tbody>
           </table>
         </div>
-
-        <small class="hint" style="margin-top:.75rem; display:block;">
-          Dica: mantenha “Ativo = Sim” para aparecer como sugestão no lançamento.
-        </small>
       </div>
     </section>
   </main>
 
   <footer class="app-footer">
-    <small>Categorias • Google Planilhas + Apps Script</small>
+    <small>Categorias • Essenza</small>
   </footer>
 
   <script src="assets/js/theme.js"></script>
   <script src="assets/js/config.js"></script>
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/api.js"></script>
-  <script src="assets/js/search.js"></script>
   <script src="assets/js/categoria.js" defer></script>
 </body>
 </html>

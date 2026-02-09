@@ -185,7 +185,8 @@ function Registry_init_() {
         if (
           action !== "Categoria.Criar" &&
           action !== "Categoria.Editar" &&
-          action !== "Categoria.Listar"
+          action !== "Categoria.Listar" &&
+          action !== "Categoria.Excluir"
         ) {
           return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
         }

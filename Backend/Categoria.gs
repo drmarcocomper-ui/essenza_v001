@@ -65,6 +65,13 @@ function Categoria_dispatch_(action, p) {
     return { ok: true, items: items, message: "OK" };
   }
 
+  if (action === "Categoria.Excluir") {
+    var rowIndex = Number(p.rowIndex);
+    if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
+    sheet.deleteRow(rowIndex);
+    return { ok: true, message: "Categoria excluída." };
+  }
+
   return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
 }
 
@@ -173,6 +180,7 @@ function Categoria_listar_(sheet, filtros) {
     }
 
     out.push({
+      rowIndex: i + 1,
       ID_Categoria: CAT_safeStr_(row[idx["ID_Categoria"]] || ""),
       Tipo: tipo,
       Categoria: cat,
