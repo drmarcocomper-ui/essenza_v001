@@ -174,6 +174,38 @@
     return s;
   }
 
+  // Converte qualquer formato de data para YYYY-MM-DD (para inputs type="date")
+  function toISODate(v) {
+    if (!v) return "";
+    const s = String(v).trim();
+    if (!s) return "";
+
+    // Já está em YYYY-MM-DD (possivelmente com hora)
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      return s.substring(0, 10);
+    }
+
+    // DD/MM/YYYY
+    const brMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (brMatch) {
+      const d = brMatch[1].padStart(2, "0");
+      const m = brMatch[2].padStart(2, "0");
+      const y = brMatch[3];
+      return `${y}-${m}-${d}`;
+    }
+
+    // Tenta parse genérico
+    const date = new Date(s);
+    if (!isNaN(date.getTime())) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    return "";
+  }
+
   function parseParcelCount(raw) {
     const s = String(raw ?? "").trim();
     if (!s) return 0;
@@ -639,6 +671,9 @@
         el[k].value = it.NomeCliente || it[k] || "";
       } else if (k === "ID_Fornecedor") {
         el[k].value = it.NomeFornecedor || it[k] || "";
+      } else if (k === "Data_Competencia" || k === "Data_Caixa" || k === "Mes_a_receber") {
+        // Converter datas para formato ISO (YYYY-MM-DD) para inputs type="date"
+        el[k].value = toISODate(it[k]);
       } else {
         el[k].value = it[k] ?? "";
       }
