@@ -41,14 +41,17 @@ function CAT_isoNow_() {
 // SORT
 // =========================
 function CAT_sortByOrdemThenCategoria_(a, b) {
-  var ao = Number(a.Ordem || 0);
-  var bo = Number(b.Ordem || 0);
-  if (ao !== bo) return ao - bo;
-
+  // Ordenar por Categoria (alfabética), depois por Descricao_Padrao
   var ac = CAT_norm_(a.Categoria);
   var bc = CAT_norm_(b.Categoria);
   if (ac < bc) return -1;
   if (ac > bc) return 1;
+
+  var ad = CAT_norm_(a.Descricao_Padrao);
+  var bd = CAT_norm_(b.Descricao_Padrao);
+  if (ad < bd) return -1;
+  if (ad > bd) return 1;
+
   return 0;
 }
 
