@@ -3,10 +3,132 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cadastro de Clientes | Salão</title>
+  <title>Clientes | Essenza</title>
 
   <!-- CSS -->
   <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    /* Cards de resumo */
+    .resumo-clientes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .resumo-clientes__card {
+      background: var(--cor-bg);
+      border-radius: var(--raio);
+      box-shadow: var(--sombra);
+      padding: 1rem;
+      text-align: center;
+      border-left: 4px solid var(--cor-primaria);
+    }
+
+    .resumo-clientes__card--total { border-left-color: #4169e1; }
+    .resumo-clientes__card--ativos { border-left-color: #228b22; }
+    .resumo-clientes__card--inativos { border-left-color: #999; }
+
+    .resumo-clientes__label {
+      font-size: 0.8rem;
+      color: var(--cor-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .resumo-clientes__value {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    /* Botão grande */
+    .btn--large {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+    }
+
+    /* Botões de ação */
+    .btn--success {
+      background: #228b22;
+      color: white;
+      border: none;
+    }
+    .btn--success:hover { background: #1a6b1a; }
+
+    .btn--warning {
+      background: #daa520;
+      color: white;
+      border: none;
+    }
+    .btn--warning:hover { background: #b8860b; }
+
+    /* Card formulário */
+    .card-formulario {
+      border: 2px solid var(--cor-primaria);
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-formulario.modo-edicao {
+      border-color: #4169e1;
+    }
+
+    .card-formulario.modo-edicao .card__header {
+      background: rgba(65, 105, 225, 0.1);
+    }
+
+    /* Formulário em grupos */
+    .form-group {
+      background: var(--cor-bg-alt, #f9f9f9);
+      border-radius: var(--raio);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--cor-borda);
+    }
+
+    .form-group__title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--cor-primaria);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Ações do formulário */
+    #acoesFormulario {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    /* Status na tabela */
+    .cliente-inativo {
+      opacity: 0.6;
+      text-decoration: line-through;
+    }
+
+    /* Linha selecionada */
+    .table tr.selecionada {
+      background: rgba(139, 92, 165, 0.15) !important;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      .resumo-clientes {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      #acoesFormulario {
+        flex-direction: column;
+      }
+      #acoesFormulario .btn {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -27,165 +149,132 @@
   </header>
 
   <main class="app-main">
-    <section class="card">
-      <div class="card__header">
-        <h2 class="card__title">Novo cliente</h2>
-        <p class="card__desc">Preencha os dados abaixo e salve no banco (Google Planilhas).</p>
+    <!-- RESUMO -->
+    <section class="resumo-clientes" id="resumoClientes" style="display:none;">
+      <div class="resumo-clientes__card resumo-clientes__card--total">
+        <div class="resumo-clientes__label">Total</div>
+        <div class="resumo-clientes__value" id="resumoTotal">0</div>
+      </div>
+      <div class="resumo-clientes__card resumo-clientes__card--ativos">
+        <div class="resumo-clientes__label">Ativos</div>
+        <div class="resumo-clientes__value" id="resumoAtivos">0</div>
+      </div>
+      <div class="resumo-clientes__card resumo-clientes__card--inativos">
+        <div class="resumo-clientes__label">Inativos</div>
+        <div class="resumo-clientes__value" id="resumoInativos">0</div>
+      </div>
+    </section>
+
+    <!-- BOTÃO NOVO CLIENTE -->
+    <div class="acoes-principais" style="margin-bottom: 1rem;">
+      <button type="button" id="btnAbrirNovoCliente" class="btn btn--primary btn--large">
+        + Novo Cliente
+      </button>
+    </div>
+
+    <!-- FORMULÁRIO CLIENTE -->
+    <section class="card card-formulario" id="cardFormulario" style="display: none;">
+      <div class="card__header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h2 class="card__title" id="tituloFormulario">Novo Cliente</h2>
+          <p class="card__desc" id="descFormulario">Preencha os dados do cliente.</p>
+        </div>
+        <button type="button" id="btnFecharForm" class="btn btn--secondary" title="Fechar">✕</button>
       </div>
 
       <div class="card__body">
         <form id="formCadastro" autocomplete="on">
-
-          <!-- ID_Cliente (gerado automaticamente no backend) -->
           <input type="hidden" id="idCliente" name="ID_Cliente" />
+          <input type="hidden" id="rowIndex" name="rowIndex" />
 
-          <!-- Nome / Telefone -->
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="nomeCliente">NomeCliente *</label>
-              <input
-                class="input"
-                type="text"
-                id="nomeCliente"
-                name="NomeCliente"
-                required
-              />
+          <!-- Grupo: Dados Principais -->
+          <div class="form-group">
+            <div class="form-group__title">Dados Principais</div>
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="nomeCliente">Nome *</label>
+                <input class="input" type="text" id="nomeCliente" name="NomeCliente" required placeholder="Nome completo" />
+              </div>
+              <div class="field">
+                <label class="label" for="telefone">Telefone *</label>
+                <input class="input" type="tel" id="telefone" name="Telefone" inputmode="tel" placeholder="(00) 00000-0000" required />
+              </div>
             </div>
-
-            <div class="field">
-              <label class="label" for="telefone">Telefone *</label>
-              <input
-                class="input"
-                type="tel"
-                id="telefone"
-                name="Telefone"
-                inputmode="tel"
-                placeholder="(DDD) 9xxxx-xxxx"
-                required
-              />
-            </div>
-          </div>
-
-          <!-- Email / DataNascimento -->
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="email">E-mail</label>
-              <input
-                class="input"
-                type="email"
-                id="email"
-                name="E-mail"
-                placeholder="email@exemplo.com"
-              />
-            </div>
-
-            <div class="field">
-              <label class="label" for="dataNascimento">DataNascimento</label>
-              <input
-                class="input"
-                type="date"
-                id="dataNascimento"
-                name="DataNascimento"
-              />
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="email">E-mail</label>
+                <input class="input" type="email" id="email" name="E-mail" placeholder="email@exemplo.com" />
+              </div>
+              <div class="field">
+                <label class="label" for="dataNascimento">Data de Nascimento</label>
+                <input class="input" type="date" id="dataNascimento" name="DataNascimento" />
+              </div>
             </div>
           </div>
 
-          <!-- Município / Bairro -->
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="municipio">Município</label>
-              <input
-                class="input"
-                type="text"
-                id="municipio"
-                name="Municipio"
-              />
-            </div>
-
-            <div class="field">
-              <label class="label" for="bairro">Bairro</label>
-              <input
-                class="input"
-                type="text"
-                id="bairro"
-                name="Bairro"
-              />
+          <!-- Grupo: Endereço -->
+          <div class="form-group">
+            <div class="form-group__title">Endereço</div>
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="municipio">Município</label>
+                <input class="input" type="text" id="municipio" name="Municipio" />
+              </div>
+              <div class="field">
+                <label class="label" for="bairro">Bairro</label>
+                <input class="input" type="text" id="bairro" name="Bairro" />
+              </div>
             </div>
           </div>
 
-          <!-- DataCadastro / Profissão -->
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="dataCadastro">DataCadastro</label>
-              <input
-                class="input"
-                type="date"
-                id="dataCadastro"
-                name="DataCadastro"
-              />
-              <small class="hint">Preenchido automaticamente se deixado em branco.</small>
+          <!-- Grupo: Informações Adicionais -->
+          <div class="form-group">
+            <div class="form-group__title">Informações Adicionais</div>
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="profissao">Profissão</label>
+                <input class="input" type="text" id="profissao" name="Profissão" />
+              </div>
+              <div class="field">
+                <label class="label" for="origem">Como nos conheceu?</label>
+                <select class="select" id="origem" name="Origem">
+                  <option value="">Selecione</option>
+                  <option value="Indicação">Indicação</option>
+                  <option value="Instagram">Instagram</option>
+                  <option value="Google">Google</option>
+                  <option value="WhatsApp">WhatsApp</option>
+                  <option value="Passou na porta">Passou na porta</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </div>
             </div>
-
-            <div class="field">
-              <label class="label" for="profissao">Profissão</label>
-              <input
-                class="input"
-                type="text"
-                id="profissao"
-                name="Profissão"
-              />
-            </div>
-          </div>
-
-          <!-- Preferências / Origem -->
-          <div class="form-row">
-            <div class="field">
-              <label class="label" for="preferencias">Preferências</label>
-              <input
-                class="input"
-                type="text"
-                id="preferencias"
-                name="Preferências"
-                placeholder="Ex.: loiro, progressiva, corte curto…"
-              />
-            </div>
-
-            <div class="field">
-              <label class="label" for="origem">Origem</label>
-              <select class="select" id="origem" name="Origem">
-                <option value="">Selecione</option>
-                <option value="Indicação">Indicação</option>
-                <option value="Instagram">Instagram</option>
-                <option value="Google">Google</option>
-                <option value="WhatsApp">WhatsApp</option>
-                <option value="Passou na porta">Passou na porta</option>
-                <option value="Outro">Outro</option>
-              </select>
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="preferencias">Preferências</label>
+                <input class="input" type="text" id="preferencias" name="Preferências" placeholder="Ex.: loiro, progressiva, corte curto..." />
+              </div>
+              <div class="field">
+                <label class="label" for="dataCadastro">Data de Cadastro</label>
+                <input class="input" type="date" id="dataCadastro" name="DataCadastro" />
+              </div>
             </div>
           </div>
 
           <!-- Observação -->
           <div class="form-row">
             <div class="field field--full">
-              <label class="label" for="observacao">Observação</label>
-              <textarea
-                class="textarea"
-                id="observacao"
-                name="Observação"
-                rows="4"
-                placeholder="Anotações importantes (alergias, histórico, preferências etc.)"
-              ></textarea>
+              <label class="label" for="observacao">Observações</label>
+              <textarea class="textarea" id="observacao" name="Observação" rows="2" placeholder="Anotações importantes..."></textarea>
             </div>
           </div>
 
           <!-- Ações -->
-          <div class="actions">
-            <button type="submit" id="btnSalvar" class="btn btn--primary">
-              Salvar cadastro
-            </button>
-            <button type="reset" id="btnLimpar" class="btn">
-              Limpar
-            </button>
+          <div class="actions" id="acoesFormulario">
+            <button type="submit" id="btnSalvar" class="btn btn--primary">Salvar</button>
+            <button type="button" id="btnLimpar" class="btn btn--secondary" style="display:none;">Limpar / Novo</button>
+            <button type="button" id="btnInativar" class="btn btn--warning" style="display:none;">Inativar</button>
+            <button type="button" id="btnAtivar" class="btn btn--success" style="display:none;">Reativar</button>
+            <button type="button" id="btnExcluir" class="btn btn--danger" style="display:none;">Excluir</button>
           </div>
 
           <div id="feedback" class="feedback" aria-live="polite" role="status"></div>
@@ -193,47 +282,42 @@
       </div>
     </section>
 
-    <!-- Busca -->
+    <!-- Busca e Lista -->
     <section class="card">
       <div class="card__header">
-        <h2 class="card__title">Busca rápida</h2>
-        <p class="card__desc">Localizar cliente por nome ou telefone.</p>
+        <h2 class="card__title">Clientes</h2>
+        <p class="card__desc">Clique em um cliente para editar.</p>
       </div>
 
       <div class="card__body">
         <form id="formBusca" autocomplete="off">
           <div class="form-row">
             <div class="field field--full">
-              <label class="label" for="q">Buscar</label>
               <div class="input-group">
-                <input
-                  class="input"
-                  type="text"
-                  id="q"
-                  name="q"
-                  placeholder="Nome ou telefone"
-                />
-                <button type="button" id="btnBuscar" class="btn btn--secondary">
-                  Buscar
-                </button>
+                <input class="input" type="text" id="q" name="q" placeholder="Buscar por nome ou telefone..." />
+                <button type="button" id="btnBuscar" class="btn btn--primary">Buscar</button>
+                <button type="button" id="btnLimparBusca" class="btn btn--secondary">Limpar</button>
               </div>
             </div>
           </div>
-
-          <div class="table-wrap">
-            <table class="table" id="tabelaResultados">
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Telefone</th>
-                  <th>Município</th>
-                  <th>Bairro</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
         </form>
+
+        <div id="feedbackLista" class="feedback" aria-live="polite" role="status" style="margin: 0.5rem 0;"></div>
+
+        <div class="table-wrap">
+          <table class="table" id="tabelaResultados">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>E-mail</th>
+                <th>Município</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>

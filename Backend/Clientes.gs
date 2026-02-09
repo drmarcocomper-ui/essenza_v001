@@ -27,6 +27,7 @@ var CLIENTES_HEADERS = [
   "Preferências",
   "Origem",
   "Observação",
+  "Status",
 ];
 
 // ============================================================
@@ -58,6 +59,58 @@ function Clientes_BuscarApi_(e) {
 
   var items = Clientes_buscar_(sheet, q);
   return { ok: true, items: items, message: "OK" };
+}
+
+function Clientes_EditarApi_(e) {
+  var p = (e && e.parameter) ? e.parameter : {};
+  var rowIndex = Number(p.rowIndex);
+  var payload = Clientes_parseJsonParam_(p.payload);
+
+  if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
+
+  var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
+  Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
+
+  Clientes_editar_(sheet, rowIndex, payload);
+  return { ok: true, message: "Cliente atualizado." };
+}
+
+function Clientes_InativarApi_(e) {
+  var p = (e && e.parameter) ? e.parameter : {};
+  var rowIndex = Number(p.rowIndex);
+
+  if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
+
+  var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
+  Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
+
+  Clientes_setStatus_(sheet, rowIndex, "Inativo");
+  return { ok: true, message: "Cliente inativado." };
+}
+
+function Clientes_AtivarApi_(e) {
+  var p = (e && e.parameter) ? e.parameter : {};
+  var rowIndex = Number(p.rowIndex);
+
+  if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
+
+  var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
+  Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
+
+  Clientes_setStatus_(sheet, rowIndex, "Ativo");
+  return { ok: true, message: "Cliente reativado." };
+}
+
+function Clientes_ExcluirApi_(e) {
+  var p = (e && e.parameter) ? e.parameter : {};
+  var rowIndex = Number(p.rowIndex);
+
+  if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
+
+  var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
+
+  sheet.deleteRow(rowIndex);
+  return { ok: true, message: "Cliente excluído." };
 }
 
 // ============================================================
@@ -107,6 +160,58 @@ function Clientes_safe_attachObs_(payload) {
   return Clientes_safeStr_(payload["Observação"] || payload.Observacao || payload.Observacoes || "");
 }
 
+function Clientes_editar_(sheet, rowIndex, payload) {
+  payload = payload || {};
+
+  var nome = Clientes_safeStr_(payload.NomeCliente);
+  var tel = Clientes_safeStr_(payload.Telefone);
+
+  if (!nome) throw new Error("NomeCliente é obrigatório.");
+  if (!tel) throw new Error("Telefone é obrigatório.");
+
+  var header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var idx = Clientes_indexMap_(header);
+
+  // Manter ID e DataCadastro originais
+  var rowData = sheet.getRange(rowIndex, 1, 1, header.length).getValues()[0];
+  var idOriginal = rowData[idx["ID_Cliente"]] || "";
+  var dataCadastroOriginal = rowData[idx["DataCadastro"]] || "";
+  var statusOriginal = rowData[idx["Status"]] || "Ativo";
+
+  var rowObj = {
+    "ID_Cliente": idOriginal,
+    "NomeCliente": nome,
+    "Telefone": tel,
+    "E-mail": Clientes_safeStr_(payload["E-mail"]),
+    "DataNascimento": Clientes_safeStr_(payload.DataNascimento),
+    "Municipio": Clientes_safeStr_(payload.Municipio),
+    "Bairro": Clientes_safeStr_(payload.Bairro),
+    "DataCadastro": dataCadastroOriginal,
+    "Profissão": Clientes_safeStr_(payload["Profissão"]),
+    "Preferências": Clientes_safeStr_(payload["Preferências"]),
+    "Origem": Clientes_safeStr_(payload.Origem),
+    "Observação": Clientes_safe_attachObs_(payload),
+    "Status": statusOriginal,
+  };
+
+  var values = CLIENTES_HEADERS.map(function (h) { return rowObj[h] || ""; });
+  sheet.getRange(rowIndex, 1, 1, values.length).setValues([values]);
+}
+
+function Clientes_setStatus_(sheet, rowIndex, status) {
+  var header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var idx = Clientes_indexMap_(header);
+
+  var colStatus = idx["Status"];
+  if (colStatus === undefined) {
+    // Adicionar coluna Status se não existir
+    Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
+    colStatus = CLIENTES_HEADERS.indexOf("Status");
+  }
+
+  sheet.getRange(rowIndex, colStatus + 1).setValue(status);
+}
+
 /**
  * ✅ Buscar clientes:
  * - Se q vazio: retorna até 50 clientes (NomeCliente preenchido)
@@ -121,7 +226,7 @@ function Clientes_buscar_(sheet, q) {
   var header = data[0];
   var idx = Clientes_indexMap_(header);
 
-  // ✅ se q vazio, retorna lista padrão (até 50)
+  // ✅ se q vazio, retorna lista padrão (até 100)
   if (!q) {
     var outAll = [];
     for (var i = 1; i < data.length; i++) {
@@ -129,8 +234,10 @@ function Clientes_buscar_(sheet, q) {
       var nome = String(row[idx["NomeCliente"]] || "").trim();
       if (!nome) continue;
 
-      outAll.push(Clientes_rowToObj_(header, row));
-      if (outAll.length >= 50) break;
+      var obj = Clientes_rowToObj_(header, row);
+      obj.rowIndex = i + 1; // Adiciona rowIndex
+      outAll.push(obj);
+      if (outAll.length >= 100) break;
     }
     return outAll;
   }
@@ -146,8 +253,10 @@ function Clientes_buscar_(sheet, q) {
     var email = Clientes_normalize_(r[idx["E-mail"]] || "");
 
     if (nome2.indexOf(qNorm) !== -1 || tel.indexOf(qNorm) !== -1 || email.indexOf(qNorm) !== -1) {
-      out.push(Clientes_rowToObj_(header, r));
-      if (out.length >= 50) break;
+      var obj = Clientes_rowToObj_(header, r);
+      obj.rowIndex = j + 1; // Adiciona rowIndex
+      out.push(obj);
+      if (out.length >= 100) break;
     }
   }
 

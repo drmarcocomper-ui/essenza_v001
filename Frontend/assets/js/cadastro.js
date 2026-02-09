@@ -1,9 +1,5 @@
 // cadastro.js (JSONP - sem CORS)
-// Requer: assets/js/config.js (window.APP_CONFIG)
-// Requer: assets/js/auth.js (window.EssenzaAuth)
-// Requer: assets/js/api.js (window.EssenzaApi)
-// ✅ ID_Cliente é gerado automaticamente AO SALVAR (sem botão Gerar ID)
-// ✅ ID não é exibido ao usuário (input hidden no HTML)
+// Requer: assets/js/config.js, auth.js, api.js
 
 (() => {
   "use strict";
@@ -16,12 +12,28 @@
   const formCadastro = document.getElementById("formCadastro");
   const formBusca = document.getElementById("formBusca");
   const btnBuscar = document.getElementById("btnBuscar");
+  const btnLimparBusca = document.getElementById("btnLimparBusca");
 
   const feedback = document.getElementById("feedback");
+  const feedbackLista = document.getElementById("feedbackLista");
 
-  // ID (hidden)
+  // Formulário
+  const cardFormulario = document.getElementById("cardFormulario");
+  const btnAbrirNovoCliente = document.getElementById("btnAbrirNovoCliente");
+  const btnFecharForm = document.getElementById("btnFecharForm");
+  const tituloFormulario = document.getElementById("tituloFormulario");
+  const descFormulario = document.getElementById("descFormulario");
+
+  // Botões de ação
+  const btnSalvar = document.getElementById("btnSalvar");
+  const btnLimpar = document.getElementById("btnLimpar");
+  const btnInativar = document.getElementById("btnInativar");
+  const btnAtivar = document.getElementById("btnAtivar");
+  const btnExcluir = document.getElementById("btnExcluir");
+
+  // Campos
   const elIdCliente = document.getElementById("idCliente");
-
+  const elRowIndex = document.getElementById("rowIndex");
   const elNome = document.getElementById("nomeCliente");
   const elTelefone = document.getElementById("telefone");
   const elEmail = document.getElementById("email");
@@ -34,25 +46,35 @@
   const elOrigem = document.getElementById("origem");
   const elObservacao = document.getElementById("observacao");
 
+  // Tabela
   const elQuery = document.getElementById("q");
   const tabelaResultados = document.getElementById("tabelaResultados");
   const tbodyResultados = tabelaResultados ? tabelaResultados.querySelector("tbody") : null;
 
+  // Resumo
+  const resumoClientes = document.getElementById("resumoClientes");
+  const resumoTotal = document.getElementById("resumoTotal");
+  const resumoAtivos = document.getElementById("resumoAtivos");
+  const resumoInativos = document.getElementById("resumoInativos");
+
+  // =========================
+  // Estado
+  // =========================
+  let clienteAtual = null;
+  let dadosListaAtual = [];
+
   // =========================
   // Helpers
   // =========================
-  function setFeedback(msg, type = "info") {
-    if (!feedback) return;
-    feedback.textContent = msg || "";
-    feedback.dataset.type = type;
+  function setFeedback(el, msg, type = "info") {
+    if (!el) return;
+    el.textContent = msg || "";
+    el.dataset.type = type;
   }
 
   function hojeISO() {
     const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
 
   function sanitizePhone(v) {
@@ -66,7 +88,7 @@
   function requireScriptUrl() {
     const url = window.EssenzaApi?.getScriptUrl?.() || "";
     if (!url || !url.includes("/exec")) {
-      setFeedback("SCRIPT_URL inválida. Ajuste no assets/js/config.js.", "error");
+      setFeedback(feedback, "SCRIPT_URL inválida.", "error");
       return false;
     }
     return true;
@@ -76,22 +98,69 @@
     return String(str ?? "")
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+      .replaceAll(">", "&gt;");
   }
 
-  // =========================
-  // API
-  // =========================
   const jsonpRequest = window.EssenzaApi?.request || (() => Promise.reject(new Error("EssenzaApi não carregado")));
+
+  // =========================
+  // Formulário: Abrir/Fechar
+  // =========================
+  function abrirFormulario(modoEdicao = false) {
+    if (!cardFormulario) return;
+
+    cardFormulario.style.display = "block";
+    cardFormulario.classList.toggle("modo-edicao", modoEdicao);
+
+    if (tituloFormulario) {
+      tituloFormulario.textContent = modoEdicao ? "Editar Cliente" : "Novo Cliente";
+    }
+    if (descFormulario) {
+      descFormulario.textContent = modoEdicao
+        ? "Altere os dados e clique em Salvar."
+        : "Preencha os dados do cliente.";
+    }
+
+    cardFormulario.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function fecharFormulario() {
+    if (!cardFormulario) return;
+    cardFormulario.style.display = "none";
+    limparFormulario();
+  }
+
+  function limparFormulario() {
+    if (formCadastro) formCadastro.reset();
+    if (elIdCliente) elIdCliente.value = "";
+    if (elRowIndex) elRowIndex.value = "";
+    if (elDataCadastro) elDataCadastro.value = hojeISO();
+
+    clienteAtual = null;
+
+    // Esconder botões de edição
+    if (btnLimpar) btnLimpar.style.display = "none";
+    if (btnInativar) btnInativar.style.display = "none";
+    if (btnAtivar) btnAtivar.style.display = "none";
+    if (btnExcluir) btnExcluir.style.display = "none";
+
+    setFeedback(feedback, "", "info");
+  }
+
+  function mostrarBotoesEdicao(cliente) {
+    if (btnLimpar) btnLimpar.style.display = "inline-block";
+    if (btnExcluir) btnExcluir.style.display = "inline-block";
+
+    const isInativo = cliente?.Status === "Inativo";
+    if (btnInativar) btnInativar.style.display = isInativo ? "none" : "inline-block";
+    if (btnAtivar) btnAtivar.style.display = isInativo ? "inline-block" : "none";
+  }
 
   // =========================
   // Payload
   // =========================
   function buildCadastroPayload() {
     return {
-      // ✅ NÃO envia ID_Cliente (backend gera)
       NomeCliente: normalizeText(elNome?.value),
       Telefone: sanitizePhone(elTelefone?.value),
       "E-mail": normalizeText(elEmail?.value),
@@ -107,7 +176,7 @@
   }
 
   // =========================
-  // Results table
+  // Tabela
   // =========================
   function clearResults() {
     if (!tbodyResultados) return;
@@ -118,32 +187,60 @@
     clearResults();
     if (!tbodyResultados) return;
 
+    dadosListaAtual = items || [];
+
     if (!Array.isArray(items) || items.length === 0) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="4">Nenhum resultado.</td>`;
+      tr.innerHTML = `<td colspan="5">Nenhum cliente encontrado.</td>`;
       tbodyResultados.appendChild(tr);
       return;
     }
 
     items.forEach((it) => {
+      const isInativo = it.Status === "Inativo";
       const tr = document.createElement("tr");
+      if (isInativo) tr.classList.add("cliente-inativo");
+
       tr.innerHTML = `
         <td>${escapeHtml(it.NomeCliente ?? "")}</td>
         <td>${escapeHtml(it.Telefone ?? "")}</td>
+        <td>${escapeHtml(it["E-mail"] ?? it.Email ?? "")}</td>
         <td>${escapeHtml(it.Municipio ?? "")}</td>
-        <td>${escapeHtml(it.Bairro ?? "")}</td>
+        <td>${isInativo ? "Inativo" : "Ativo"}</td>
       `;
       tbodyResultados.appendChild(tr);
-      tr.addEventListener("click", () => fillFormFromItem(it));
+      tr.addEventListener("click", () => {
+        // Remover seleção anterior
+        tbodyResultados.querySelectorAll("tr").forEach(r => r.classList.remove("selecionada"));
+        tr.classList.add("selecionada");
+        fillFormFromItem(it);
+      });
     });
+
+    atualizarResumo(items);
+  }
+
+  function atualizarResumo(items) {
+    if (!resumoClientes) return;
+
+    const total = items.length;
+    const inativos = items.filter(i => i.Status === "Inativo").length;
+    const ativos = total - inativos;
+
+    if (resumoTotal) resumoTotal.textContent = total;
+    if (resumoAtivos) resumoAtivos.textContent = ativos;
+    if (resumoInativos) resumoInativos.textContent = inativos;
+
+    resumoClientes.style.display = total > 0 ? "grid" : "none";
   }
 
   function fillFormFromItem(it) {
     if (!it) return;
 
-    // mantém o ID no hidden (para referência interna, se quiser)
-    if (elIdCliente) elIdCliente.value = it.ID_Cliente ?? "";
+    clienteAtual = it;
 
+    if (elIdCliente) elIdCliente.value = it.ID_Cliente ?? "";
+    if (elRowIndex) elRowIndex.value = it.rowIndex ?? "";
     if (elNome) elNome.value = it.NomeCliente ?? "";
     if (elTelefone) elTelefone.value = it.Telefone ?? "";
     if (elEmail) elEmail.value = it["E-mail"] ?? it.Email ?? "";
@@ -156,11 +253,12 @@
     if (elOrigem) elOrigem.value = it.Origem ?? "";
     if (elObservacao) elObservacao.value = it["Observação"] ?? it.Observacao ?? "";
 
-    setFeedback("Cliente carregado no formulário.", "info");
+    abrirFormulario(true);
+    mostrarBotoesEdicao(it);
   }
 
   // =========================
-  // Actions
+  // Ações
   // =========================
   async function salvarCadastro() {
     if (!requireScriptUrl()) return;
@@ -169,38 +267,51 @@
     const tel = sanitizePhone(elTelefone?.value);
 
     if (!nome || !tel) {
-      setFeedback("Preencha Nome e Telefone.", "error");
+      setFeedback(feedback, "Preencha Nome e Telefone.", "error");
       return;
     }
 
     if (elDataCadastro && !elDataCadastro.value) elDataCadastro.value = hojeISO();
 
-    // ✅ limpa o hidden ID antes de salvar (para garantir que o backend gere)
-    if (elIdCliente) elIdCliente.value = "";
+    setFeedback(feedback, "Salvando...", "info");
 
-    setFeedback("Salvando...", "info");
     try {
       const payload = buildCadastroPayload();
+      const rowIndex = elRowIndex?.value ? Number(elRowIndex.value) : null;
 
-      const data = await jsonpRequest({
-        action: "Clientes.Criar",
-        sheet: SHEET_NAME,
-        payload: JSON.stringify(payload),
-      });
+      let data;
+      if (rowIndex && rowIndex >= 2) {
+        // Editar existente
+        data = await jsonpRequest({
+          action: "Clientes.Editar",
+          sheet: SHEET_NAME,
+          rowIndex: rowIndex,
+          payload: JSON.stringify(payload),
+        });
+      } else {
+        // Criar novo
+        if (elIdCliente) elIdCliente.value = "";
+        data = await jsonpRequest({
+          action: "Clientes.Criar",
+          sheet: SHEET_NAME,
+          payload: JSON.stringify(payload),
+        });
+      }
 
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao salvar.");
 
-      // backend retorna id gerado (mantemos no hidden)
       if (data.id && elIdCliente) elIdCliente.value = data.id;
 
-      // ✅ não mostra ID para o usuário
-      setFeedback(data.message || "Cadastro salvo.", "success");
+      setFeedback(feedback, data.message || "Salvo com sucesso!", "success");
 
-      // opcional: limpar campos após salvar (mantém DataCadastro)
-      // formCadastro?.reset(); initDefaults();
+      // Fechar formulário e atualizar lista
+      setTimeout(() => {
+        fecharFormulario();
+        buscarClientes();
+      }, 500);
 
     } catch (err) {
-      setFeedback(err.message || "Erro ao salvar cadastro.", "error");
+      setFeedback(feedback, err.message || "Erro ao salvar.", "error");
     }
   }
 
@@ -208,41 +319,140 @@
     if (!requireScriptUrl()) return;
 
     const q = normalizeText(elQuery?.value);
-    if (!q) {
-      setFeedback("Digite algo para buscar (nome/telefone/email).", "error");
-      return;
-    }
 
-    setFeedback("Buscando...", "info");
+    setFeedback(feedbackLista, "Buscando...", "info");
+
     try {
       const data = await jsonpRequest({
         action: "Clientes.Buscar",
         sheet: SHEET_NAME,
-        q,
+        q: q || "",
       });
 
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro na busca.");
 
       renderResults(data.items || []);
-      setFeedback(`Resultados: ${(data.items || []).length}`, "success");
+      setFeedback(feedbackLista, `${(data.items || []).length} cliente(s)`, "success");
+
     } catch (err) {
-      setFeedback(err.message || "Erro na busca.", "error");
+      setFeedback(feedbackLista, err.message || "Erro na busca.", "error");
     }
+  }
+
+  async function inativarCliente() {
+    if (!clienteAtual?.rowIndex) return;
+
+    if (!confirm("Deseja inativar este cliente?")) return;
+
+    setFeedback(feedback, "Inativando...", "info");
+
+    try {
+      const data = await jsonpRequest({
+        action: "Clientes.Inativar",
+        sheet: SHEET_NAME,
+        rowIndex: clienteAtual.rowIndex,
+      });
+
+      if (!data || data.ok !== true) throw new Error(data?.message || "Erro ao inativar.");
+
+      setFeedback(feedback, "Cliente inativado.", "success");
+      fecharFormulario();
+      buscarClientes();
+
+    } catch (err) {
+      setFeedback(feedback, err.message || "Erro ao inativar.", "error");
+    }
+  }
+
+  async function ativarCliente() {
+    if (!clienteAtual?.rowIndex) return;
+
+    setFeedback(feedback, "Reativando...", "info");
+
+    try {
+      const data = await jsonpRequest({
+        action: "Clientes.Ativar",
+        sheet: SHEET_NAME,
+        rowIndex: clienteAtual.rowIndex,
+      });
+
+      if (!data || data.ok !== true) throw new Error(data?.message || "Erro ao ativar.");
+
+      setFeedback(feedback, "Cliente reativado.", "success");
+      fecharFormulario();
+      buscarClientes();
+
+    } catch (err) {
+      setFeedback(feedback, err.message || "Erro ao ativar.", "error");
+    }
+  }
+
+  async function excluirCliente() {
+    if (!clienteAtual?.rowIndex) return;
+
+    if (!confirm("Tem certeza que deseja EXCLUIR este cliente permanentemente?")) return;
+
+    setFeedback(feedback, "Excluindo...", "info");
+
+    try {
+      const data = await jsonpRequest({
+        action: "Clientes.Excluir",
+        sheet: SHEET_NAME,
+        rowIndex: clienteAtual.rowIndex,
+      });
+
+      if (!data || data.ok !== true) throw new Error(data?.message || "Erro ao excluir.");
+
+      setFeedback(feedbackLista, "Cliente excluído.", "success");
+      fecharFormulario();
+      buscarClientes();
+
+    } catch (err) {
+      setFeedback(feedback, err.message || "Erro ao excluir.", "error");
+    }
+  }
+
+  function limparBusca() {
+    if (elQuery) elQuery.value = "";
+    buscarClientes();
+  }
+
+  // =========================
+  // Bind
+  // =========================
+  function bindEvents() {
+    // Formulário
+    if (formCadastro) formCadastro.addEventListener("submit", (e) => (e.preventDefault(), salvarCadastro()));
+
+    // Botões do formulário
+    if (btnAbrirNovoCliente) btnAbrirNovoCliente.addEventListener("click", () => {
+      limparFormulario();
+      abrirFormulario(false);
+    });
+    if (btnFecharForm) btnFecharForm.addEventListener("click", fecharFormulario);
+    if (btnLimpar) btnLimpar.addEventListener("click", () => {
+      limparFormulario();
+      abrirFormulario(false);
+    });
+    if (btnInativar) btnInativar.addEventListener("click", inativarCliente);
+    if (btnAtivar) btnAtivar.addEventListener("click", ativarCliente);
+    if (btnExcluir) btnExcluir.addEventListener("click", excluirCliente);
+
+    // Busca
+    if (btnBuscar) btnBuscar.addEventListener("click", (e) => (e.preventDefault(), buscarClientes()));
+    if (btnLimparBusca) btnLimparBusca.addEventListener("click", (e) => (e.preventDefault(), limparBusca()));
+    if (formBusca) formBusca.addEventListener("submit", (e) => (e.preventDefault(), buscarClientes()));
   }
 
   // =========================
   // Init
   // =========================
-  function initDefaults() {
+  function init() {
     if (elDataCadastro && !elDataCadastro.value) elDataCadastro.value = hojeISO();
+    bindEvents();
+    // Carregar lista inicial
+    buscarClientes();
   }
 
-  function bindEvents() {
-    if (formCadastro) formCadastro.addEventListener("submit", (e) => (e.preventDefault(), salvarCadastro()));
-    if (btnBuscar) btnBuscar.addEventListener("click", (e) => (e.preventDefault(), buscarClientes()));
-    if (formBusca) formBusca.addEventListener("submit", (e) => (e.preventDefault(), buscarClientes()));
-  }
-
-  initDefaults();
-  bindEvents();
+  init();
 })();

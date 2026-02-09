@@ -71,6 +71,34 @@ function Registry_init_() {
       return Clientes_BuscarApi_(e);
     },
 
+    "Clientes.Editar": function (e) {
+      if (typeof Clientes_EditarApi_ !== "function") {
+        throw new Error("Handler ausente: Clientes_EditarApi_");
+      }
+      return Clientes_EditarApi_(e);
+    },
+
+    "Clientes.Inativar": function (e) {
+      if (typeof Clientes_InativarApi_ !== "function") {
+        throw new Error("Handler ausente: Clientes_InativarApi_");
+      }
+      return Clientes_InativarApi_(e);
+    },
+
+    "Clientes.Ativar": function (e) {
+      if (typeof Clientes_AtivarApi_ !== "function") {
+        throw new Error("Handler ausente: Clientes_AtivarApi_");
+      }
+      return Clientes_AtivarApi_(e);
+    },
+
+    "Clientes.Excluir": function (e) {
+      if (typeof Clientes_ExcluirApi_ !== "function") {
+        throw new Error("Handler ausente: Clientes_ExcluirApi_");
+      }
+      return Clientes_ExcluirApi_(e);
+    },
+
     // ---- FORNECEDORES ----
     "Fornecedores.GerarID": function (e) {
       if (typeof Fornecedores_GerarIDApi_ !== "function") {
