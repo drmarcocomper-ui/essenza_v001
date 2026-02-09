@@ -119,6 +119,8 @@ function Fornecedores_buscar_(sheet, q) {
       outAll.push(Fornecedores_rowToObj_(header, row));
       if (outAll.length >= 50) break;
     }
+    // Ordenar alfabeticamente por NomeFornecedor
+    outAll.sort(Fornecedores_sortByNome_);
     return outAll;
   }
 
@@ -139,7 +141,18 @@ function Fornecedores_buscar_(sheet, q) {
     }
   }
 
+  // Ordenar alfabeticamente por NomeFornecedor
+  out.sort(Fornecedores_sortByNome_);
   return out;
+}
+
+// Função de ordenação por NomeFornecedor (A-Z)
+function Fornecedores_sortByNome_(a, b) {
+  var nomeA = Fornecedores_normalize_(a.NomeFornecedor || "");
+  var nomeB = Fornecedores_normalize_(b.NomeFornecedor || "");
+  if (nomeA < nomeB) return -1;
+  if (nomeA > nomeB) return 1;
+  return 0;
 }
 
 // ============================================================
