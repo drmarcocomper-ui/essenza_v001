@@ -148,11 +148,9 @@ function Fornecedores_buscar_(sheet, q) {
 
 // Função de ordenação por NomeFornecedor (A-Z)
 function Fornecedores_sortByNome_(a, b) {
-  var nomeA = Fornecedores_normalize_(a.NomeFornecedor || "");
-  var nomeB = Fornecedores_normalize_(b.NomeFornecedor || "");
-  if (nomeA < nomeB) return -1;
-  if (nomeA > nomeB) return 1;
-  return 0;
+  var nomeA = String(a.NomeFornecedor || "").toLowerCase();
+  var nomeB = String(b.NomeFornecedor || "").toLowerCase();
+  return nomeA.localeCompare(nomeB, "pt-BR");
 }
 
 // ============================================================

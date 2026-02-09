@@ -269,11 +269,9 @@ function Clientes_buscar_(sheet, q) {
 
 // Função de ordenação por NomeCliente (A-Z)
 function Clientes_sortByNome_(a, b) {
-  var nomeA = Clientes_normalize_(a.NomeCliente || "");
-  var nomeB = Clientes_normalize_(b.NomeCliente || "");
-  if (nomeA < nomeB) return -1;
-  if (nomeA > nomeB) return 1;
-  return 0;
+  var nomeA = String(a.NomeCliente || "").toLowerCase();
+  var nomeB = String(b.NomeCliente || "").toLowerCase();
+  return nomeA.localeCompare(nomeB, "pt-BR");
 }
 
 // ============================================================
