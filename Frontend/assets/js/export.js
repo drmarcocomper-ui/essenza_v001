@@ -170,7 +170,7 @@
     }
 
     const wb = XLSX.utils.book_new();
-    const sheetOrder = ["Clientes", "Lancamentos", "Categorias"];
+    const sheetOrder = ["Cadastro", "Lancamentos", "Categoria", "Fornecedores"];
 
     sheetOrder.forEach(sheetName => {
       const sheetInfo = sheetsData[sheetName];
