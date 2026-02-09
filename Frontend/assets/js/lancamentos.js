@@ -633,7 +633,15 @@
 
     Object.keys(el).forEach((k) => {
       if (!el[k]) return;
-      el[k].value = it[k] ?? "";
+
+      // Mostrar nome do cliente/fornecedor em vez do ID
+      if (k === "ID_Cliente") {
+        el[k].value = it.NomeCliente || it[k] || "";
+      } else if (k === "ID_Fornecedor") {
+        el[k].value = it.NomeFornecedor || it[k] || "";
+      } else {
+        el[k].value = it[k] ?? "";
+      }
     });
 
     const ri = Number(it.rowIndex || 0);
