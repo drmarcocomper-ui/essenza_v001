@@ -239,6 +239,8 @@ function Clientes_buscar_(sheet, q) {
       outAll.push(obj);
       if (outAll.length >= 100) break;
     }
+    // Ordenar alfabeticamente por NomeCliente
+    outAll.sort(Clientes_sortByNome_);
     return outAll;
   }
 
@@ -260,7 +262,18 @@ function Clientes_buscar_(sheet, q) {
     }
   }
 
+  // Ordenar alfabeticamente por NomeCliente
+  out.sort(Clientes_sortByNome_);
   return out;
+}
+
+// Função de ordenação por NomeCliente (A-Z)
+function Clientes_sortByNome_(a, b) {
+  var nomeA = Clientes_normalize_(a.NomeCliente || "");
+  var nomeB = Clientes_normalize_(b.NomeCliente || "");
+  if (nomeA < nomeB) return -1;
+  if (nomeA > nomeB) return 1;
+  return 0;
 }
 
 // ============================================================
