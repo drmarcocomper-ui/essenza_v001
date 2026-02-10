@@ -1,4 +1,122 @@
+/* ===== MENU TOGGLE (hidden on desktop) ===== */
+.menu-toggle{
+  display:none;
+}
+
+/* ===== MOBILE (<= 768px) ===== */
 @media (max-width: 768px){
   .form-row{ grid-template-columns:1fr; }
   .app-title{ font-size:1.3rem; }
+
+  /* Header layout: title + hamburger on same line */
+  .app-header__inner{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  .app-title{
+    flex:1;
+    min-width:0;
+  }
+
+  /* Hamburger button */
+  .menu-toggle{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:5px;
+    width:36px;
+    height:36px;
+    padding:6px;
+    background:rgba(255,255,255,.18);
+    border:1px solid rgba(255,255,255,.22);
+    border-radius:6px;
+    cursor:pointer;
+    position:relative;
+    z-index:1100;
+    flex-shrink:0;
+  }
+
+  .menu-toggle__bar{
+    display:block;
+    width:100%;
+    height:2px;
+    background:#fff;
+    border-radius:2px;
+    transition:transform .3s ease, opacity .3s ease;
+  }
+
+  /* Hamburger -> X animation */
+  .menu-toggle.open .menu-toggle__bar:nth-child(1){
+    transform:translateY(7px) rotate(45deg);
+  }
+  .menu-toggle.open .menu-toggle__bar:nth-child(2){
+    opacity:0;
+  }
+  .menu-toggle.open .menu-toggle__bar:nth-child(3){
+    transform:translateY(-7px) rotate(-45deg);
+  }
+
+  /* Overlay behind drawer */
+  .menu-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.5);
+    z-index:1000;
+    opacity:0;
+    visibility:hidden;
+    transition:opacity .3s ease, visibility .3s ease;
+  }
+
+  .menu-overlay.open{
+    opacity:1;
+    visibility:visible;
+  }
+
+  /* Drawer (slides from right) */
+  .app-nav{
+    position:fixed;
+    top:0;
+    right:0;
+    width:270px;
+    max-width:80vw;
+    height:100%;
+    background:var(--cor-primaria);
+    flex-direction:column;
+    gap:0;
+    margin-top:0;
+    padding:4.5rem 1rem 1.5rem;
+    z-index:1050;
+    transform:translateX(100%);
+    transition:transform .3s ease;
+    overflow-y:auto;
+    box-shadow:-4px 0 20px rgba(0,0,0,.15);
+  }
+
+  .app-nav.open{
+    transform:translateX(0);
+  }
+
+  /* Nav links: full-width blocks */
+  .app-nav__link{
+    display:block;
+    width:100%;
+    padding:.75rem 1rem;
+    border-radius:8px;
+    font-size:1rem;
+    margin-bottom:.25rem;
+    box-sizing:border-box;
+  }
+
+  /* Theme toggle inside drawer */
+  .theme-toggle{
+    margin-left:0;
+    margin-top:.5rem;
+    width:100%;
+    text-align:center;
+    padding:.75rem 1rem;
+    border-radius:8px;
+    font-size:1rem;
+  }
 }
