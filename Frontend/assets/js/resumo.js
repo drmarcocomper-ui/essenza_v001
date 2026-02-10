@@ -131,6 +131,15 @@
   // ============================
   // Tabs
   // ============================
+  const btnRelatorioInst = document.getElementById("btnRelatorioInstituicoes");
+  const btnImprimirInst = document.getElementById("btnImprimirInstituicoes");
+
+  function atualizarBotoesInstituicao(tabAtiva) {
+    const isInst = tabAtiva === "instituicoes";
+    if (btnRelatorioInst) btnRelatorioInst.style.display = isInst ? "" : "none";
+    if (btnImprimirInst) btnImprimirInst.style.display = isInst ? "" : "none";
+  }
+
   function initTabs() {
     const tabs = document.querySelectorAll(".tab-btn");
     tabs.forEach(tab => {
@@ -144,6 +153,9 @@
         // Mostrar conteúdo correto
         document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
         document.getElementById(`tab-${targetId}`)?.classList.add("active");
+
+        // Mostrar/esconder botões de instituição
+        atualizarBotoesInstituicao(targetId);
       });
     });
   }
@@ -335,9 +347,9 @@
         <td>${formatMoneyBR(it["Nubank PF"])}</td>
         <td>${formatMoneyBR(it["Nubank PJ"])}</td>
         <td>${formatMoneyBR(it["PicPay PF"])}</td>
-        <td>${formatMoneyBR(it["PicPay PJ"])}</td>
-        <td>${formatMoneyBR(it["SumUp PF"])}</td>
         <td>${formatMoneyBR(it["SumUp PJ"])}</td>
+        <td>${formatMoneyBR(it["Terceiro PF"])}</td>
+        <td>${formatMoneyBR(it["Terceiro PJ"])}</td>
         <td>${formatMoneyBR(toNumber(it["Dinheiro PF"]) + toNumber(it["Dinheiro PJ"]))}</td>
       `;
 
@@ -545,6 +557,66 @@
   }
 
   // ============================
+  // Relatório Instituições (PDF)
+  // ============================
+  function exportarInstituicoesPDF(dados) {
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) {
+      setFeedback("jsPDF não carregado.", "error");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    doc.setFontSize(16);
+    doc.text("Relatório por Instituição", 14, 15);
+
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    const now = new Date();
+    doc.text(`Gerado em: ${now.toLocaleDateString("pt-BR")} ${now.toLocaleTimeString("pt-BR")}`, 14, 22);
+
+    const headers = ["Mês", "Nubank PF", "Nubank PJ", "PicPay PF", "SumUp PJ", "Terceiro PF", "Terceiro PJ", "Dinheiro"];
+    const rows = dados.map(it => [
+      formatMesDisplay(it["Mês"] || ""),
+      formatMoneyBR(it["Nubank PF"]),
+      formatMoneyBR(it["Nubank PJ"]),
+      formatMoneyBR(it["PicPay PF"]),
+      formatMoneyBR(it["SumUp PJ"]),
+      formatMoneyBR(it["Terceiro PF"]),
+      formatMoneyBR(it["Terceiro PJ"]),
+      formatMoneyBR(toNumber(it["Dinheiro PF"]) + toNumber(it["Dinheiro PJ"]))
+    ]);
+
+    doc.autoTable({
+      head: [headers],
+      body: rows,
+      startY: 28,
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [139, 92, 165], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: {
+        1: { halign: "right" },
+        2: { halign: "right" },
+        3: { halign: "right" },
+        4: { halign: "right" },
+        5: { halign: "right" },
+        6: { halign: "right" },
+        7: { halign: "right" }
+      }
+    });
+
+    doc.save(`Relatorio_Instituicoes_${new Date().toISOString().slice(0, 10)}.pdf`);
+    setFeedback("PDF de instituições exportado.", "success");
+  }
+
+  function imprimirInstituicoes() {
+    document.body.classList.add("print-instituicoes");
+    window.print();
+    document.body.classList.remove("print-instituicoes");
+  }
+
+  // ============================
   // Bind
   // ============================
   function bind() {
@@ -568,7 +640,11 @@
 
     btnFecharDetalhes?.addEventListener("click", fecharDetalhes);
 
-    document.getElementById("btnImprimirDetalhes")?.addEventListener("click", () => window.print());
+    document.getElementById("btnImprimirDetalhes")?.addEventListener("click", () => {
+      document.body.classList.add("print-detalhes");
+      window.print();
+      document.body.classList.remove("print-detalhes");
+    });
 
     document.getElementById("btnExportDetalhesPDF")?.addEventListener("click", () => {
       if (!dadosDetalhesAtual.items.length) {
@@ -593,6 +669,16 @@
       }
       window.EssenzaExport?.resumoPDF?.(dadosResumoAtual);
     });
+
+    btnRelatorioInst?.addEventListener("click", () => {
+      if (!dadosResumoAtual.length) {
+        setFeedback("Nenhum dado para exportar.", "error");
+        return;
+      }
+      exportarInstituicoesPDF(dadosResumoAtual);
+    });
+
+    btnImprimirInst?.addEventListener("click", imprimirInstituicoes);
   }
 
   // ============================

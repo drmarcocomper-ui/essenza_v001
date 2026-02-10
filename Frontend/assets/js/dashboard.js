@@ -425,8 +425,6 @@
       { label: "Nubank PF", key: "Nubank PF" },
       { label: "Nubank PJ", key: "Nubank PJ" },
       { label: "PicPay PF", key: "PicPay PF" },
-      { label: "PicPay PJ", key: "PicPay PJ" },
-      { label: "SumUp PF", key: "SumUp PF" },
       { label: "SumUp PJ", key: "SumUp PJ" },
       { label: "Terceiro PF", key: "Terceiro PF" },
       { label: "Terceiro PJ", key: "Terceiro PJ" },

@@ -12,11 +12,22 @@
   <style>
     @media print {
       .app-header, .app-footer, .app-nav, #feedbackResumo,
-      .btn, button, .actions, section.card:not(#cardDetalhes) { display: none !important; }
-      #cardDetalhes { display: block !important; box-shadow: none; border: none; }
+      .btn, button, .actions, #secaoCardsResumo { display: none !important; }
       .card { box-shadow: none; border: none; }
       body { background: white; }
       .app-main { padding: 0; }
+    }
+    @media print {
+      body.print-instituicoes .tab-content,
+      body.print-instituicoes .tabs,
+      body.print-instituicoes #cardDetalhes,
+      body.print-instituicoes #tab-principal,
+      body.print-instituicoes #tab-pagamentos { display: none !important; }
+      body.print-instituicoes #tab-instituicoes { display: block !important; }
+      body.print-instituicoes #tab-instituicoes .table { font-size: 0.85rem; }
+
+      body.print-detalhes section.card:not(#cardDetalhes) { display: none !important; }
+      body.print-detalhes #cardDetalhes { display: block !important; box-shadow: none; border: none; }
     }
 
     /* Resumo Cards */
@@ -244,9 +255,9 @@
                   <th>Nubank PF</th>
                   <th>Nubank PJ</th>
                   <th>PicPay PF</th>
-                  <th>PicPay PJ</th>
-                  <th>SumUp PF</th>
                   <th>SumUp PJ</th>
+                  <th>Terceiro PF</th>
+                  <th>Terceiro PJ</th>
                   <th>Dinheiro</th>
                 </tr>
               </thead>
@@ -258,6 +269,8 @@
         <div class="actions" style="margin-top:1rem;">
           <button type="button" id="btnExportExcel" class="btn btn--secondary">Exportar Excel</button>
           <button type="button" id="btnExportPDF" class="btn btn--secondary">Exportar PDF</button>
+          <button type="button" id="btnRelatorioInstituicoes" class="btn btn--secondary" style="display:none;">Relatório Instituições (PDF)</button>
+          <button type="button" id="btnImprimirInstituicoes" class="btn btn--secondary" style="display:none;">Imprimir Instituições</button>
         </div>
       </div>
     </section>
