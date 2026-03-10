@@ -1,5 +1,5 @@
 // sw.js — Service Worker para cache offline do Essenza
-const CACHE_NAME = "essenza-v1";
+const CACHE_NAME = "essenza-v2";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -77,21 +77,18 @@ self.addEventListener("fetch", function(event) {
     return;
   }
 
-  // Static assets - stale-while-revalidate
+  // Static assets - network first, fallback to cache
   event.respondWith(
-    caches.match(event.request).then(function(cached) {
-      var fetchPromise = fetch(event.request).then(function(response) {
-        if (response.ok) {
-          var clone = response.clone();
-          caches.open(CACHE_NAME).then(function(cache) {
-            cache.put(event.request, clone);
-          });
-        }
-        return response;
-      }).catch(function() {
-        return cached;
-      });
-      return cached || fetchPromise;
+    fetch(event.request).then(function(response) {
+      if (response.ok) {
+        var clone = response.clone();
+        caches.open(CACHE_NAME).then(function(cache) {
+          cache.put(event.request, clone);
+        });
+      }
+      return response;
+    }).catch(function() {
+      return caches.match(event.request);
     })
   );
 });
