@@ -179,8 +179,16 @@
   // Run immediately
   init();
 
-  // Register Service Worker
+  // Service Worker: limpar cache antigo e re-registrar
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(function() {});
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+      regs.forEach(function(r) { r.unregister(); });
+    }).then(function() {
+      return caches.keys();
+    }).then(function(keys) {
+      return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+    }).then(function() {
+      navigator.serviceWorker.register("sw.js");
+    }).catch(function() {});
   }
 })();
