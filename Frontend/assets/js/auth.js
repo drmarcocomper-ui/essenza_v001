@@ -94,9 +94,12 @@
         return { valid: true };
       }
 
+      // Servidor respondeu explicitamente que token e invalido
       return { valid: false, reason: data?.message || "invalid" };
     } catch (err) {
-      return { valid: false, reason: err.message || "error" };
+      // Falha de rede/timeout — token existe, permitir acesso
+      // (evita loop de redirect quando servidor esta lento)
+      return { valid: true, reason: "offline_fallback" };
     }
   }
 
