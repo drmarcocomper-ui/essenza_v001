@@ -41,7 +41,8 @@
   // ============================
   function jsonpRequest(params) {
     return new Promise((resolve, reject) => {
-      const cb = "auth_cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+      const rnd = crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : Math.floor(Math.random() * 4294967295);
+      const cb = "auth_cb_" + Date.now() + "_" + rnd;
       const timeout = setTimeout(() => {
         cleanup();
         reject(new Error("Timeout na verificação de autenticação."));

@@ -6,6 +6,10 @@
 (() => {
   "use strict";
 
+  const { escapeHtml, hojeISO, sanitizePhone, normalizeText, setFeedback: setFeedbackEl } = window.EssenzaUtils;
+
+  let _saving = false;
+
   const SHEET_NAME = "Fornecedores";
 
   // =========================
@@ -36,26 +40,8 @@
   // =========================
   // Helpers
   // =========================
-  function setFeedback(msg, type = "info") {
-    if (!feedback) return;
-    feedback.textContent = msg || "";
-    feedback.dataset.type = type;
-  }
-
-  function hojeISO() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  }
-
-  function sanitizePhone(v) {
-    return (v || "").replace(/[^\d()+\-\s]/g, "").trim();
-  }
-
-  function normalizeText(v) {
-    return (v || "").toString().trim();
+  function setFeedback(msg, type) {
+    setFeedbackEl(feedback, msg, type);
   }
 
   function requireScriptUrl() {
@@ -65,15 +51,6 @@
       return false;
     }
     return true;
-  }
-
-  function escapeHtml(str) {
-    return String(str ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
   }
 
   // =========================
@@ -149,12 +126,15 @@
   // Actions
   // =========================
   async function salvarFornecedor() {
-    if (!requireScriptUrl()) return;
+    if (_saving) return;
+    _saving = true;
+    if (!requireScriptUrl()) { _saving = false; return; }
 
     const nome = normalizeText(elNome?.value);
 
     if (!nome) {
       setFeedback("Preencha o Nome do Fornecedor.", "error");
+      _saving = false;
       return;
     }
 
@@ -182,6 +162,8 @@
 
     } catch (err) {
       setFeedback(err.message || "Erro ao salvar fornecedor.", "error");
+    } finally {
+      _saving = false;
     }
   }
 

@@ -4,6 +4,7 @@
 (() => {
   "use strict";
 
+  const { escapeHtml, formatMoneyBR: formatMoney } = window.EssenzaUtils;
   const jsonpRequest = window.EssenzaApi?.request;
   let searchTimeout = null;
   let searchContainer = null;
@@ -180,22 +181,6 @@
     if (searchResults) {
       searchResults.style.display = "none";
     }
-  }
-
-  // ============================
-  // Helpers
-  // ============================
-  function escapeHtml(str) {
-    return String(str ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  function formatMoney(v) {
-    const num = parseFloat(v) || 0;
-    return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   }
 
   // ============================

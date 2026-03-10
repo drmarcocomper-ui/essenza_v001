@@ -6,6 +6,7 @@
 
   const SCRIPT_URL = window.APP_CONFIG?.SCRIPT_URL || "";
   const TOKEN_KEY = window.APP_CONFIG?.AUTH?.TOKEN_KEY || "essenza_auth_token";
+  let _logging = false;
 
   // DOM
   const form = document.getElementById("formLogin");
@@ -53,7 +54,8 @@
   // ============================
   function jsonpRequest(params) {
     return new Promise((resolve, reject) => {
-      const cb = "login_cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+      const rnd = crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : Math.floor(Math.random() * 4294967295);
+      const cb = "login_cb_" + Date.now() + "_" + rnd;
       const timeout = setTimeout(() => {
         cleanup();
         reject(new Error("Timeout na comunicação com o servidor."));
@@ -89,16 +91,20 @@
   // Login
   // ============================
   async function doLogin() {
+    if (_logging) return;
+    _logging = true;
     const senha = (inputSenha?.value || "").trim();
 
     if (!senha) {
       setFeedback("Digite sua senha.", "error");
       inputSenha?.focus();
+      _logging = false;
       return;
     }
 
     if (!SCRIPT_URL || !SCRIPT_URL.includes("/exec")) {
       setFeedback("Erro de configuração. Contate o administrador.", "error");
+      _logging = false;
       return;
     }
 
@@ -142,6 +148,8 @@
     } catch (err) {
       setFeedback(err.message || "Erro ao fazer login.", "error");
       setLoading(false);
+    } finally {
+      _logging = false;
     }
   }
 

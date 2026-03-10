@@ -4,6 +4,10 @@
 (() => {
   "use strict";
 
+  const { escapeHtml, formatMoneyBR, toNumber, calcVariacao, formatVariacao, formatDateBR, setFeedback: setFeedbackEl, skeletonRows } = window.EssenzaUtils;
+  const getMesAtual = window.EssenzaUtils.getMesAtualYYYYMM;
+  const formatMesLabel = window.EssenzaUtils.formatMesDisplay;
+
   const jsonpRequest = window.EssenzaApi?.request || (() => Promise.reject(new Error("EssenzaApi não carregado")));
 
   // DOM
@@ -26,29 +30,8 @@
   // ============================
   // Helpers
   // ============================
-  function setFeedback(msg, type = "info") {
-    if (!feedback) return;
-    feedback.textContent = msg || "";
-    feedback.dataset.type = type;
-  }
-
-  function formatMoneyBR(v) {
-    const num = parseFloat(v) || 0;
-    return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  }
-
-  function toNumber(v) {
-    const s = String(v ?? "").trim();
-    if (!s) return 0;
-    const num = Number(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s.replace(",", "."));
-    return Number.isNaN(num) ? 0 : num;
-  }
-
-  function getMesAtual() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    return `${y}-${m}`;
+  function setFeedback(msg, type) {
+    setFeedbackEl(feedback, msg, type);
   }
 
   function getMesAnterior() {
@@ -59,23 +42,15 @@
     return `${y}-${m}`;
   }
 
-  function calcVariacao(atual, anterior) {
-    if (!anterior || anterior === 0) return null;
-    return ((atual - anterior) / anterior) * 100;
-  }
-
-  function formatVariacao(variacao) {
-    if (variacao === null) return "";
-    const sinal = variacao >= 0 ? "+" : "";
-    return `${sinal}${variacao.toFixed(1)}%`;
-  }
-
 
   // ============================
   // Carregar Dados
   // ============================
   async function carregarDados() {
     setFeedback("Carregando dados...", "info");
+    if (dashboardCards) {
+      dashboardCards.innerHTML = '<div class="skeleton-card"><div class="skeleton-line skeleton-line--medium"></div><div class="skeleton-line skeleton-line--long"></div></div>'.repeat(4);
+    }
 
     try {
       const data = await jsonpRequest({
@@ -349,13 +324,6 @@
   // ============================
   // Comparativo Resumo
   // ============================
-  function formatMesLabel(mesYYYYMM) {
-    if (!mesYYYYMM) return "";
-    const [ano, mes] = mesYYYYMM.split("-");
-    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-    return `${meses[parseInt(mes, 10) - 1]}/${ano}`;
-  }
-
   function renderVarCell(atual, anterior, inverter = false) {
     const var_ = calcVariacao(atual, anterior);
     if (var_ === null) return `<td class="var-neutral">--</td>`;
@@ -493,7 +461,7 @@
       renderRankingClientes(data.items || [], data.total || 0);
 
     } catch (err) {
-      rankingClientes.innerHTML = `<p style="color: #c41e3a;">${err.message || "Erro"}</p>`;
+      rankingClientes.innerHTML = `<p style="color: #c41e3a;">${escapeHtml(err.message || "Erro")}</p>`;
     }
   }
 
@@ -549,13 +517,6 @@
     `;
 
     rankingClientes.innerHTML = html;
-  }
-
-  function escapeHtml(str) {
-    return String(str ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
   }
 
   function popularSelectMeses(items) {
@@ -663,14 +624,17 @@
               </tr>
             </thead>
             <tbody>
-              ${top5.map(it => `
-                <tr>
-                  <td>${escapeHtml(formatDataBR(it.Data_Competencia))}</td>
-                  <td>${escapeHtml(it.NomeCliente || it.ID_Cliente || "-")}</td>
-                  <td>${escapeHtml(it.Descricao || "-")}</td>
-                  <td style="text-align:right;">${formatMoneyBR(it.Valor)}</td>
-                </tr>
-              `).join("")}
+              ${top5.map(function(it) {
+                var days = Math.floor((Date.now() - new Date(it.Data_Competencia).getTime()) / 86400000);
+                var cls = days > 30 ? "overdue-critical" : days > 7 ? "overdue-warning" : "";
+                var badge = days > 0 ? " <small class=\"overdue-badge\">" + days + "d</small>" : "";
+                return '<tr class="' + cls + '">' +
+                  '<td>' + escapeHtml(formatDateBR(it.Data_Competencia)) + badge + '</td>' +
+                  '<td>' + escapeHtml(it.NomeCliente || it.ID_Cliente || "-") + '</td>' +
+                  '<td>' + escapeHtml(it.Descricao || "-") + '</td>' +
+                  '<td style="text-align:right;">' + formatMoneyBR(it.Valor) + '</td>' +
+                '</tr>';
+              }).join("")}
               ${items.length > 5 ? `
                 <tr>
                   <td colspan="4" style="text-align:center; font-style:italic; color:#856404;">
@@ -685,15 +649,6 @@
     `;
   }
 
-  function formatDataBR(dataISO) {
-    if (!dataISO) return "";
-    const s = String(dataISO).trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-      const [y, m, d] = s.split("-");
-      return `${d}/${m}/${y}`;
-    }
-    return s;
-  }
 
   // ============================
   // Gráficos por Categoria

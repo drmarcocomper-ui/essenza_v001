@@ -4,6 +4,8 @@
 (() => {
   "use strict";
 
+  const { escapeHtml, setFeedback, trapFocus, skeletonRows, showToast } = window.EssenzaUtils;
+
   const SHEET_NAME = "Categoria";
   const jsonpRequest = window.EssenzaApi?.request || (() => Promise.reject(new Error("EssenzaApi não carregado")));
 
@@ -58,14 +60,9 @@
   // ========== Estado ==========
   let categoriaAtual = null;
   let dadosListaAtual = [];
+  let _saving = false;
 
   // ========== Helpers ==========
-  function setFeedback(node, msg, type = "info") {
-    if (!node) return;
-    node.textContent = msg || "";
-    node.dataset.type = type;
-  }
-
   function requireScriptUrl() {
     const url = window.EssenzaApi?.getScriptUrl?.() || "";
     if (!url || !url.includes("/exec")) {
@@ -73,13 +70,6 @@
       return false;
     }
     return true;
-  }
-
-  function escapeHtml(str) {
-    return String(str ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;");
   }
 
   // ========== Formulário: Abrir/Fechar ==========
@@ -99,11 +89,16 @@
     }
 
     cardFormulario.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // Focus trap
+    if (window._focusTrapCleanup) window._focusTrapCleanup();
+    window._focusTrapCleanup = trapFocus(cardFormulario);
   }
 
   function fecharFormulario() {
     if (!cardFormulario) return;
     cardFormulario.style.display = "none";
+    if (window._focusTrapCleanup) { window._focusTrapCleanup(); window._focusTrapCleanup = null; }
     limparFormulario();
   }
 
@@ -245,6 +240,7 @@
     if (!requireScriptUrl()) return;
 
     setFeedback(feedbackLista, "Carregando...", "info");
+    if (tbody) tbody.innerHTML = skeletonRows(5, 5);
     try {
       const filtros = buildFiltros();
 
@@ -264,14 +260,17 @@
   }
 
   async function salvar() {
-    if (!requireScriptUrl()) return;
-
-    const payload = buildPayload();
-    if (!validate(payload)) return;
-
-    setFeedback(feedbackSalvar, "Salvando...", "info");
+    if (_saving) return;
+    _saving = true;
 
     try {
+      if (!requireScriptUrl()) return;
+
+      const payload = buildPayload();
+      if (!validate(payload)) return;
+
+      setFeedback(feedbackSalvar, "Salvando...", "info");
+
       const isEdit = Boolean(payload.ID_Categoria);
       const action = isEdit ? "Categoria.Editar" : "Categoria.Criar";
 
@@ -292,6 +291,8 @@
 
     } catch (err) {
       setFeedback(feedbackSalvar, err.message || "Erro ao salvar.", "error");
+    } finally {
+      _saving = false;
     }
   }
 
@@ -358,24 +359,41 @@
 
     if (!confirm("Tem certeza que deseja EXCLUIR esta categoria permanentemente?")) return;
 
-    setFeedback(feedbackSalvar, "Excluindo...", "info");
+    const rowIdx = categoriaAtual.rowIndex;
+    const nome = categoriaAtual.Nome || "Categoria";
+    fecharFormulario();
 
-    try {
-      const data = await jsonpRequest({
+    var undone = false;
+    var deleteTimer = setTimeout(function() {
+      if (undone) return;
+      jsonpRequest({
         action: "Categoria.Excluir",
         sheet: SHEET_NAME,
-        rowIndex: categoriaAtual.rowIndex,
+        rowIndex: rowIdx,
+      }).then(function(data) {
+        if (!data || data.ok !== true) {
+          showToast(data?.message || "Erro ao excluir.", { type: "error" });
+          listar();
+        }
+      }).catch(function(err) {
+        showToast(err.message || "Erro ao excluir.", { type: "error" });
+        listar();
       });
+    }, 5000);
 
-      if (!data || data.ok !== true) throw new Error(data?.message || "Erro ao excluir.");
-
-      setFeedback(feedbackLista, "Categoria excluída.", "success");
-      fecharFormulario();
-      listar();
-
-    } catch (err) {
-      setFeedback(feedbackSalvar, err.message || "Erro ao excluir.", "error");
-    }
+    showToast("Categoria \"" + nome + "\" excluida.", {
+      type: "success",
+      duration: 5000,
+      onUndo: function() {
+        undone = true;
+        clearTimeout(deleteTimer);
+        listar();
+        showToast("Exclusao desfeita.", { type: "info", duration: 2000 });
+      },
+      onDismiss: function() {
+        if (!undone) listar();
+      }
+    });
   }
 
   function limparFiltro() {

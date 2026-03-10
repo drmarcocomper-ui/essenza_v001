@@ -2,14 +2,20 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://script.google.com; img-src 'self' data:;" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#8b5ca5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
   <title>Lancamentos | Essenza</title>
 
   <link rel="stylesheet" href="assets/css/style.css" />
   <!-- Bibliotecas de exportacao -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js" integrity="sha384-b8MpgG2ZzWN6OPAtiB1JiBmDr9MpTt3NKK6KQf61hC/L7X4wJrvoTeVmMFPgp3nL" crossorigin="anonymous"></script>
   <style>
     /* Cards de resumo */
     .resumo-rapido {
@@ -267,7 +273,7 @@
     @media print {
       .app-header, .app-footer, .app-nav, .menu-toggle,
       .btn, button, .actions, #cardFormulario, .acoes-principais,
-      .tabs-lista, .mes-nav, #paginacao, .btn-pago-rapido, .btn-editar-rapido,
+      .tabs-lista, .mes-nav, #paginationLancamentos, .btn-pago-rapido, .btn-editar-rapido,
       #cardFiltro { display: none !important; }
       .card { box-shadow: none; border: none; }
       body { background: white; }
@@ -354,7 +360,7 @@
       </div>
 
       <div class="card__body">
-        <form id="formLancamento" autocomplete="off">
+        <form id="formLancamento" autocomplete="off" novalidate>
           <!-- Grupo: Datas e Tipo -->
           <div class="form-group">
             <div class="form-group__title">Informacoes Basicas</div>
@@ -499,7 +505,7 @@
             <div class="form-row">
               <div class="field">
                 <label class="label" for="Valor">Valor *</label>
-                <input class="input" type="number" id="Valor" name="Valor" step="0.01" inputmode="decimal" required placeholder="0,00" />
+                <input class="input" type="text" id="Valor" name="Valor" inputmode="decimal" required placeholder="0,00" />
               </div>
 
               <div class="field">
@@ -573,6 +579,7 @@
           <button type="button" class="tab-lista-btn active" data-tab="mes">Mes Atual</button>
           <button type="button" class="tab-lista-btn" data-tab="pendentes">Pendentes <span class="badge" id="badgePendentes" style="display:none;">0</span></button>
           <button type="button" class="tab-lista-btn" data-tab="todos">Todos + Filtros</button>
+          <button type="button" class="tab-lista-btn" data-tab="recorrentes">Recorrentes</button>
         </div>
       </div>
 
@@ -759,12 +766,7 @@
           </div>
 
           <!-- Paginacao -->
-          <div class="pagination" id="paginacao" style="margin-top:1rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-            <button type="button" id="btnPrevPage" class="btn" disabled>Anterior</button>
-            <span id="paginaInfo" style="font-size:0.9rem; color:var(--cor-muted);">Pagina 1 de 1</span>
-            <button type="button" id="btnNextPage" class="btn" disabled>Proxima</button>
-            <span id="totalInfo" style="font-size:0.85rem; color:var(--cor-muted); margin-left:auto;">Total: 0</span>
-          </div>
+          <div id="paginationLancamentos" class="pagination"></div>
 
           <div class="actions" style="margin-top:0.75rem;">
             <button type="button" id="btnExportExcel" class="btn btn--secondary">Exportar Excel</button>
@@ -772,6 +774,94 @@
           </div>
 
           <div id="feedbackLanc" class="feedback" aria-live="polite" role="status" style="margin-top:0.5rem;"></div>
+        </div>
+
+        <!-- CONTEUDO: TAB RECORRENTES -->
+        <div class="tab-lista-content" id="tabRecorrentes" style="display:none;">
+          <div class="actions" style="margin-bottom:1rem;">
+            <button type="button" id="btnNovaRecorrencia" class="btn btn--primary">Nova Recorrencia</button>
+            <button type="button" id="btnGerarRecorrentes" class="btn btn--secondary">Gerar Lancamentos do Mes</button>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table" id="tabelaRecorrentes">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Categoria</th>
+                  <th>Descricao</th>
+                  <th>Valor</th>
+                  <th>Frequencia</th>
+                  <th>Dia Venc.</th>
+                  <th>Ativo</th>
+                  <th>Acoes</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p id="feedbackRecorrentes" class="feedback" style="margin-top:.5rem;"></p>
+
+          <!-- Form recorrencia (inline, oculto) -->
+          <div id="formRecorrencia" style="display:none; margin-top:1rem; padding:1rem; border:1px solid var(--cor-borda); border-radius:var(--raio);">
+            <h3 style="font-size:1rem; font-weight:600; margin-bottom:.75rem;" id="tituloRecorrencia">Nova Recorrencia</h3>
+            <div class="form-row">
+              <div class="field">
+                <label class="label">Tipo</label>
+                <select class="select" id="recTipo"><option value="Entrada">Entrada</option><option value="Saida" selected>Saida</option></select>
+              </div>
+              <div class="field">
+                <label class="label">Categoria</label>
+                <input class="input" type="text" id="recCategoria" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label class="label">Descricao</label>
+                <input class="input" type="text" id="recDescricao" required />
+              </div>
+              <div class="field">
+                <label class="label">Valor</label>
+                <input class="input" type="number" id="recValor" step="0.01" min="0" required />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label class="label">Frequencia</label>
+                <select class="select" id="recFrequencia">
+                  <option value="Mensal">Mensal</option>
+                  <option value="Quinzenal">Quinzenal</option>
+                  <option value="Semanal">Semanal</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label">Dia Vencimento</label>
+                <input class="input" type="number" id="recDiaVencimento" min="1" max="28" value="1" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label class="label">Forma Pagamento</label>
+                <select class="select" id="recFormaPagamento">
+                  <option value="">—</option>
+                  <option value="Pix">Pix</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Cartao_Credito">Cartao Credito</option>
+                  <option value="Cartao_Debito">Cartao Debito</option>
+                  <option value="Boleto">Boleto</option>
+                  <option value="Transferencia">Transferencia</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label">Ativo</label>
+                <select class="select" id="recAtivo"><option value="Sim">Sim</option><option value="Nao">Nao</option></select>
+              </div>
+            </div>
+            <div class="actions">
+              <button type="button" id="btnSalvarRecorrencia" class="btn btn--primary">Salvar</button>
+              <button type="button" id="btnCancelarRecorrencia" class="btn">Cancelar</button>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -802,6 +892,7 @@
 
   <script src="assets/js/theme.js"></script>
   <script src="assets/js/config.js"></script>
+  <script src="assets/js/utils.js"></script>
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="assets/js/search.js"></script>

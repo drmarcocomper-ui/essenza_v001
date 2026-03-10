@@ -70,15 +70,49 @@ function Auth_requireToken_(e) {
 }
 
 // ============================
+// Rate Limiting (CacheService)
+// ============================
+var AUTH_RATE_LIMIT_MAX_ = 5;
+var AUTH_RATE_LIMIT_WINDOW_ = 300; // 5 minutos
+var AUTH_RATE_LIMIT_KEY_ = "login_fail_count";
+
+function Auth_getFailCount_() {
+  var cache = CacheService.getScriptCache();
+  var val = cache.get(AUTH_RATE_LIMIT_KEY_);
+  return val ? parseInt(val, 10) : 0;
+}
+
+function Auth_incrementFailCount_() {
+  var cache = CacheService.getScriptCache();
+  var count = Auth_getFailCount_() + 1;
+  cache.put(AUTH_RATE_LIMIT_KEY_, String(count), AUTH_RATE_LIMIT_WINDOW_);
+}
+
+function Auth_clearFailCount_() {
+  var cache = CacheService.getScriptCache();
+  cache.remove(AUTH_RATE_LIMIT_KEY_);
+}
+
+// ============================
 // API: Login
 // ============================
 function Auth_LoginApi_(e) {
   var p = (e && e.parameter) ? e.parameter : {};
   var password = safeStr_(p.password);
 
-  if (!password) {
-    // Delay anti brute-force
+  // Rate limiting
+  if (Auth_getFailCount_() >= AUTH_RATE_LIMIT_MAX_) {
     Utilities.sleep(1000);
+    return {
+      ok: false,
+      code: "RATE_LIMITED",
+      message: "Muitas tentativas. Aguarde alguns minutos."
+    };
+  }
+
+  if (!password) {
+    Utilities.sleep(1000);
+    Auth_incrementFailCount_();
     return {
       ok: false,
       code: "VALIDATION_ERROR",
@@ -89,8 +123,9 @@ function Auth_LoginApi_(e) {
   var isValid = Auth_verifyPassword_(password);
 
   if (!isValid) {
-    // Delay anti brute-force
     Utilities.sleep(1000);
+    Auth_incrementFailCount_();
+    try { AuditLog_log_("Auth.Login", { success: false }); } catch (_) {}
     return {
       ok: false,
       code: "AUTH_ERROR",
@@ -98,15 +133,18 @@ function Auth_LoginApi_(e) {
     };
   }
 
+  // Login OK: limpar contador de falhas
+  Auth_clearFailCount_();
+
   // Limpar tokens expirados periodicamente
   try {
     Auth_cleanupExpiredTokens_();
-  } catch (cleanupErr) {
-    // Ignorar erro de limpeza
-  }
+  } catch (cleanupErr) {}
 
   // Gerar novo token
   var token = Auth_generateToken_();
+
+  try { AuditLog_log_("Auth.Login", { success: true }, token); } catch (_) {}
 
   return {
     ok: true,
@@ -125,6 +163,8 @@ function Auth_LogoutApi_(e) {
   if (token) {
     Auth_invalidateToken_(token);
   }
+
+  try { AuditLog_log_("Auth.Logout", {}, token); } catch (_) {}
 
   return {
     ok: true,

@@ -28,7 +28,8 @@
         return;
       }
 
-      const cb = "cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+      const rnd = crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : Math.floor(Math.random() * 4294967295);
+      const cb = "cb_" + Date.now() + "_" + rnd;
       const timeoutId = setTimeout(() => {
         cleanup();
         reject(new Error("Timeout na chamada ao Apps Script."));

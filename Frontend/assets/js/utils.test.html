@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Utils.js - Testes Unitários</title>
+  <style>
+    body { font-family: monospace; padding: 2rem; background: #1a1a1a; color: #e8e8e8; }
+    h1 { color: #9b6bb4; }
+    .pass { color: #228b22; }
+    .fail { color: #dc3545; font-weight: bold; }
+    .group { margin: 1rem 0 0.5rem; font-weight: bold; color: #4169e1; }
+    .summary { margin-top: 2rem; padding: 1rem; border-radius: 8px; font-size: 1.2rem; }
+    .summary-pass { background: #1a3d1a; border: 1px solid #228b22; }
+    .summary-fail { background: #3d1a1a; border: 1px solid #dc3545; }
+    #results { line-height: 1.8; }
+  </style>
+</head>
+<body>
+  <h1>Essenza Utils - Testes</h1>
+  <div id="results"></div>
+  <div id="summary"></div>
+
+  <script src="config.js"></script>
+  <script src="utils.js"></script>
+  <script>
+    (() => {
+      "use strict";
+
+      const U = window.EssenzaUtils;
+      const results = document.getElementById("results");
+      const summary = document.getElementById("summary");
+      let passed = 0, failed = 0;
+
+      function assert(description, condition) {
+        if (condition) {
+          passed++;
+          results.innerHTML += `<div class="pass">✓ ${description}</div>`;
+        } else {
+          failed++;
+          results.innerHTML += `<div class="fail">✗ ${description}</div>`;
+        }
+      }
+
+      function assertEqual(description, actual, expected) {
+        const ok = actual === expected;
+        if (ok) {
+          passed++;
+          results.innerHTML += `<div class="pass">✓ ${description}</div>`;
+        } else {
+          failed++;
+          results.innerHTML += `<div class="fail">✗ ${description} — esperado: ${JSON.stringify(expected)}, obtido: ${JSON.stringify(actual)}</div>`;
+        }
+      }
+
+      function group(name) {
+        results.innerHTML += `<div class="group">▸ ${name}</div>`;
+      }
+
+      // ============================
+      // escapeHtml
+      // ============================
+      group("escapeHtml");
+      assertEqual("Escapa &", U.escapeHtml("a&b"), "a&amp;b");
+      assertEqual("Escapa <", U.escapeHtml("a<b"), "a&lt;b");
+      assertEqual("Escapa >", U.escapeHtml("a>b"), "a&gt;b");
+      assertEqual('Escapa "', U.escapeHtml('a"b'), "a&quot;b");
+      assertEqual("Escapa '", U.escapeHtml("a'b"), "a&#039;b");
+      assertEqual("Escapa todos juntos", U.escapeHtml(`<img src="x" onerror='alert(1)'>&`), "&lt;img src=&quot;x&quot; onerror=&#039;alert(1)&#039;&gt;&amp;");
+      assertEqual("Null retorna vazio", U.escapeHtml(null), "");
+      assertEqual("Undefined retorna vazio", U.escapeHtml(undefined), "");
+      assertEqual("Número vira string", U.escapeHtml(42), "42");
+
+      // ============================
+      // hojeISO
+      // ============================
+      group("hojeISO");
+      assert("Formato YYYY-MM-DD", /^\d{4}-\d{2}-\d{2}$/.test(U.hojeISO()));
+      assertEqual("Ano atual", U.hojeISO().substring(0, 4), String(new Date().getFullYear()));
+
+      // ============================
+      // getMesAtualYYYYMM
+      // ============================
+      group("getMesAtualYYYYMM");
+      assert("Formato YYYY-MM", /^\d{4}-\d{2}$/.test(U.getMesAtualYYYYMM()));
+
+      // ============================
+      // formatDateBR
+      // ============================
+      group("formatDateBR");
+      assertEqual("ISO para BR", U.formatDateBR("2025-01-15"), "15/01/2025");
+      assertEqual("ISO com hora", U.formatDateBR("2025-01-15T10:30:00"), "15/01/2025");
+      assertEqual("String qualquer", U.formatDateBR("abc"), "abc");
+      assertEqual("Vazio", U.formatDateBR(""), "");
+      assertEqual("Null", U.formatDateBR(null), "");
+
+      // ============================
+      // formatMesDisplay
+      // ============================
+      group("formatMesDisplay");
+      assertEqual("YYYY-MM", U.formatMesDisplay("2025-01"), "Jan/2025");
+      assertEqual("YYYY-MM dezembro", U.formatMesDisplay("2025-12"), "Dez/2025");
+      assertEqual("MM/YYYY", U.formatMesDisplay("03/2025"), "Mar/2025");
+      assertEqual("YYYY/MM", U.formatMesDisplay("2025/06"), "Jun/2025");
+      assertEqual("Vazio", U.formatMesDisplay(""), "");
+      assertEqual("Null", U.formatMesDisplay(null), "");
+
+      // ============================
+      // toNumber
+      // ============================
+      group("toNumber");
+      assertEqual("Inteiro", U.toNumber("42"), 42);
+      assertEqual("Decimal BR", U.toNumber("1.234,56"), 1234.56);
+      assertEqual("Decimal US", U.toNumber("1234.56"), 1234.56);
+      assertEqual("Com R$", U.toNumber("R$ 1.234,56"), 1234.56);
+      assertEqual("Vazio", U.toNumber(""), 0);
+      assertEqual("Null", U.toNumber(null), 0);
+      assertEqual("Undefined", U.toNumber(undefined), 0);
+      assertEqual("Texto inválido", U.toNumber("abc"), 0);
+      assertEqual("Número direto", U.toNumber(99.5), 99.5);
+
+      // ============================
+      // formatMoneyBR
+      // ============================
+      group("formatMoneyBR");
+      assert("Formata 1234.56", U.formatMoneyBR(1234.56).includes("1.234,56"));
+      assert("Formata 0", U.formatMoneyBR(0).includes("0,00"));
+      assert("Formata string", U.formatMoneyBR("500").includes("500,00"));
+      assert("Contém R$", U.formatMoneyBR(100).includes("R$"));
+
+      // ============================
+      // calcVariacao
+      // ============================
+      group("calcVariacao");
+      assertEqual("100 -> 150 = 50%", U.calcVariacao(150, 100), 50);
+      assertEqual("100 -> 50 = -50%", U.calcVariacao(50, 100), -50);
+      assertEqual("Anterior 0 = null", U.calcVariacao(100, 0), null);
+      assertEqual("Anterior null = null", U.calcVariacao(100, null), null);
+      assertEqual("Negativo -> positivo", U.calcVariacao(50, -100), 150);
+
+      // ============================
+      // formatVariacao
+      // ============================
+      group("formatVariacao");
+      assertEqual("Positiva", U.formatVariacao(12.345), "+12.3%");
+      assertEqual("Negativa", U.formatVariacao(-5.6), "-5.6%");
+      assertEqual("Zero", U.formatVariacao(0), "+0.0%");
+      assertEqual("Null", U.formatVariacao(null), "");
+      assertEqual("Undefined", U.formatVariacao(undefined), "");
+
+      // ============================
+      // sanitizePhone
+      // ============================
+      group("sanitizePhone");
+      assertEqual("Mantém dígitos", U.sanitizePhone("(11) 91234-5678"), "(11) 91234-5678");
+      assertEqual("Remove letras", U.sanitizePhone("abc123def"), "123");
+      assertEqual("Mantém +", U.sanitizePhone("+55 11 9999"), "+55 11 9999");
+      assertEqual("Vazio", U.sanitizePhone(""), "");
+      assertEqual("Null", U.sanitizePhone(null), "");
+
+      // ============================
+      // normalizeText
+      // ============================
+      group("normalizeText");
+      assertEqual("Trim", U.normalizeText("  hello  "), "hello");
+      assertEqual("Número", U.normalizeText(42), "42");
+      assertEqual("Vazio", U.normalizeText(""), "");
+      assertEqual("Null", U.normalizeText(null), "");
+
+      // ============================
+      // setFeedback
+      // ============================
+      group("setFeedback");
+      const testEl = document.createElement("div");
+      U.setFeedback(testEl, "teste", "success");
+      assertEqual("Define textContent", testEl.textContent, "teste");
+      assertEqual("Define dataset.type", testEl.dataset.type, "success");
+      U.setFeedback(testEl, "", "info");
+      assertEqual("Limpa mensagem", testEl.textContent, "");
+      U.setFeedback(null, "noop"); // Não deve dar erro
+      assert("Null element não quebra", true);
+
+      // ============================
+      // debounce
+      // ============================
+      group("debounce");
+      assert("Retorna função", typeof U.debounce(() => {}, 100) === "function");
+
+      // ============================
+      // trapFocus
+      // ============================
+      group("trapFocus");
+      assert("Exportada como função", typeof U.trapFocus === "function");
+      {
+        const cleanup = U.trapFocus(null);
+        assert("Null container retorna função noop", typeof cleanup === "function");
+        cleanup(); // não deve dar erro
+        assert("Noop cleanup não quebra", true);
+      }
+      {
+        const container = document.createElement("div");
+        container.innerHTML = '<button>A</button><input type="text"><button>B</button>';
+        document.body.appendChild(container);
+        const cleanup = U.trapFocus(container);
+        assert("Retorna função de cleanup", typeof cleanup === "function");
+        cleanup();
+        document.body.removeChild(container);
+        assert("Cleanup remove listeners sem erro", true);
+      }
+      {
+        const emptyDiv = document.createElement("div");
+        document.body.appendChild(emptyDiv);
+        const cleanup = U.trapFocus(emptyDiv);
+        assert("Container sem focáveis retorna noop", typeof cleanup === "function");
+        cleanup();
+        document.body.removeChild(emptyDiv);
+      }
+
+      // ============================
+      // validateField
+      // ============================
+      group("validateField");
+      assert("Exportada como função", typeof U.validateField === "function");
+      {
+        const ret = U.validateField(null, () => "");
+        assert("Null input retorna função", typeof ret === "function");
+      }
+      {
+        const field = document.createElement("div");
+        field.className = "field";
+        const input = document.createElement("input");
+        field.appendChild(input);
+        document.body.appendChild(field);
+
+        const check = U.validateField(input, function(val) {
+          return val.length < 3 ? "Mínimo 3 caracteres" : "";
+        });
+
+        assert("Retorna função check", typeof check === "function");
+
+        // Simular valor inválido
+        input.value = "ab";
+        const isValid = check();
+        assertEqual("Valor curto é inválido", isValid, false);
+        assert("Input recebe classe input--error", input.classList.contains("input--error"));
+        assert("Field recebe classe field--has-error", field.classList.contains("field--has-error"));
+
+        const errorEl = field.querySelector(".field__error");
+        assert("Cria span .field__error", errorEl !== null);
+        assertEqual("Mensagem de erro exibida", errorEl.textContent, "Mínimo 3 caracteres");
+
+        // Simular valor válido
+        input.value = "abc";
+        const isValid2 = check();
+        assertEqual("Valor OK é válido", isValid2, true);
+        assert("Remove classe input--error", !input.classList.contains("input--error"));
+        assert("Remove classe field--has-error", !field.classList.contains("field--has-error"));
+        assertEqual("Limpa mensagem de erro", errorEl.textContent, "");
+
+        document.body.removeChild(field);
+      }
+
+      // ============================
+      // skeletonRows
+      // ============================
+      group("skeletonRows");
+      assert("Exportada como função", typeof U.skeletonRows === "function");
+      {
+        const html = U.skeletonRows(3, 4);
+        assert("Retorna string", typeof html === "string");
+        assert("Contém 3 <tr>", (html.match(/<tr/g) || []).length === 3);
+        assert("Contém 12 <td>", (html.match(/<td>/g) || []).length === 12);
+        assert("Contém classe skeleton-row", html.includes("skeleton-row"));
+        assert("Contém classe skeleton-line", html.includes("skeleton-line"));
+      }
+      {
+        const html0 = U.skeletonRows(0, 5);
+        assertEqual("Zero rows retorna vazio", html0, "");
+      }
+
+      // ============================
+      // showToast
+      // ============================
+      group("showToast");
+      assert("Exportada como função", typeof U.showToast === "function");
+      {
+        // Toast básico
+        const dismiss = U.showToast("Teste toast", { duration: 500, type: "success" });
+        assert("Retorna função dismiss", typeof dismiss === "function");
+
+        const container = document.getElementById("toast-container");
+        assert("Cria #toast-container", container !== null);
+
+        const toast = container.querySelector(".toast");
+        assert("Cria elemento .toast", toast !== null);
+        assert("Tem classe .toast--success", toast.classList.contains("toast--success"));
+
+        const msg = toast.querySelector(".toast__message");
+        assertEqual("Mensagem correta", msg.textContent, "Teste toast");
+
+        const closeBtn = toast.querySelector(".toast__close");
+        assert("Tem botão fechar", closeBtn !== null);
+
+        const progress = toast.querySelector(".toast__progress");
+        assert("Tem barra de progresso", progress !== null);
+
+        // Dismiss manual
+        dismiss();
+        // Aguardar animação de saída
+        setTimeout(() => {}, 350);
+      }
+      {
+        // Toast com undo
+        let undoCalled = false;
+        const dismiss2 = U.showToast("Com undo", {
+          duration: 60000,
+          type: "warning",
+          onUndo: function() { undoCalled = true; }
+        });
+
+        const container = document.getElementById("toast-container");
+        const toasts = container.querySelectorAll(".toast");
+        const lastToast = toasts[toasts.length - 1];
+
+        const undoBtn = lastToast.querySelector(".toast__undo");
+        assert("Tem botão Desfazer", undoBtn !== null);
+        assertEqual("Texto do botão", undoBtn.textContent, "Desfazer");
+
+        // Clicar undo
+        undoBtn.click();
+        assert("onUndo foi chamado", undoCalled);
+
+        dismiss2();
+      }
+      {
+        // Toast tipo info (default)
+        const dismiss3 = U.showToast("Info default");
+        const container = document.getElementById("toast-container");
+        const toasts = container.querySelectorAll(".toast");
+        const lastToast = toasts[toasts.length - 1];
+        assert("Default type é info", lastToast.classList.contains("toast--info"));
+        dismiss3();
+      }
+      {
+        // Toast tipo error
+        const dismiss4 = U.showToast("Erro!", { type: "error", duration: 500 });
+        const container = document.getElementById("toast-container");
+        const toasts = container.querySelectorAll(".toast");
+        const lastToast = toasts[toasts.length - 1];
+        assert("Tipo error aplicado", lastToast.classList.contains("toast--error"));
+        dismiss4();
+      }
+
+      // Limpar toasts restantes
+      {
+        const container = document.getElementById("toast-container");
+        if (container) container.innerHTML = "";
+      }
+
+      // ============================
+      // Testes de integração
+      // ============================
+      group("Integração");
+      {
+        // Verificar que todas as exports existem
+        const exports = [
+          "escapeHtml", "hojeISO", "getMesAtualYYYYMM", "formatDateBR",
+          "formatMesDisplay", "toNumber", "formatMoneyBR", "calcVariacao",
+          "formatVariacao", "sanitizePhone", "normalizeText", "setFeedback",
+          "debounce", "trapFocus", "validateField", "skeletonRows", "showToast"
+        ];
+        exports.forEach(function(name) {
+          assert("Export: " + name, typeof U[name] === "function");
+        });
+      }
+      {
+        // Pipeline: toNumber -> formatMoneyBR
+        const input = "R$ 1.234,56";
+        const num = U.toNumber(input);
+        assertEqual("Pipeline: toNumber parse", num, 1234.56);
+        assert("Pipeline: formatMoneyBR output", U.formatMoneyBR(num).includes("1.234,56"));
+      }
+      {
+        // Pipeline: formatDateBR -> escapeHtml
+        const date = U.formatDateBR("2025-12-31");
+        const safe = U.escapeHtml(date);
+        assertEqual("Pipeline: date BR seguro", safe, "31/12/2025");
+      }
+
+      // ============================
+      // SUMÁRIO
+      // ============================
+      const total = passed + failed;
+      const allPassed = failed === 0;
+      summary.className = "summary " + (allPassed ? "summary-pass" : "summary-fail");
+      summary.textContent = allPassed
+        ? `✓ Todos os ${total} testes passaram!`
+        : `✗ ${failed} de ${total} testes falharam.`;
+    })();
+  </script>
+</body>
+</html>

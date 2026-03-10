@@ -2,13 +2,19 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://script.google.com; img-src 'self' data:;" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#8b5ca5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
   <title>Resumo Mensal | Essenza</title>
   <link rel="stylesheet" href="assets/css/style.css" />
   <!-- Bibliotecas de exportação -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js" integrity="sha384-b8MpgG2ZzWN6OPAtiB1JiBmDr9MpTt3NKK6KQf61hC/L7X4wJrvoTeVmMFPgp3nL" crossorigin="anonymous"></script>
   <style>
     @media print {
       .app-header, .app-footer, .app-nav, #feedbackResumo,
@@ -280,6 +286,31 @@
       </div>
     </section>
 
+    <!-- PROJECAO DE CAIXA -->
+    <section class="card" id="cardProjecao">
+      <div class="card__header">
+        <h2 class="card__title">Projecao de Caixa</h2>
+        <p class="card__desc">Estimativa dos proximos meses baseada em lancamentos pendentes e media historica</p>
+      </div>
+      <div class="card__body">
+        <div class="table-wrap">
+          <table class="table table-resumo" id="tabelaProjecao">
+            <thead>
+              <tr>
+                <th>Mes</th>
+                <th>Entradas Previstas</th>
+                <th>Saidas Previstas</th>
+                <th>Resultado Estimado</th>
+                <th>Saldo Acumulado</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p id="feedbackProjecao" style="font-size:.8rem; color:var(--cor-muted); margin-top:.5rem;"></p>
+      </div>
+    </section>
+
     <!-- DETALHES DO MÊS -->
     <section class="card" id="cardDetalhes" style="display:none;">
       <div class="card__header">
@@ -364,6 +395,7 @@
 
   <script src="assets/js/theme.js"></script>
   <script src="assets/js/config.js"></script>
+  <script src="assets/js/utils.js"></script>
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="assets/js/search.js"></script>

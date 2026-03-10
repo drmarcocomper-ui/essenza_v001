@@ -5,6 +5,8 @@
 (() => {
   "use strict";
 
+  const { escapeHtml, hojeISO, formatMoneyBR, toNumber: toNumberUtil, formatDateBR: formatDateBRUtil, formatMesDisplay, getMesAtualYYYYMM, setFeedback, skeletonRows, showToast } = window.EssenzaUtils;
+
   const SHEET_NAME = "Lancamentos";
 
   // ---------- DOM ----------
@@ -107,7 +109,7 @@
   let dadosPendentesAtual = [];
   let paginaAtual = 1;
   let totalPaginas = 1;
-  const ITENS_POR_PAGINA = 50;
+  let _pageSize = 25;
   let abaAtiva = "mes"; // "mes" | "pendentes" | "todos"
 
   let sortCol = "Data_Competencia";
@@ -117,23 +119,9 @@
   let fornecedoresDebounce = null;
   let categoriasCache = [];
   let ultimaDescricaoAuto = "";
+  let _saving = false;
 
   // ---------- Helpers ----------
-  function setFeedback(node, msg, type = "info") {
-    if (!node) return;
-    node.textContent = msg || "";
-    node.dataset.type = type;
-  }
-
-  function hojeISO() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  }
-
-  function getMesAtualYYYYMM() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  }
 
   function requireScriptUrl() {
     const url = window.EssenzaApi?.getScriptUrl?.() || "";
@@ -146,40 +134,8 @@
 
   const jsonpRequest = window.EssenzaApi?.request || (() => Promise.reject(new Error("EssenzaApi nao carregado")));
 
-  function escapeHtml(str) {
-    return String(str ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  function formatMoneyBR(v) {
-    const s = String(v ?? "").trim();
-    if (!s) return "";
-    const num = Number(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s.replace(",", "."));
-    if (Number.isNaN(num)) return s;
-    return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  }
-
-  function toNumberBR(v) {
-    const s = String(v ?? "").trim();
-    if (!s) return 0;
-    const clean = s.replace(/r\$\s?/gi, "");
-    const num = Number(clean.includes(",") ? clean.replace(/\./g, "").replace(",", ".") : clean.replace(",", "."));
-    return Number.isNaN(num) ? 0 : num;
-  }
-
-  function formatDateBR(v) {
-    if (!v) return "";
-    const s = String(v).trim();
-    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-      const [y, m, d] = s.substring(0, 10).split("-");
-      return `${d}/${m}/${y}`;
-    }
-    return s;
-  }
+  const toNumberBR = toNumberUtil;
+  const formatDateBR = formatDateBRUtil;
 
   function toISODate(v) {
     if (!v) return "";
@@ -197,14 +153,6 @@
     return "";
   }
 
-  function formatMesDisplay(mesYYYYMM) {
-    if (!mesYYYYMM) return "";
-    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-    const [ano, mes] = mesYYYYMM.split("-");
-    const idx = parseInt(mes, 10) - 1;
-    return idx >= 0 && idx < 12 ? `${meses[idx]}/${ano}` : mesYYYYMM;
-  }
-
   function parseParcelCount(raw) {
     const s = String(raw ?? "").trim();
     if (!s) return 0;
@@ -213,6 +161,34 @@
     const m = s.match(/^(\d+)\s*x$/i);
     if (m) return Number(m[1]) || 0;
     return 0;
+  }
+
+  // ============================================================
+  // URL FILTERS
+  // ============================================================
+  function syncFiltersToURL() {
+    var params = new URLSearchParams();
+    var fields = { fDataIni: fDataIni, fDataFim: fDataFim, fTipo: fTipo, fStatus: fStatus, fCategoria: fCategoria, fFormaPagamento: fFormaPagamento, fInstituicao: fInstituicao, fTitularidade: fTitularidade, q: fQ };
+    Object.keys(fields).forEach(function(key) {
+      var val = (fields[key]?.value || "").trim();
+      if (val) params.set(key, val);
+    });
+    var qs = params.toString();
+    var newUrl = window.location.pathname + (qs ? "?" + qs : "");
+    history.replaceState(null, "", newUrl);
+  }
+
+  function loadFiltersFromURL() {
+    var params = new URLSearchParams(window.location.search);
+    if (fDataIni && params.get("fDataIni")) fDataIni.value = params.get("fDataIni");
+    if (fDataFim && params.get("fDataFim")) fDataFim.value = params.get("fDataFim");
+    if (fTipo && params.get("fTipo")) fTipo.value = params.get("fTipo");
+    if (fStatus && params.get("fStatus")) fStatus.value = params.get("fStatus");
+    if (fCategoria && params.get("fCategoria")) fCategoria.value = params.get("fCategoria");
+    if (fFormaPagamento && params.get("fFormaPagamento")) fFormaPagamento.value = params.get("fFormaPagamento");
+    if (fInstituicao && params.get("fInstituicao")) fInstituicao.value = params.get("fInstituicao");
+    if (fTitularidade && params.get("fTitularidade")) fTitularidade.value = params.get("fTitularidade");
+    if (fQ && params.get("q")) fQ.value = params.get("q");
   }
 
   // ============================================================
@@ -343,12 +319,17 @@
     }
   }
 
-  function validarCategoriaSelecionada(payload) {
+  async function validarCategoriaSelecionada(payload) {
     const tipo = String(payload.Tipo || "").trim();
     const cat = String(payload.Categoria || "").trim();
     if (!tipo || !cat) return false;
+    // Se cache vazio, recarregar antes de validar
+    if (!categoriasCache.length) {
+      try { await carregarCategoriasAtivas(tipo); } catch (_) {}
+    }
     if (!findCategoriaAll(tipo, cat).length) {
       setFeedback(feedbackSalvar, "Selecione uma Categoria valida (da lista).", "error");
+      showToast("Categoria invalida. Selecione da lista.", { type: "error", duration: 4000 });
       return false;
     }
     return true;
@@ -490,6 +471,8 @@
   // ============================================================
   // TABS
   // ============================================================
+  const tabRecorrentesDiv = document.getElementById("tabRecorrentes");
+
   function ativarTab(tab) {
     abaAtiva = tab;
     // Update tab buttons
@@ -500,6 +483,7 @@
     if (tabMesDiv) tabMesDiv.style.display = tab === "mes" ? "" : "none";
     if (tabPendentesDiv) tabPendentesDiv.style.display = tab === "pendentes" ? "" : "none";
     if (tabTodosDiv) tabTodosDiv.style.display = tab === "todos" ? "" : "none";
+    if (tabRecorrentesDiv) tabRecorrentesDiv.style.display = tab === "recorrentes" ? "" : "none";
 
     // Load data for active tab
     if (tab === "mes") {
@@ -508,6 +492,165 @@
       carregarPendentes();
     } else if (tab === "todos") {
       listarTodos(1);
+    } else if (tab === "recorrentes") {
+      carregarRecorrentes();
+    }
+  }
+
+  // ============================================================
+  // RECORRENTES
+  // ============================================================
+  let dadosRecorrentes = [];
+  let recorrenteEditando = null;
+
+  async function carregarRecorrentes() {
+    const tbodyRec = document.querySelector("#tabelaRecorrentes tbody");
+    const fbRec = document.getElementById("feedbackRecorrentes");
+    if (!tbodyRec) return;
+    tbodyRec.innerHTML = skeletonRows(3, 8);
+
+    try {
+      const data = await jsonpRequest({ action: "Recorrentes.Listar" });
+      if (!data || data.ok !== true) throw new Error(data?.message || "Erro ao listar recorrentes.");
+
+      dadosRecorrentes = data.items || [];
+      tbodyRec.innerHTML = "";
+
+      if (!dadosRecorrentes.length) {
+        tbodyRec.innerHTML = '<tr><td colspan="8">Nenhum template recorrente.</td></tr>';
+        setFeedback(fbRec, "", "info");
+        return;
+      }
+
+      dadosRecorrentes.forEach(function(it) {
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          '<td>' + escapeHtml(it.Tipo || "") + '</td>' +
+          '<td>' + escapeHtml(it.Categoria || "") + '</td>' +
+          '<td>' + escapeHtml(it.Descricao || "") + '</td>' +
+          '<td>' + formatMoneyBR(it.Valor) + '</td>' +
+          '<td>' + escapeHtml(it.Frequencia || "") + '</td>' +
+          '<td>' + escapeHtml(it.Dia_Vencimento || "") + '</td>' +
+          '<td>' + escapeHtml(it.Ativo || "") + '</td>' +
+          '<td><button class="btn btn--secondary btn-edit-rec" data-row="' + it.rowIndex + '" style="font-size:.75rem;padding:.25rem .5rem;">Editar</button> ' +
+          '<button class="btn btn--danger btn-del-rec" data-row="' + it.rowIndex + '" style="font-size:.75rem;padding:.25rem .5rem;">Excluir</button></td>';
+        tbodyRec.appendChild(tr);
+      });
+
+      // Bind edit/delete
+      tbodyRec.querySelectorAll(".btn-edit-rec").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var ri = parseInt(btn.dataset.row, 10);
+          var item = dadosRecorrentes.find(function(x) { return x.rowIndex === ri; });
+          if (item) editarRecorrente(item);
+        });
+      });
+      tbodyRec.querySelectorAll(".btn-del-rec").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var ri = parseInt(btn.dataset.row, 10);
+          excluirRecorrente(ri);
+        });
+      });
+
+      setFeedback(fbRec, dadosRecorrentes.length + " template(s)", "success");
+    } catch (err) {
+      tbodyRec.innerHTML = "";
+      setFeedback(fbRec, err.message || "Erro.", "error");
+    }
+  }
+
+  function abrirFormRecorrencia(item) {
+    var formRec = document.getElementById("formRecorrencia");
+    var titulo = document.getElementById("tituloRecorrencia");
+    if (!formRec) return;
+
+    formRec.style.display = "block";
+    recorrenteEditando = item || null;
+
+    if (titulo) titulo.textContent = item ? "Editar Recorrencia" : "Nova Recorrencia";
+
+    document.getElementById("recTipo").value = item?.Tipo || "Saida";
+    document.getElementById("recCategoria").value = item?.Categoria || "";
+    document.getElementById("recDescricao").value = item?.Descricao || "";
+    document.getElementById("recValor").value = item?.Valor || "";
+    document.getElementById("recFrequencia").value = item?.Frequencia || "Mensal";
+    document.getElementById("recDiaVencimento").value = item?.Dia_Vencimento || "1";
+    document.getElementById("recFormaPagamento").value = item?.Forma_Pagamento || "";
+    document.getElementById("recAtivo").value = item?.Ativo || "Sim";
+  }
+
+  function fecharFormRecorrencia() {
+    var formRec = document.getElementById("formRecorrencia");
+    if (formRec) formRec.style.display = "none";
+    recorrenteEditando = null;
+  }
+
+  function editarRecorrente(item) {
+    abrirFormRecorrencia(item);
+  }
+
+  async function salvarRecorrente() {
+    var payload = {
+      Tipo: document.getElementById("recTipo")?.value || "Saida",
+      Categoria: document.getElementById("recCategoria")?.value || "",
+      Descricao: document.getElementById("recDescricao")?.value || "",
+      Valor: document.getElementById("recValor")?.value || "0",
+      Frequencia: document.getElementById("recFrequencia")?.value || "Mensal",
+      Dia_Vencimento: document.getElementById("recDiaVencimento")?.value || "1",
+      Forma_Pagamento: document.getElementById("recFormaPagamento")?.value || "",
+      Ativo: document.getElementById("recAtivo")?.value || "Sim"
+    };
+
+    if (!payload.Descricao) {
+      showToast("Preencha a descricao.", { type: "error", duration: 3000 });
+      return;
+    }
+
+    try {
+      var action, reqPayload;
+      if (recorrenteEditando) {
+        payload.rowIndex = recorrenteEditando.rowIndex;
+        payload.data = payload;
+        action = "Recorrentes.Editar";
+      } else {
+        action = "Recorrentes.Criar";
+      }
+
+      const data = await jsonpRequest({
+        action: action,
+        payload: JSON.stringify(payload)
+      });
+
+      if (!data || data.ok !== true) throw new Error(data?.message || "Erro ao salvar.");
+
+      showToast(data.message || "Salvo!", { type: "success", duration: 3000 });
+      fecharFormRecorrencia();
+      carregarRecorrentes();
+    } catch (err) {
+      showToast(err.message || "Erro ao salvar.", { type: "error", duration: 4000 });
+    }
+  }
+
+  async function excluirRecorrente(rowIndex) {
+    if (!confirm("Excluir este template recorrente?")) return;
+    try {
+      const data = await jsonpRequest({ action: "Recorrentes.Excluir", rowIndex: rowIndex });
+      if (!data || data.ok !== true) throw new Error(data?.message || "Erro ao excluir.");
+      showToast("Template excluido.", { type: "success", duration: 3000 });
+      carregarRecorrentes();
+    } catch (err) {
+      showToast(err.message || "Erro.", { type: "error" });
+    }
+  }
+
+  async function gerarRecorrentes() {
+    if (!confirm("Gerar lancamentos pendentes do mes atual a partir dos templates ativos?")) return;
+    try {
+      const data = await jsonpRequest({ action: "Recorrentes.Gerar" });
+      if (!data || data.ok !== true) throw new Error(data?.message || "Erro ao gerar.");
+      showToast(data.message || "Gerado!", { type: "success", duration: 5000 });
+    } catch (err) {
+      showToast(err.message || "Erro ao gerar.", { type: "error" });
     }
   }
 
@@ -627,13 +770,15 @@
     };
   }
 
-  function validateRequired(payload) {
+  async function validateRequired(payload) {
     if (!payload.Data_Competencia || !payload.Tipo || !payload.Categoria ||
         !payload.Descricao || !payload.Valor || !payload.Status) {
-      setFeedback(feedbackSalvar, "Preencha: Data, Tipo, Categoria, Descricao, Valor, Status.", "error");
+      const msg = "Preencha: Data, Tipo, Categoria, Descricao, Valor, Status.";
+      setFeedback(feedbackSalvar, msg, "error");
+      showToast(msg, { type: "error", duration: 4000 });
       return false;
     }
-    if (!validarCategoriaSelecionada(payload)) return false;
+    if (!(await validarCategoriaSelecionada(payload))) return false;
     return true;
   }
 
@@ -798,6 +943,7 @@
     const dataFim = `${ano}-${mes}-${String(ultimoDia).padStart(2, "0")}`;
 
     setFeedback(feedbackMes, "Carregando...", "info");
+    if (tbodyMes) tbodyMes.innerHTML = skeletonRows(5, 8);
 
     try {
       const data = await jsonpRequest({
@@ -828,6 +974,7 @@
     if (!requireScriptUrl()) return;
 
     setFeedback(feedbackPendentes, "Carregando pendentes...", "info");
+    if (tbodyPendentes) tbodyPendentes.innerHTML = skeletonRows(5, 8);
 
     try {
       const data = await jsonpRequest({
@@ -909,14 +1056,16 @@
     if (!requireScriptUrl()) return;
 
     setFeedback(feedbackLanc, "Carregando...", "info");
+    if (tbodyTodos) tbodyTodos.innerHTML = skeletonRows(5, 8);
     try {
       const filtros = buildFiltros();
+      syncFiltersToURL();
       const data = await jsonpRequest({
         action: "Lancamentos.Listar",
         sheet: SHEET_NAME,
         filtros: JSON.stringify(filtros),
         page: page,
-        limit: ITENS_POR_PAGINA
+        limit: _pageSize
       });
 
       if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao listar.");
@@ -936,14 +1085,75 @@
   }
 
   function atualizarControlesPaginacao(pagination) {
-    const btnPrev = document.getElementById("btnPrevPage");
-    const btnNext = document.getElementById("btnNextPage");
-    const paginaInfo = document.getElementById("paginaInfo");
-    const totalInfo = document.getElementById("totalInfo");
-    if (paginaInfo) paginaInfo.textContent = `Pagina ${pagination.page} de ${pagination.totalPages}`;
-    if (totalInfo) totalInfo.textContent = `Total: ${pagination.total}`;
-    if (btnPrev) btnPrev.disabled = pagination.page <= 1;
-    if (btnNext) btnNext.disabled = pagination.page >= pagination.totalPages;
+    const container = document.getElementById("paginationLancamentos");
+    if (!container) return;
+    const page = pagination.page || 1;
+    const pages = pagination.totalPages || 1;
+    const total = pagination.total || 0;
+
+    var html = "";
+
+    // Per-page selector
+    html += '<div class="pagination__per-page"><label>Itens:</label><select id="selPageSize">';
+    [10, 25, 50, 100].forEach(function(n) {
+      html += '<option value="' + n + '"' + (n === _pageSize ? ' selected' : '') + '>' + n + '</option>';
+    });
+    html += '</select></div>';
+
+    // Prev button
+    html += '<button class="pagination__btn" data-page="' + (page - 1) + '"' + (page <= 1 ? ' disabled' : '') + '>&laquo;</button>';
+
+    // Page buttons with ellipsis
+    var range = buildPageRange(page, pages);
+    range.forEach(function(p) {
+      if (p === "...") {
+        html += '<span class="pagination__ellipsis">...</span>';
+      } else {
+        html += '<button class="pagination__btn' + (p === page ? ' pagination__btn--active' : '') + '" data-page="' + p + '">' + p + '</button>';
+      }
+    });
+
+    // Next button
+    html += '<button class="pagination__btn" data-page="' + (page + 1) + '"' + (page >= pages ? ' disabled' : '') + '>&raquo;</button>';
+
+    // Total info
+    html += '<span class="pagination__info">Total: ' + total + '</span>';
+
+    container.innerHTML = html;
+
+    // Bind events
+    container.querySelectorAll(".pagination__btn[data-page]").forEach(function(btn) {
+      btn.addEventListener("click", function(e) {
+        e.preventDefault();
+        var p = parseInt(btn.dataset.page, 10);
+        if (p >= 1 && p <= pages) listarTodos(p);
+      });
+    });
+
+    var selPageSize = document.getElementById("selPageSize");
+    if (selPageSize) {
+      selPageSize.addEventListener("change", function() {
+        _pageSize = parseInt(selPageSize.value, 10) || 25;
+        paginaAtual = 1;
+        listarTodos(1);
+      });
+    }
+  }
+
+  function buildPageRange(current, total) {
+    if (total <= 7) {
+      var arr = [];
+      for (var i = 1; i <= total; i++) arr.push(i);
+      return arr;
+    }
+    var pages = [1];
+    var start = Math.max(2, current - 1);
+    var end = Math.min(total - 1, current + 1);
+    if (start > 2) pages.push("...");
+    for (var j = start; j <= end; j++) pages.push(j);
+    if (end < total - 1) pages.push("...");
+    pages.push(total);
+    return pages;
   }
 
   // ============================================================
@@ -987,36 +1197,44 @@
   }
 
   async function salvar() {
-    if (!requireScriptUrl()) return;
-    aplicarDescricaoDaCategoria(false);
-    const payload = buildLancPayload();
-    if (!validateRequired(payload)) return;
-    if (!confirmParcelamentoSeNovo(payload)) {
-      setFeedback(feedbackSalvar, "Operacao cancelada.", "info");
-      return;
-    }
-
-    setFeedback(feedbackSalvar, "Salvando...", "info");
+    if (_saving) return;
+    _saving = true;
     try {
+      if (!requireScriptUrl()) return;
+      aplicarDescricaoDaCategoria(false);
+      const payload = buildLancPayload();
+      if (!(await validateRequired(payload))) return;
+      if (!confirmParcelamentoSeNovo(payload)) {
+        setFeedback(feedbackSalvar, "Operacao cancelada.", "info");
+        return;
+      }
+
+      setFeedback(feedbackSalvar, "Salvando...", "info");
+      const desc = payload.Descricao || "";
+      const valor = payload.Valor || "";
       if (selectedRowIndex && Number(selectedRowIndex) >= 2) {
         const resp = await editar(selectedRowIndex, payload);
         setFeedback(feedbackSalvar, resp.message || "Atualizado!", "success");
-        // Apos editar: limpa form e recarrega
+        showToast("Lancamento atualizado: " + desc + (valor ? " - R$ " + valor : ""), { type: "success", duration: 4000 });
         clearForm();
-        abrirFormulario(false); // Mantem aberto para novos lancamentos
+        abrirFormulario(false);
       } else {
         const resp = await criar(payload);
         setFeedback(feedbackSalvar, resp.message || "Salvo!", "success");
-        // Apos criar: limpa form para proximo lancamento
+        showToast("Lancamento salvo: " + desc + (valor ? " - R$ " + valor : ""), { type: "success", duration: 4000 });
         clearForm();
-        abrirFormulario(false); // Mantem aberto
+        abrirFormulario(false);
       }
 
       // Recarregar dados da aba ativa
       await recarregarAbaAtiva();
 
     } catch (err) {
-      setFeedback(feedbackSalvar, err.message || "Erro ao salvar.", "error");
+      const msg = err.message || "Erro ao salvar.";
+      setFeedback(feedbackSalvar, msg, "error");
+      showToast(msg, { type: "error", duration: 5000 });
+    } finally {
+      _saving = false;
     }
   }
 
@@ -1035,6 +1253,7 @@
 
   function limparFiltro() {
     if (formFiltro) formFiltro.reset();
+    history.replaceState(null, "", window.location.pathname);
     setFeedback(feedbackLanc, "", "info");
     paginaAtual = 1;
     listarTodos(1);
@@ -1060,18 +1279,30 @@
 
   async function confirmarExcluir() {
     if (!selectedRowIndex) return;
+    const rowIdx = selectedRowIndex;
+    const desc = el.Descricao?.value || "";
+    const valor = el.Valor?.value || "";
     fecharModalExcluir();
-    setFeedback(feedbackSalvar, "Excluindo...", "info");
+    fecharFormulario();
+
+    setFeedback(feedbackLanc, "Excluindo...", "info");
+
     try {
       const data = await jsonpRequest({
         action: "Lancamentos.Excluir",
-        rowIndex: selectedRowIndex
+        rowIndex: rowIdx
       });
       if (!data || data.ok !== true) throw new Error(data?.message || "Erro ao excluir.");
-      fecharFormulario();
+
+      showToast("Lancamento excluido: " + (desc || "item") + (valor ? " - R$ " + valor : ""), {
+        type: "success",
+        duration: 4000
+      });
+      setFeedback(feedbackLanc, "Lancamento excluido com sucesso.", "success");
       await recarregarAbaAtiva();
     } catch (err) {
-      setFeedback(feedbackSalvar, err.message || "Erro ao excluir.", "error");
+      showToast(err.message || "Erro ao excluir.", { type: "error" });
+      setFeedback(feedbackLanc, err.message || "Erro ao excluir.", "error");
     }
   }
 
@@ -1338,21 +1569,17 @@
     if (btnImprimirMes) btnImprimirMes.addEventListener("click", imprimirMes);
     if (btnExportMesPDF) btnExportMesPDF.addEventListener("click", exportarMesPDF);
 
-    // Paginacao (aba Todos)
-    const btnPrevPage = document.getElementById("btnPrevPage");
-    const btnNextPage = document.getElementById("btnNextPage");
-    if (btnPrevPage) {
-      btnPrevPage.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (paginaAtual > 1) listarTodos(paginaAtual - 1);
-      });
-    }
-    if (btnNextPage) {
-      btnNextPage.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (paginaAtual < totalPaginas) listarTodos(paginaAtual + 1);
-      });
-    }
+    // Paginacao is now dynamically rendered by atualizarControlesPaginacao()
+
+    // Recorrentes
+    var btnNovaRec = document.getElementById("btnNovaRecorrencia");
+    var btnGerarRec = document.getElementById("btnGerarRecorrentes");
+    var btnSalvarRec = document.getElementById("btnSalvarRecorrencia");
+    var btnCancelarRec = document.getElementById("btnCancelarRecorrencia");
+    if (btnNovaRec) btnNovaRec.addEventListener("click", function() { abrirFormRecorrencia(null); });
+    if (btnGerarRec) btnGerarRec.addEventListener("click", gerarRecorrentes);
+    if (btnSalvarRec) btnSalvarRec.addEventListener("click", salvarRecorrente);
+    if (btnCancelarRec) btnCancelarRec.addEventListener("click", fecharFormRecorrencia);
 
     // Exportacao (aba Todos)
     const btnExportExcel = document.getElementById("btnExportExcel");
@@ -1389,6 +1616,8 @@
   bindCategoriaPadrao();
   bindSortHeaders();
   atualizarVisibilidadeCampos();
+
+  loadFiltersFromURL();
 
   carregarCategoriasAtivas(getTipoAtual()).catch(() => {});
   carregarTodasCategorias().catch(() => {});

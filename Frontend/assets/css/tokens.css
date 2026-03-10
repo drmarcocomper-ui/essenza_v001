@@ -13,7 +13,7 @@
 
 /* Dark Mode */
 [data-theme="dark"]{
-  --cor-primaria:#9b6bb4;
+  --cor-primaria:#b088c8;
   --cor-secundaria:#3d2a4a;
   --cor-texto:#e8e8e8;
   --cor-muted:#a0a0a0;
@@ -88,4 +88,114 @@
 
 [data-theme="dark"] .alerta-pendencias--vazio .alerta-pendencias__desc{
   color:#90ee90;
+}
+
+/* Dark Mode — Cores de status com contraste WCAG AA */
+[data-theme="dark"] .valor-positivo,
+[data-theme="dark"] .compare-up,
+[data-theme="dark"] .var-up{
+  color:#5cc85c;
+}
+
+[data-theme="dark"] .valor-negativo,
+[data-theme="dark"] .compare-down,
+[data-theme="dark"] .var-down{
+  color:#f06070;
+}
+
+[data-theme="dark"] .dash-card--positive .dash-card__value{
+  color:#5cc85c;
+}
+
+[data-theme="dark"] .dash-card--negative .dash-card__value{
+  color:#f06070;
+}
+
+[data-theme="dark"] .tipo-entrada{
+  color:#5cc85c;
+}
+
+[data-theme="dark"] .tipo-saida{
+  color:#f06070;
+}
+
+[data-theme="dark"] .resumo-card--positivo .resumo-card__value{
+  color:#5cc85c;
+}
+
+[data-theme="dark"] .resumo-card--negativo .resumo-card__value{
+  color:#f06070;
+}
+
+[data-theme="dark"] .resumo-card--pendente .resumo-card__value{
+  color:#f0c060;
+}
+
+[data-theme="dark"] .field__error{
+  color:#f06070;
+}
+
+[data-theme="dark"] .input--error,
+[data-theme="dark"] .field--has-error .input{
+  border-color:#f06070;
+}
+
+[data-theme="dark"] .global-search__results{
+  background:#252525;
+  box-shadow:0 4px 20px rgba(0,0,0,0.4);
+}
+
+[data-theme="dark"] .search-section__title{
+  background:#1a1a1a;
+  color:#a0a0a0;
+}
+
+[data-theme="dark"] .search-item{
+  color:#e8e8e8;
+  border-bottom-color:#3a3a3a;
+}
+
+[data-theme="dark"] .search-item:hover{
+  background:#333;
+}
+
+[data-theme="dark"] .search-item__sub{
+  color:#a0a0a0;
+}
+
+[data-theme="dark"] .search-message{
+  color:#a0a0a0;
+}
+
+/* Dark Mode — Modal */
+[data-theme="dark"] .modal{
+  background:#2a2a2a;
+  box-shadow:0 10px 40px rgba(0,0,0,0.5);
+}
+
+[data-theme="dark"] .modal__header{
+  border-bottom-color:#444;
+}
+
+[data-theme="dark"] .modal__title{
+  color:#e8e8e8;
+}
+
+[data-theme="dark"] .modal__body p{
+  color:#d0d0d0;
+}
+
+[data-theme="dark"] .modal__footer{
+  border-top-color:#444;
+}
+
+[data-theme="dark"] .btn--danger{
+  background:#c0392b;
+  border-color:#c0392b;
+  color:#fff;
+}
+
+[data-theme="dark"] .btn--danger:hover{
+  background:#e74c3c;
+  border-color:#e74c3c;
 }

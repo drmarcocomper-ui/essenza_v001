@@ -1,10 +1,13 @@
 // cadastro.js (JSONP - sem CORS)
-// Requer: assets/js/config.js, auth.js, api.js
+// Requer: assets/js/config.js, auth.js, api.js, utils.js
 
 (() => {
   "use strict";
 
+  const { escapeHtml, hojeISO, sanitizePhone, normalizeText, setFeedback, trapFocus, validateField, skeletonRows, showToast, formatDateBR, formatMoneyBR } = window.EssenzaUtils;
+
   const SHEET_NAME = "Cadastro";
+  let _saving = false;
 
   // =========================
   // DOM
@@ -57,6 +60,12 @@
   const resumoAtivos = document.getElementById("resumoAtivos");
   const resumoInativos = document.getElementById("resumoInativos");
 
+  // Historico
+  const historicoCliente = document.getElementById("historicoCliente");
+  const tabelaHistorico = document.getElementById("tabelaHistorico");
+  const tbodyHistorico = tabelaHistorico ? tabelaHistorico.querySelector("tbody") : null;
+  const feedbackHistorico = document.getElementById("feedbackHistorico");
+
   // =========================
   // Estado
   // =========================
@@ -66,25 +75,6 @@
   // =========================
   // Helpers
   // =========================
-  function setFeedback(el, msg, type = "info") {
-    if (!el) return;
-    el.textContent = msg || "";
-    el.dataset.type = type;
-  }
-
-  function hojeISO() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  }
-
-  function sanitizePhone(v) {
-    return (v || "").replace(/[^\d()+\-\s]/g, "").trim();
-  }
-
-  function normalizeText(v) {
-    return (v || "").toString().trim();
-  }
-
   function requireScriptUrl() {
     const url = window.EssenzaApi?.getScriptUrl?.() || "";
     if (!url || !url.includes("/exec")) {
@@ -92,13 +82,6 @@
       return false;
     }
     return true;
-  }
-
-  function escapeHtml(str) {
-    return String(str ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;");
   }
 
   const jsonpRequest = window.EssenzaApi?.request || (() => Promise.reject(new Error("EssenzaApi não carregado")));
@@ -122,11 +105,16 @@
     }
 
     cardFormulario.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // Focus trap
+    if (window._focusTrapCleanup) window._focusTrapCleanup();
+    window._focusTrapCleanup = trapFocus(cardFormulario);
   }
 
   function fecharFormulario() {
     if (!cardFormulario) return;
     cardFormulario.style.display = "none";
+    if (window._focusTrapCleanup) { window._focusTrapCleanup(); window._focusTrapCleanup = null; }
     limparFormulario();
   }
 
@@ -145,6 +133,7 @@
     if (btnExcluir) btnExcluir.style.display = "none";
 
     setFeedback(feedback, "", "info");
+    ocultarHistorico();
   }
 
   function mostrarBotoesEdicao(cliente) {
@@ -234,6 +223,57 @@
     resumoClientes.style.display = total > 0 ? "grid" : "none";
   }
 
+  // =========================
+  // Historico de Servicos
+  // =========================
+  async function carregarHistorico(nomeCliente) {
+    if (!historicoCliente) return;
+    historicoCliente.style.display = "block";
+    if (tbodyHistorico) tbodyHistorico.innerHTML = skeletonRows(3, 4);
+    if (feedbackHistorico) feedbackHistorico.textContent = "";
+
+    try {
+      var data = await jsonpRequest({
+        action: "Lancamentos.Listar",
+        sheet: "Lancamentos",
+        filtros: JSON.stringify({ q: nomeCliente }),
+        page: 1,
+        limit: 20,
+      });
+      if (!data || data.ok !== true) throw new Error((data && data.message) || "Erro ao buscar historico.");
+
+      var items = data.items || [];
+      if (!tbodyHistorico) return;
+      tbodyHistorico.innerHTML = "";
+
+      if (items.length === 0) {
+        if (feedbackHistorico) feedbackHistorico.textContent = "Nenhum lancamento encontrado para este cliente.";
+        return;
+      }
+
+      items.forEach(function(it) {
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          "<td>" + escapeHtml(formatDateBR(it.Data_Competencia)) + "</td>" +
+          "<td>" + escapeHtml(it.Descricao ?? "") + "</td>" +
+          "<td>" + escapeHtml(formatMoneyBR(it.Valor)) + "</td>" +
+          "<td>" + escapeHtml(it.Status ?? "") + "</td>";
+        tbodyHistorico.appendChild(tr);
+      });
+
+      if (feedbackHistorico) feedbackHistorico.textContent = items.length + " lancamento(s) encontrado(s)";
+    } catch (err) {
+      if (tbodyHistorico) tbodyHistorico.innerHTML = "";
+      if (feedbackHistorico) feedbackHistorico.textContent = err.message || "Erro ao carregar historico.";
+    }
+  }
+
+  function ocultarHistorico() {
+    if (historicoCliente) historicoCliente.style.display = "none";
+    if (tbodyHistorico) tbodyHistorico.innerHTML = "";
+    if (feedbackHistorico) feedbackHistorico.textContent = "";
+  }
+
   function fillFormFromItem(it) {
     if (!it) return;
 
@@ -255,12 +295,14 @@
 
     abrirFormulario(true);
     mostrarBotoesEdicao(it);
+    carregarHistorico(it.NomeCliente || "");
   }
 
   // =========================
   // Ações
   // =========================
   async function salvarCadastro() {
+    if (_saving) return;
     if (!requireScriptUrl()) return;
 
     const nome = normalizeText(elNome?.value);
@@ -273,6 +315,7 @@
 
     if (elDataCadastro && !elDataCadastro.value) elDataCadastro.value = hojeISO();
 
+    _saving = true;
     setFeedback(feedback, "Salvando...", "info");
 
     try {
@@ -312,6 +355,8 @@
 
     } catch (err) {
       setFeedback(feedback, err.message || "Erro ao salvar.", "error");
+    } finally {
+      _saving = false;
     }
   }
 
@@ -321,6 +366,7 @@
     const q = normalizeText(elQuery?.value);
 
     setFeedback(feedbackLista, "Buscando...", "info");
+    if (tbodyResultados) tbodyResultados.innerHTML = skeletonRows(5, 5);
 
     try {
       const data = await jsonpRequest({
@@ -392,24 +438,41 @@
 
     if (!confirm("Tem certeza que deseja EXCLUIR este cliente permanentemente?")) return;
 
-    setFeedback(feedback, "Excluindo...", "info");
+    const rowIdx = clienteAtual.rowIndex;
+    const nome = clienteAtual.Nome || "Cliente";
+    fecharFormulario();
 
-    try {
-      const data = await jsonpRequest({
+    var undone = false;
+    var deleteTimer = setTimeout(function() {
+      if (undone) return;
+      jsonpRequest({
         action: "Clientes.Excluir",
         sheet: SHEET_NAME,
-        rowIndex: clienteAtual.rowIndex,
+        rowIndex: rowIdx,
+      }).then(function(data) {
+        if (!data || data.ok !== true) {
+          showToast(data?.message || "Erro ao excluir.", { type: "error" });
+          buscarClientes();
+        }
+      }).catch(function(err) {
+        showToast(err.message || "Erro ao excluir.", { type: "error" });
+        buscarClientes();
       });
+    }, 5000);
 
-      if (!data || data.ok !== true) throw new Error(data?.message || "Erro ao excluir.");
-
-      setFeedback(feedbackLista, "Cliente excluído.", "success");
-      fecharFormulario();
-      buscarClientes();
-
-    } catch (err) {
-      setFeedback(feedback, err.message || "Erro ao excluir.", "error");
-    }
+    showToast("Cliente \"" + nome + "\" excluido.", {
+      type: "success",
+      duration: 5000,
+      onUndo: function() {
+        undone = true;
+        clearTimeout(deleteTimer);
+        buscarClientes();
+        showToast("Exclusao desfeita.", { type: "info", duration: 2000 });
+      },
+      onDismiss: function() {
+        if (!undone) buscarClientes();
+      }
+    });
   }
 
   function limparBusca() {
@@ -450,6 +513,19 @@
   function init() {
     if (elDataCadastro && !elDataCadastro.value) elDataCadastro.value = hojeISO();
     bindEvents();
+
+    // Validação em tempo real
+    if (typeof validateField === "function") {
+      validateField(elNome, function(v) { return v.trim() ? "" : "Nome é obrigatório"; });
+      validateField(elTelefone, function(v) { return v.trim() ? "" : "Telefone é obrigatório"; });
+    }
+
+    // Check URL params for search query
+    var urlQ = new URLSearchParams(window.location.search).get("q");
+    if (urlQ && elQuery) {
+      elQuery.value = urlQ;
+    }
+
     // Carregar lista inicial
     buscarClientes();
   }

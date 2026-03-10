@@ -47,6 +47,7 @@ function Lancamentos_dispatch_(action, p) {
     var payload = LANC_parseJsonParam_(p.payload);
     var res = Lancamentos_criar_(sheet, payload);
     res.ok = true;
+    try { AuditLog_log_("Lancamentos.Criar", { parcelas: res.parcelas || 1 }, p.token); } catch (_) {}
     return res;
   }
 
@@ -54,6 +55,7 @@ function Lancamentos_dispatch_(action, p) {
     var payloadEdit = LANC_parseJsonParam_(p.payload);
     var resEdit = Lancamentos_editar_(sheet, payloadEdit);
     resEdit.ok = true;
+    try { AuditLog_log_("Lancamentos.Editar", { rowIndex: payloadEdit.rowIndex }, p.token); } catch (_) {}
     return resEdit;
   }
 
@@ -76,6 +78,7 @@ function Lancamentos_dispatch_(action, p) {
     }
     var resExcluir = Lancamentos_excluir_(sheet, rowIndex);
     resExcluir.ok = true;
+    try { AuditLog_log_("Lancamentos.Excluir", { rowIndex: rowIndex }, p.token); } catch (_) {}
     return resExcluir;
   }
 

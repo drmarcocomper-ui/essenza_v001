@@ -4,6 +4,8 @@
 (() => {
   "use strict";
 
+  const { escapeHtml, formatMoneyBR, toNumber, calcVariacao, formatVariacao, formatDateBR, formatMesDisplay, getMesAtualYYYYMM, setFeedback: setFeedbackEl } = window.EssenzaUtils;
+
   const jsonpRequest = window.EssenzaApi?.request || (() => Promise.reject(new Error("EssenzaApi não carregado")));
 
   // DOM Elements
@@ -43,89 +45,8 @@
   // ============================
   // Helpers
   // ============================
-  function setFeedback(msg, type = "info") {
-    if (!feedback) return;
-    feedback.textContent = msg || "";
-    feedback.dataset.type = type;
-  }
-
-  function escapeHtml(str) {
-    return String(str ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }
-
-  function formatMoneyBR(v) {
-    const s = String(v ?? "").trim();
-    if (!s) return "R$ 0,00";
-    const num = Number(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s.replace(",", "."));
-    if (Number.isNaN(num)) return s;
-    return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  }
-
-  function formatMesDisplay(mesInput) {
-    if (!mesInput) return "";
-    const s = String(mesInput).trim();
-
-    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-
-    // Formato YYYY-MM (2025-01)
-    if (/^\d{4}-\d{2}$/.test(s)) {
-      const [ano, mes] = s.split("-");
-      const idx = parseInt(mes, 10) - 1;
-      return idx >= 0 && idx < 12 ? `${meses[idx]}/${ano}` : s;
-    }
-
-    // Formato MM/YYYY (01/2025)
-    if (/^\d{1,2}\/\d{4}$/.test(s)) {
-      const [mes, ano] = s.split("/");
-      const idx = parseInt(mes, 10) - 1;
-      return idx >= 0 && idx < 12 ? `${meses[idx]}/${ano}` : s;
-    }
-
-    // Formato YYYY/MM (2025/01)
-    if (/^\d{4}\/\d{1,2}$/.test(s)) {
-      const [ano, mes] = s.split("/");
-      const idx = parseInt(mes, 10) - 1;
-      return idx >= 0 && idx < 12 ? `${meses[idx]}/${ano}` : s;
-    }
-
-    // Retorna como está se não reconhecer
-    return s;
-  }
-
-  function toNumber(v) {
-    const s = String(v ?? "").trim();
-    if (!s) return 0;
-    const num = Number(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s.replace(",", "."));
-    return Number.isNaN(num) ? 0 : num;
-  }
-
-  function getMesAtual() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  }
-
-  function calcVariacao(atual, anterior) {
-    if (!anterior || anterior === 0) return null;
-    return ((atual - anterior) / Math.abs(anterior)) * 100;
-  }
-
-  function formatVariacao(v) {
-    if (v === null) return "";
-    const sinal = v >= 0 ? "+" : "";
-    return `${sinal}${v.toFixed(1)}%`;
-  }
-
-  function formatDataBR(dataISO) {
-    if (!dataISO) return "";
-    const s = String(dataISO).trim();
-    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-      const [y, m, d] = s.substring(0, 10).split("-");
-      return `${d}/${m}/${y}`;
-    }
-    return s;
+  function setFeedback(msg, type) {
+    setFeedbackEl(feedback, msg, type);
   }
 
   // ============================
@@ -166,7 +87,7 @@
   function renderCardsResumo(items) {
     if (!resumoCards || !secaoCardsResumo) return;
 
-    const mesAtual = getMesAtual();
+    const mesAtual = getMesAtualYYYYMM();
     const dadosAtual = items.find(x => x["Mês"] === mesAtual);
     const mesAnterior = items.find((x, i, arr) => {
       const idx = arr.findIndex(a => a["Mês"] === mesAtual);
@@ -232,6 +153,7 @@
       renderTabelaPagamentos(dadosResumoAtual);
       renderTabelaInstituicoes(dadosResumoAtual);
       setFeedback(`${dadosResumoAtual.length} mês(es) carregados`, "success");
+      carregarProjecao().catch(function() {});
 
     } catch (err) {
       setFeedback(err.message || "Erro ao carregar.", "error");
@@ -250,7 +172,7 @@
       return;
     }
 
-    const mesAtual = getMesAtual();
+    const mesAtual = getMesAtualYYYYMM();
 
     items.forEach((it, idx) => {
       const mes = it["Mês"] || "";
@@ -429,7 +351,7 @@
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${escapeHtml(formatDataBR(it.Data_Caixa))}</td>
+        <td>${escapeHtml(formatDateBR(it.Data_Caixa))}</td>
         <td class="${isEntrada ? 'valor-positivo' : 'valor-negativo'}">${escapeHtml(tipo)}</td>
         <td>${escapeHtml(it.Categoria || "")}</td>
         <td>${escapeHtml((it.Descricao || "").substring(0, 40))}${(it.Descricao || "").length > 40 ? '...' : ''}</td>
@@ -503,6 +425,86 @@
     };
   }
 
+  // ============================
+  // Projecao de Caixa
+  // ============================
+  async function carregarProjecao() {
+    const tbodyProj = document.querySelector("#tabelaProjecao tbody");
+    const fbProj = document.getElementById("feedbackProjecao");
+    if (!tbodyProj) return;
+
+    // Need at least some resumo data
+    if (!dadosResumoAtual.length) {
+      tbodyProj.innerHTML = '<tr><td colspan="5">Sem dados para projecao.</td></tr>';
+      return;
+    }
+
+    // Calculate averages from last 3 months of actual data
+    const last3 = dadosResumoAtual.slice(0, Math.min(3, dadosResumoAtual.length));
+    let avgEntradas = 0, avgSaidas = 0;
+    last3.forEach(function(it) {
+      avgEntradas += toNumber(it["Entradas Pagas"]);
+      avgSaidas += toNumber(it["Saidas"]);
+    });
+    avgEntradas = avgEntradas / last3.length;
+    avgSaidas = avgSaidas / last3.length;
+
+    // Get latest month's resultado as starting saldo
+    const latestResultado = toNumber(dadosResumoAtual[0]?.["Resultado (Caixa)"]);
+
+    // Fetch pending entries for projection
+    var pendingByMonth = {};
+    try {
+      const data = await jsonpRequest({
+        action: "Lancamentos.Listar",
+        sheet: "Lancamentos",
+        filtros: JSON.stringify({ status: "Pendente" }),
+        page: 1,
+        limit: 500
+      });
+      if (data && data.ok && data.items) {
+        data.items.forEach(function(it) {
+          if (String(it.Tipo || "").trim() !== "Entrada") return;
+          var mes = it.Mes_a_receber || "";
+          if (!mes && it.Data_Competencia) {
+            mes = String(it.Data_Competencia).substring(0, 7);
+          }
+          if (!mes) return;
+          pendingByMonth[mes] = (pendingByMonth[mes] || 0) + toNumber(it.Valor);
+        });
+      }
+    } catch (_) {}
+
+    // Build next 3 months
+    var now = new Date();
+    var saldo = latestResultado;
+    tbodyProj.innerHTML = "";
+
+    for (var i = 1; i <= 3; i++) {
+      var d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      var mesKey = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+
+      var entradasPrev = avgEntradas + (pendingByMonth[mesKey] || 0);
+      var saidasPrev = avgSaidas;
+      var resultado = entradasPrev - saidasPrev;
+      saldo += resultado;
+
+      var trClass = resultado >= 0 ? "" : ' style="color:var(--cor-erro,#c41e3a)"';
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td>' + escapeHtml(formatMesDisplay(mesKey)) + '</td>' +
+        '<td class="valor-positivo">' + formatMoneyBR(entradasPrev) + '</td>' +
+        '<td class="valor-negativo">' + formatMoneyBR(saidasPrev) + '</td>' +
+        '<td class="' + (resultado >= 0 ? 'valor-positivo' : 'valor-negativo') + '">' + formatMoneyBR(resultado) + '</td>' +
+        '<td class="' + (saldo >= 0 ? 'valor-positivo' : 'valor-negativo') + '">' + formatMoneyBR(saldo) + '</td>';
+      tbodyProj.appendChild(tr);
+    }
+
+    if (fbProj) {
+      fbProj.textContent = "Baseado na media dos ultimos " + last3.length + " mes(es) + lancamentos pendentes";
+    }
+  }
+
   function fecharDetalhes() {
     if (cardDetalhes) cardDetalhes.style.display = "none";
     if (tbodyDetalhes) tbodyDetalhes.innerHTML = "";
@@ -534,7 +536,7 @@
 
     const headers = ["Data", "Tipo", "Categoria", "Descrição", "Cliente/Forn.", "Pagamento", "Valor", "Status"];
     const rows = dados.items.map(it => [
-      formatDataBR(it.Data_Caixa),
+      formatDateBR(it.Data_Caixa),
       it.Tipo || "",
       it.Categoria || "",
       (it.Descricao || "").substring(0, 25),

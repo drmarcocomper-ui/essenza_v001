@@ -31,6 +31,7 @@
     // Apply stored theme immediately
     const theme = getStoredTheme();
     document.documentElement.setAttribute("data-theme", theme);
+    applyAccent(getStoredAccent());
 
     // Wait for DOM
     if (document.readyState === "loading") {
@@ -49,6 +50,79 @@
     }
 
     setupMobileMenu();
+    setupAccentPicker();
+  }
+
+  /* ---- Custom Accent Color ---- */
+  const ACCENT_KEY = "essenza_accent";
+
+  function getStoredAccent() {
+    return localStorage.getItem(ACCENT_KEY) || "";
+  }
+
+  function applyAccent(hex) {
+    if (!hex) {
+      document.documentElement.style.removeProperty("--cor-primaria");
+      document.documentElement.style.removeProperty("--cor-secundaria");
+      return;
+    }
+    document.documentElement.style.setProperty("--cor-primaria", hex);
+    // Derive secondary: lighten by mixing with white
+    var r = parseInt(hex.slice(1, 3), 16);
+    var g = parseInt(hex.slice(3, 5), 16);
+    var b = parseInt(hex.slice(5, 7), 16);
+    var lr = Math.round(r + (255 - r) * 0.6);
+    var lg = Math.round(g + (255 - g) * 0.6);
+    var lb = Math.round(b + (255 - b) * 0.6);
+    document.documentElement.style.setProperty("--cor-secundaria", "rgb(" + lr + "," + lg + "," + lb + ")");
+  }
+
+  function setAccent(hex) {
+    if (hex) {
+      localStorage.setItem(ACCENT_KEY, hex);
+    } else {
+      localStorage.removeItem(ACCENT_KEY);
+    }
+    applyAccent(hex);
+    updateAccentPicker();
+  }
+
+  function updateAccentPicker() {
+    var picker = document.getElementById("accentPicker");
+    if (picker) picker.value = getStoredAccent() || "#7b4b94";
+  }
+
+  function setupAccentPicker() {
+    var nav = document.querySelector(".app-nav");
+    if (!nav) return;
+    var currentPage = window.location.pathname.split("/").pop() || "";
+    if (currentPage === "login.html") return;
+
+    var wrap = document.createElement("span");
+    wrap.className = "accent-picker-wrap";
+    wrap.innerHTML = '<input type="color" id="accentPicker" class="accent-picker" title="Cor do tema" value="' + (getStoredAccent() || "#7b4b94") + '" />';
+
+    var themeBtn = document.getElementById("themeToggle");
+    if (themeBtn && themeBtn.parentNode === nav) {
+      nav.insertBefore(wrap, themeBtn);
+    } else {
+      nav.appendChild(wrap);
+    }
+
+    var picker = document.getElementById("accentPicker");
+    if (picker) {
+      picker.addEventListener("input", function() {
+        applyAccent(picker.value);
+      });
+      picker.addEventListener("change", function() {
+        setAccent(picker.value);
+      });
+      // Double-click to reset
+      picker.addEventListener("dblclick", function(e) {
+        e.preventDefault();
+        setAccent("");
+      });
+    }
   }
 
   /* ---- Mobile Menu (Hamburger) ---- */
@@ -104,4 +178,9 @@
 
   // Run immediately
   init();
+
+  // Register Service Worker
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(function() {});
+  }
 })();

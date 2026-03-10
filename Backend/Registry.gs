@@ -195,6 +195,18 @@ function Registry_init_() {
       }
     },
 
+    // ---- RECORRENTES (prefixo) ----
+    {
+      prefix: "Recorrentes.",
+      fn: function (action, e) {
+        var p = (e && e.parameter) ? e.parameter : {};
+        if (typeof Recorrentes_dispatch_ !== "function") {
+          throw new Error("Recorrentes_dispatch_ não encontrado. Verifique Recorrentes.gs.");
+        }
+        return Recorrentes_dispatch_(action, p);
+      }
+    },
+
     // ---- BACKUP (prefixo) ----
     {
       prefix: "Backup.",
