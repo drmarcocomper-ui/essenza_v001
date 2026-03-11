@@ -1197,13 +1197,15 @@
   }
 
   async function salvar() {
+    console.log("[SALVAR] iniciou, _saving=", _saving);
     if (_saving) return;
     _saving = true;
     try {
-      if (!requireScriptUrl()) return;
+      if (!requireScriptUrl()) { console.log("[SALVAR] requireScriptUrl falhou"); return; }
       aplicarDescricaoDaCategoria(false);
       const payload = buildLancPayload();
-      if (!(await validateRequired(payload))) return;
+      console.log("[SALVAR] payload=", JSON.stringify(payload));
+      if (!(await validateRequired(payload))) { console.log("[SALVAR] validateRequired falhou"); return; }
       if (!confirmParcelamentoSeNovo(payload)) {
         setFeedback(feedbackSalvar, "Operacao cancelada.", "info");
         return;
@@ -1212,14 +1214,19 @@
       setFeedback(feedbackSalvar, "Salvando...", "info");
       const desc = payload.Descricao || "";
       const valor = payload.Valor || "";
+      console.log("[SALVAR] selectedRowIndex=", selectedRowIndex);
       if (selectedRowIndex && Number(selectedRowIndex) >= 2) {
+        console.log("[SALVAR] chamando editar...");
         const resp = await editar(selectedRowIndex, payload);
+        console.log("[SALVAR] editar resp=", resp);
         setFeedback(feedbackSalvar, resp.message || "Atualizado!", "success");
         showToast("Lancamento atualizado: " + desc + (valor ? " - R$ " + valor : ""), { type: "success", duration: 4000 });
         clearForm();
         abrirFormulario(false);
       } else {
+        console.log("[SALVAR] chamando criar...");
         const resp = await criar(payload);
+        console.log("[SALVAR] criar resp=", resp);
         setFeedback(feedbackSalvar, resp.message || "Salvo!", "success");
         showToast("Lancamento salvo: " + desc + (valor ? " - R$ " + valor : ""), { type: "success", duration: 4000 });
         clearForm();
