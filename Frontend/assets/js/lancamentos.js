@@ -1290,6 +1290,7 @@
     try {
       const data = await jsonpRequest({
         action: "Lancamentos.Excluir",
+        sheet: SHEET_NAME,
         rowIndex: rowIdx
       });
       if (!data || data.ok !== true) throw new Error(data?.message || "Erro ao excluir.");

@@ -47,8 +47,15 @@
         cleanup();
 
         // Verificar erro de autenticação
-        if (data && data.code === "AUTH_ERROR" && window.EssenzaAuth) {
-          window.EssenzaAuth.redirectToLogin();
+        if (data && data.code === "AUTH_ERROR") {
+          const msg = "Sessão expirada. Faça login novamente.";
+          if (window.EssenzaUtils?.showToast) {
+            window.EssenzaUtils.showToast(msg, { type: "error", duration: 3000 });
+          }
+          reject(new Error(msg));
+          if (window.EssenzaAuth) {
+            setTimeout(() => window.EssenzaAuth.redirectToLogin(), 2000);
+          }
           return;
         }
 
