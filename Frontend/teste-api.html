@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Teste API</title></head>
+<body style="font-family:monospace;padding:2rem;background:#1a1a1a;color:#e8e8e8">
+<h2>Teste API Essenza</h2>
+<div id="r" style="white-space:pre-wrap;line-height:2"></div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/utils.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+var R = document.getElementById("r");
+function log(msg) { R.innerHTML += msg + "\n"; }
+
+var api = window.EssenzaApi.request;
+
+log("1. Testando Listar...");
+api({action:"Lancamentos.Listar",sheet:"Lancamentos",page:"1",limit:"2"}).then(function(d) {
+  log("✅ LISTAR OK: " + (d.items ? d.items.length : 0) + " items");
+
+  log("\n2. Testando Criar...");
+  return api({action:"Lancamentos.Criar",sheet:"Lancamentos",payload:JSON.stringify({
+    Data_Competencia:"2026-03-10",
+    Tipo:"Entrada",
+    Categoria:"Produto",
+    Descricao:"TESTE APAGAR",
+    Valor:"1",
+    Status:"Pendente"
+  })});
+}).then(function(d) {
+  if (d && d.ok) {
+    log("✅ CRIAR OK: " + d.message);
+  } else {
+    log("❌ CRIAR FALHOU: " + JSON.stringify(d));
+  }
+}).catch(function(e) {
+  log("❌ ERRO: " + e.message);
+});
+</script>
+</body></html>
