@@ -30,31 +30,26 @@ document.getElementById("btnLogin").onclick = function() {
 
     log("\n2. Criando lancamento de teste...");
     return api({action:"Lancamentos.Criar",sheet:"Lancamentos",token:token,payload:JSON.stringify({
-      Data_Competencia:"2026-03-10",Tipo:"Entrada",Categoria:"Produto",
-      Descricao:"TESTE EXCLUIR AGORA",Valor:"1",Status:"Pendente"
+      Data_Competencia:"2099-12-31",Tipo:"Entrada",Categoria:"Produto",
+      Descricao:"ZZZTESTE EXCLUIR",Valor:"1",Status:"Pendente"
     })});
   }).then(function(d2) {
     if (!d2 || !d2.ok) throw new Error("CRIAR FALHOU: " + JSON.stringify(d2));
     log("✅ CRIAR OK");
 
     log("\n3. Buscando lancamento criado...");
-    return api({action:"Lancamentos.Listar",sheet:"Lancamentos",token:token,page:"1",limit:"200"});
+    return api({action:"Lancamentos.Listar",sheet:"Lancamentos",token:token,page:"1",limit:"200",
+      filtros:JSON.stringify({q:"ZZZTESTE EXCLUIR"})});
   }).then(function(d3) {
     if (!d3 || !d3.ok) throw new Error("LISTAR FALHOU: " + JSON.stringify(d3));
     var items = d3.items || [];
-    log("   Total: " + items.length + " lancamentos");
+    log("   Encontrados: " + items.length + " com filtro");
 
-    var teste = null;
-    for (var i = 0; i < items.length; i++) {
-      if (items[i].Descricao === "TESTE EXCLUIR AGORA") {
-        teste = items[i];
-        break;
-      }
-    }
-    if (!teste) throw new Error("Lancamento de teste nao encontrado na lista!");
-    log("   Encontrado: rowIndex=" + teste.rowIndex);
+    if (!items.length) throw new Error("Nao encontrou o lancamento de teste!");
+    var teste = items[0];
+    log("   rowIndex=" + teste.rowIndex + " desc=" + teste.Descricao);
 
-    log("\n4. Excluindo lancamento (rowIndex=" + teste.rowIndex + ")...");
+    log("\n4. Excluindo (rowIndex=" + teste.rowIndex + ")...");
     return api({action:"Lancamentos.Excluir",sheet:"Lancamentos",token:token,rowIndex:String(teste.rowIndex)});
   }).then(function(d4) {
     if (d4 && d4.ok) {
