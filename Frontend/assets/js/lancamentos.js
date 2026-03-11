@@ -4,6 +4,7 @@
 
 (() => {
   "use strict";
+  console.log("[lancamentos.js] v2 carregado");
 
   const { escapeHtml, hojeISO, formatMoneyBR, toNumber: toNumberUtil, formatDateBR: formatDateBRUtil, formatMesDisplay, getMesAtualYYYYMM, setFeedback, skeletonRows, showToast } = window.EssenzaUtils;
 
