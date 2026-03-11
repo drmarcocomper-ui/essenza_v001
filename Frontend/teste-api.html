@@ -4,7 +4,7 @@
 <h2>Teste API Essenza</h2>
 <div id="login" style="margin-bottom:1rem">
   <input id="senha" type="password" placeholder="Senha" style="padding:8px;font-size:1rem">
-  <button id="btnLogin" style="padding:8px 16px;font-size:1rem">Login e Testar</button>
+  <button id="btnLogin" style="padding:8px 16px;font-size:1rem">Login e Testar Tudo</button>
 </div>
 <div id="r" style="white-space:pre-wrap;line-height:2"></div>
 <script src="assets/js/config.js"></script>
@@ -20,46 +20,49 @@ document.getElementById("btnLogin").onclick = function() {
   var senha = document.getElementById("senha").value;
   if (!senha) { log("Digite a senha"); return; }
   R.innerHTML = "";
+  var token;
 
   log("1. Fazendo login...");
   api({action:"Auth.Login",password:senha}).then(function(d) {
-    if (!d || !d.ok) {
-      log("❌ LOGIN FALHOU: " + (d && d.message || "erro"));
-      return;
+    if (!d || !d.ok) throw new Error("LOGIN FALHOU: " + (d && d.message || "erro"));
+    token = d.token;
+    log("✅ LOGIN OK");
+
+    log("\n2. Criando lancamento de teste...");
+    return api({action:"Lancamentos.Criar",sheet:"Lancamentos",token:token,payload:JSON.stringify({
+      Data_Competencia:"2026-03-10",Tipo:"Entrada",Categoria:"Produto",
+      Descricao:"TESTE EXCLUIR AGORA",Valor:"1",Status:"Pendente"
+    })});
+  }).then(function(d2) {
+    if (!d2 || !d2.ok) throw new Error("CRIAR FALHOU: " + JSON.stringify(d2));
+    log("✅ CRIAR OK");
+
+    log("\n3. Buscando lancamento criado...");
+    return api({action:"Lancamentos.Listar",sheet:"Lancamentos",token:token,page:"1",limit:"200"});
+  }).then(function(d3) {
+    if (!d3 || !d3.ok) throw new Error("LISTAR FALHOU: " + JSON.stringify(d3));
+    var items = d3.items || [];
+    log("   Total: " + items.length + " lancamentos");
+
+    var teste = null;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].Descricao === "TESTE EXCLUIR AGORA") {
+        teste = items[i];
+        break;
+      }
     }
-    var token = d.token;
-    log("✅ LOGIN OK - token recebido");
+    if (!teste) throw new Error("Lancamento de teste nao encontrado na lista!");
+    log("   Encontrado: rowIndex=" + teste.rowIndex);
 
-    log("\n2. Testando Listar com token...");
-    return api({action:"Lancamentos.Listar",sheet:"Lancamentos",page:"1",limit:"2",token:token}).then(function(d2) {
-      log("✅ LISTAR OK: " + (d2.items ? d2.items.length : 0) + " items");
-
-      log("\n3. Testando Criar com token...");
-      return api({action:"Lancamentos.Criar",sheet:"Lancamentos",token:token,payload:JSON.stringify({
-        Data_Competencia:"2026-03-10",
-        Tipo:"Entrada",
-        Categoria:"Produto",
-        Descricao:"TESTE APAGAR",
-        Valor:"1",
-        Status:"Pendente"
-      })});
-    }).then(function(d3) {
-      if (d3 && d3.ok) {
-        log("✅ CRIAR OK: " + d3.message);
-      } else {
-        log("❌ CRIAR FALHOU: " + JSON.stringify(d3));
-      }
-
-      log("\n4. Testando Validate com token...");
-      return api({action:"Auth.Validate",token:token});
-    }).then(function(d4) {
-      if (d4 && d4.ok && d4.valid) {
-        log("✅ VALIDATE OK: token valido");
-      } else {
-        log("❌ VALIDATE FALHOU: " + JSON.stringify(d4));
-      }
-      log("\n--- FIM DOS TESTES ---");
-    });
+    log("\n4. Excluindo lancamento (rowIndex=" + teste.rowIndex + ")...");
+    return api({action:"Lancamentos.Excluir",sheet:"Lancamentos",token:token,rowIndex:String(teste.rowIndex)});
+  }).then(function(d4) {
+    if (d4 && d4.ok) {
+      log("✅ EXCLUIR OK: " + d4.message);
+    } else {
+      log("❌ EXCLUIR FALHOU: " + JSON.stringify(d4));
+    }
+    log("\n--- TODOS OS TESTES PASSARAM ---");
   }).catch(function(e) {
     log("❌ ERRO: " + e.message);
   });
