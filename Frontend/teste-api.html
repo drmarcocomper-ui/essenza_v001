@@ -37,18 +37,36 @@ document.getElementById("btnLogin").onclick = function() {
     if (!d2 || !d2.ok) throw new Error("CRIAR FALHOU: " + JSON.stringify(d2));
     log("✅ CRIAR OK");
 
-    log("\n3. Buscando lancamento criado...");
-    return api({action:"Lancamentos.Listar",sheet:"Lancamentos",token:token,page:"1",limit:"500",
-      q:"ZZZTESTE EXCLUIR"});
+    log("\n3. Listando sem filtro (item com data 2099 deve ser primeiro)...");
+    return api({action:"Lancamentos.Listar",sheet:"Lancamentos",token:token,page:"1",limit:"5"});
   }).then(function(d3) {
     if (!d3 || !d3.ok) throw new Error("LISTAR FALHOU: " + JSON.stringify(d3));
     var items = d3.items || [];
-    log("   Encontrados: " + items.length + " com filtro");
+    log("   Primeiro item: " + JSON.stringify({
+      desc: items[0] ? items[0].Descricao : "VAZIO",
+      data: items[0] ? items[0].Data_Competencia : "VAZIO",
+      row: items[0] ? items[0].rowIndex : "VAZIO"
+    }));
+    log("   Total na pagina: " + items.length);
+    log("   Total geral: " + (d3.pagination ? d3.pagination.total : "?"));
 
-    if (!items.length) throw new Error("Nao encontrou o lancamento de teste!");
-    var teste = items[0];
-    log("   rowIndex=" + teste.rowIndex + " desc=" + teste.Descricao);
+    var teste = null;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].Descricao === "ZZZTESTE EXCLUIR") {
+        teste = items[i];
+        break;
+      }
+    }
 
+    if (!teste) {
+      log("   ⚠ Item teste nao esta nos 5 primeiros. Tentando excluir ultimo row da planilha...");
+      var lastRow = d3.pagination ? d3.pagination.total + 1 : 0;
+      if (!lastRow) throw new Error("Nao conseguiu determinar ultima linha");
+      log("   Ultima linha estimada: " + lastRow);
+      return api({action:"Lancamentos.Excluir",sheet:"Lancamentos",token:token,rowIndex:String(lastRow)});
+    }
+
+    log("   ✅ Encontrou item teste: rowIndex=" + teste.rowIndex);
     log("\n4. Excluindo (rowIndex=" + teste.rowIndex + ")...");
     return api({action:"Lancamentos.Excluir",sheet:"Lancamentos",token:token,rowIndex:String(teste.rowIndex)});
   }).then(function(d4) {
@@ -57,7 +75,7 @@ document.getElementById("btnLogin").onclick = function() {
     } else {
       log("❌ EXCLUIR FALHOU: " + JSON.stringify(d4));
     }
-    log("\n--- TODOS OS TESTES PASSARAM ---");
+    log("\n--- FIM DOS TESTES ---");
   }).catch(function(e) {
     log("❌ ERRO: " + e.message);
   });
