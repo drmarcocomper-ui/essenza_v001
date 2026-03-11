@@ -38,8 +38,8 @@ document.getElementById("btnLogin").onclick = function() {
     log("✅ CRIAR OK");
 
     log("\n3. Buscando lancamento criado...");
-    return api({action:"Lancamentos.Listar",sheet:"Lancamentos",token:token,page:"1",limit:"200",
-      filtros:JSON.stringify({q:"ZZZTESTE EXCLUIR"})});
+    return api({action:"Lancamentos.Listar",sheet:"Lancamentos",token:token,page:"1",limit:"500",
+      q:"ZZZTESTE EXCLUIR"});
   }).then(function(d3) {
     if (!d3 || !d3.ok) throw new Error("LISTAR FALHOU: " + JSON.stringify(d3));
     var items = d3.items || [];
