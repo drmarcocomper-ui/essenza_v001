@@ -1197,15 +1197,13 @@
   }
 
   async function salvar() {
-    console.log("[SALVAR] iniciou, _saving=", _saving);
     if (_saving) return;
     _saving = true;
     try {
-      if (!requireScriptUrl()) { console.log("[SALVAR] requireScriptUrl falhou"); return; }
+      if (!requireScriptUrl()) return;
       aplicarDescricaoDaCategoria(false);
       const payload = buildLancPayload();
-      console.log("[SALVAR] payload=", JSON.stringify(payload));
-      if (!(await validateRequired(payload))) { console.log("[SALVAR] validateRequired falhou"); return; }
+      if (!(await validateRequired(payload))) return;
       if (!confirmParcelamentoSeNovo(payload)) {
         setFeedback(feedbackSalvar, "Operacao cancelada.", "info");
         return;
@@ -1214,24 +1212,16 @@
       setFeedback(feedbackSalvar, "Salvando...", "info");
       const desc = payload.Descricao || "";
       const valor = payload.Valor || "";
-      console.log("[SALVAR] selectedRowIndex=", selectedRowIndex);
       if (selectedRowIndex && Number(selectedRowIndex) >= 2) {
-        console.log("[SALVAR] chamando editar...");
         const resp = await editar(selectedRowIndex, payload);
-        console.log("[SALVAR] editar resp=", resp);
-        setFeedback(feedbackSalvar, resp.message || "Atualizado!", "success");
-        showToast("Lancamento atualizado: " + desc + (valor ? " - R$ " + valor : ""), { type: "success", duration: 4000 });
-        clearForm();
-        abrirFormulario(false);
+        setFeedback(feedbackSalvar, "✔ " + (resp.message || "Atualizado!"), "success");
+        showToast("Lancamento atualizado: " + desc + (valor ? " - R$ " + valor : ""), { type: "success", duration: 5000 });
       } else {
-        console.log("[SALVAR] chamando criar...");
         const resp = await criar(payload);
-        console.log("[SALVAR] criar resp=", resp);
-        setFeedback(feedbackSalvar, resp.message || "Salvo!", "success");
-        showToast("Lancamento salvo: " + desc + (valor ? " - R$ " + valor : ""), { type: "success", duration: 4000 });
-        clearForm();
-        abrirFormulario(false);
+        setFeedback(feedbackSalvar, "✔ " + (resp.message || "Salvo!"), "success");
+        showToast("Lancamento salvo: " + desc + (valor ? " - R$ " + valor : ""), { type: "success", duration: 5000 });
       }
+      clearForm();
 
       // Recarregar dados da aba ativa
       await recarregarAbaAtiva();
@@ -1304,9 +1294,9 @@
 
       showToast("Lancamento excluido: " + (desc || "item") + (valor ? " - R$ " + valor : ""), {
         type: "success",
-        duration: 4000
+        duration: 5000
       });
-      setFeedback(feedbackLanc, "Lancamento excluido com sucesso.", "success");
+      setFeedback(feedbackLanc, "✔ Lancamento excluido com sucesso.", "success");
       await recarregarAbaAtiva();
     } catch (err) {
       showToast(err.message || "Erro ao excluir.", { type: "error" });
