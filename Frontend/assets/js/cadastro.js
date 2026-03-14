@@ -9,6 +9,17 @@
   const SHEET_NAME = "Cadastro";
   let _saving = false;
 
+  function formatISOForInput(v) {
+    if (!v) return "";
+    const s = String(v).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+    return "";
+  }
+
   // =========================
   // DOM
   // =========================
@@ -284,10 +295,10 @@
     if (elNome) elNome.value = it.NomeCliente ?? "";
     if (elTelefone) elTelefone.value = it.Telefone ?? "";
     if (elEmail) elEmail.value = it["E-mail"] ?? it.Email ?? "";
-    if (elDataNascimento) elDataNascimento.value = it.DataNascimento ?? "";
+    if (elDataNascimento) elDataNascimento.value = formatISOForInput(it.DataNascimento);
     if (elMunicipio) elMunicipio.value = it.Municipio ?? "";
     if (elBairro) elBairro.value = it.Bairro ?? "";
-    if (elDataCadastro) elDataCadastro.value = it.DataCadastro ?? "";
+    if (elDataCadastro) elDataCadastro.value = formatISOForInput(it.DataCadastro);
     if (elProfissao) elProfissao.value = it["Profissão"] ?? it.Profissao ?? "";
     if (elPreferencias) elPreferencias.value = it["Preferências"] ?? it.Preferencias ?? "";
     if (elOrigem) elOrigem.value = it.Origem ?? "";
