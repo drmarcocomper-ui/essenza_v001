@@ -21,7 +21,7 @@
 // ============================
 // Ações Públicas (sem token)
 // ============================
-var AUTH_PUBLIC_ACTIONS = [
+const AUTH_PUBLIC_ACTIONS = [
   "Auth.Login",
   "Auth.Validate"
 ];
@@ -72,25 +72,36 @@ function Auth_requireToken_(e) {
 // ============================
 // Rate Limiting (CacheService)
 // ============================
-var AUTH_RATE_LIMIT_MAX_ = 5;
-var AUTH_RATE_LIMIT_WINDOW_ = 300; // 5 minutos
-var AUTH_RATE_LIMIT_KEY_ = "login_fail_count";
+const AUTH_RATE_LIMIT_MAX_ = 5;
+const AUTH_RATE_LIMIT_WINDOW_ = 300; // 5 minutos
+const AUTH_RATE_LIMIT_PREFIX_ = "login_fail_";
 
-function Auth_getFailCount_() {
+function Auth_rateLimitKey_(identifier) {
+  // Gera chave única por identificador (IP ou password hash parcial)
+  var raw = String(identifier || "unknown");
+  var hash = 0;
+  for (var i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+    hash |= 0;
+  }
+  return AUTH_RATE_LIMIT_PREFIX_ + Math.abs(hash);
+}
+
+function Auth_getFailCount_(key) {
   var cache = CacheService.getScriptCache();
-  var val = cache.get(AUTH_RATE_LIMIT_KEY_);
+  var val = cache.get(key);
   return val ? parseInt(val, 10) : 0;
 }
 
-function Auth_incrementFailCount_() {
+function Auth_incrementFailCount_(key) {
   var cache = CacheService.getScriptCache();
-  var count = Auth_getFailCount_() + 1;
-  cache.put(AUTH_RATE_LIMIT_KEY_, String(count), AUTH_RATE_LIMIT_WINDOW_);
+  var count = Auth_getFailCount_(key) + 1;
+  cache.put(key, String(count), AUTH_RATE_LIMIT_WINDOW_);
 }
 
-function Auth_clearFailCount_() {
+function Auth_clearFailCount_(key) {
   var cache = CacheService.getScriptCache();
-  cache.remove(AUTH_RATE_LIMIT_KEY_);
+  cache.remove(key);
 }
 
 // ============================
@@ -100,8 +111,9 @@ function Auth_LoginApi_(e) {
   var p = (e && e.parameter) ? e.parameter : {};
   var password = safeStr_(p.password);
 
-  // Rate limiting
-  if (Auth_getFailCount_() >= AUTH_RATE_LIMIT_MAX_) {
+  // Rate limiting per-user (usa password como identificador para isolar atacantes)
+  var rlKey = Auth_rateLimitKey_(password || "empty");
+  if (Auth_getFailCount_(rlKey) >= AUTH_RATE_LIMIT_MAX_) {
     Utilities.sleep(1000);
     return {
       ok: false,
@@ -112,7 +124,7 @@ function Auth_LoginApi_(e) {
 
   if (!password) {
     Utilities.sleep(1000);
-    Auth_incrementFailCount_();
+    Auth_incrementFailCount_(rlKey);
     return {
       ok: false,
       code: "VALIDATION_ERROR",
@@ -124,8 +136,8 @@ function Auth_LoginApi_(e) {
 
   if (!isValid) {
     Utilities.sleep(1000);
-    Auth_incrementFailCount_();
-    try { AuditLog_log_("Auth.Login", { success: false }); } catch (_) {}
+    Auth_incrementFailCount_(rlKey);
+    Shared_tryLog_("Auth.Login", { success: false });
     return {
       ok: false,
       code: "AUTH_ERROR",
@@ -134,7 +146,7 @@ function Auth_LoginApi_(e) {
   }
 
   // Login OK: limpar contador de falhas
-  Auth_clearFailCount_();
+  Auth_clearFailCount_(rlKey);
 
   // Limpar tokens expirados periodicamente
   try {
@@ -144,7 +156,7 @@ function Auth_LoginApi_(e) {
   // Gerar novo token
   var token = Auth_generateToken_();
 
-  try { AuditLog_log_("Auth.Login", { success: true }, token); } catch (_) {}
+  Shared_tryLog_("Auth.Login", { success: true }, token);
 
   return {
     ok: true,
@@ -164,7 +176,7 @@ function Auth_LogoutApi_(e) {
     Auth_invalidateToken_(token);
   }
 
-  try { AuditLog_log_("Auth.Logout", {}, token); } catch (_) {}
+  Shared_tryLog_("Auth.Logout", {}, token);
 
   return {
     ok: true,

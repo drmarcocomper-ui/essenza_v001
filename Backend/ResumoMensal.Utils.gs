@@ -8,7 +8,7 @@
  * ✅ Normaliza acentos e maiúsculas
  */
 
-var RM_FORMAS_FIXAS = [
+const RM_FORMAS_FIXAS = [
   "Pix",
   "Dinheiro",
   "Cartao_Debito",
@@ -19,7 +19,7 @@ var RM_FORMAS_FIXAS = [
   "Cortesia",
 ];
 
-var RM_INST_FIXAS = [
+const RM_INST_FIXAS = [
   "Nubank",
   "PicPay",
   "SumUp",
@@ -28,7 +28,7 @@ var RM_INST_FIXAS = [
   "Cortesia",
 ];
 
-var RM_TITULARIDADES = ["PF", "PJ"];
+const RM_TITULARIDADES = ["PF", "PJ"];
 
 // ============================================================
 // ACUMULADOR
@@ -108,14 +108,7 @@ function RM_accumulate_(acc, it) {
 // ============================================================
 // UTIL — Header / Colunas
 // ============================================================
-function RM_indexMap_(headerRow) {
-  var map = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var k = String(headerRow[i] || "").trim();
-    if (k) map[k] = i;
-  }
-  return map;
-}
+function RM_indexMap_(h) { return Shared_indexMap_(h); }
 
 function RM_requireCols_(idxMap, cols) {
   for (var i = 0; i < cols.length; i++) {
@@ -128,9 +121,7 @@ function RM_requireCols_(idxMap, cols) {
 // ============================================================
 // UTIL — Strings / Números
 // ============================================================
-function RM_safeStr_(v) {
-  return String(v == null ? "" : v).trim();
-}
+function RM_safeStr_(v) { return Shared_safeStr_(v); }
 
 function RM_norm_(v) {
   var s = RM_safeStr_(v).toLowerCase();

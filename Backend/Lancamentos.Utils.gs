@@ -1,41 +1,13 @@
 /**
  * Lancamentos.Utils.gs — Helpers do módulo Lançamentos
  * ----------------------------------------------------
- * Contém apenas utilitários LANC_*
+ * Redirects genéricos para Shared.Utils.gs + helpers específicos de Lancamentos.
  */
-
-function LANC_parseJsonParam_(s) {
-  var raw = (s || "").toString();
-  if (!raw) return {};
-  try { return JSON.parse(raw); } catch (_) { return {}; }
-}
-
-function LANC_safeStr_(v) {
-  return String(v == null ? "" : v).trim();
-}
-
-function LANC_normalize_(s) {
-  return LANC_safeStr_(s).toLowerCase();
-}
-
-function LANC_indexMap_(headerRow) {
-  var map = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var k = String(headerRow[i] || "").trim();
-    if (k) map[k] = i;
-  }
-  return map;
-}
-
-function LANC_rowToObj_(headerRow, row) {
-  var o = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var k = String(headerRow[i] || "").trim();
-    if (!k) continue;
-    o[k] = row[i] != null ? row[i] : "";
-  }
-  return o;
-}
+function LANC_parseJsonParam_(s) { return Shared_parseJsonParam_(s); }
+function LANC_safeStr_(v) { return Shared_safeStr_(v); }
+function LANC_normalize_(s) { return Shared_normalize_(s); }
+function LANC_indexMap_(h) { return Shared_indexMap_(h); }
+function LANC_rowToObj_(h, r) { return Shared_rowToObj_(h, r); }
 
 function LANC_parseNumber_(v) {
   var s = LANC_safeStr_(v);

@@ -9,9 +9,7 @@
 // =========================
 // STRING / NORMALIZAÇÃO
 // =========================
-function CAT_safeStr_(v) {
-  return String(v == null ? "" : v).trim();
-}
+function CAT_safeStr_(v) { return Shared_safeStr_(v); }
 
 function CAT_norm_(v) {
   var s = CAT_safeStr_(v).toLowerCase();
@@ -40,8 +38,8 @@ function CAT_isoNow_() {
 // =========================
 // SORT
 // =========================
+// Nota: nome legado; ordena por Categoria (alfabética), depois por Descricao_Padrao
 function CAT_sortByOrdemThenCategoria_(a, b) {
-  // Ordenar por Categoria (alfabética), depois por Descricao_Padrao
   var ac = CAT_norm_(a.Categoria);
   var bc = CAT_norm_(b.Categoria);
   if (ac < bc) return -1;

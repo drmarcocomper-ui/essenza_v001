@@ -12,9 +12,9 @@
  * - Clientes.Utils.gs (Clientes_* helpers)
  */
 
-var CLIENTES_SHEET_NAME = "Cadastro";
+const CLIENTES_SHEET_NAME = "Cadastro";
 
-var CLIENTES_HEADERS = [
+const CLIENTES_HEADERS = [
   "ID_Cliente",
   "NomeCliente",
   "Telefone",
@@ -34,83 +34,111 @@ var CLIENTES_HEADERS = [
 // API WRAPPERS (chamadas pelo Registry)
 // ============================================================
 function Clientes_GerarIDApi_(e) {
-  var id = Clientes_gerarIdSequencial_("CLIENTES_SEQ");
-  return { ok: true, id: id, message: "ID gerado." };
+  try {
+    var id = Clientes_gerarIdSequencial_("CLIENTES_SEQ");
+    return { ok: true, id: id, message: "ID gerado." };
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
+  }
 }
 
 function Clientes_CriarApi_(e) {
-  var p = (e && e.parameter) ? e.parameter : {};
-  var payload = Clientes_parseJsonParam_(p.payload);
+  try {
+    var p = (e && e.parameter) ? e.parameter : {};
+    var payload = Clientes_parseJsonParam_(p.payload);
 
-  var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
-  Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
+    var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
+    Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
 
-  var result = Clientes_criar_(sheet, payload);
-  result.ok = true;
-  return result;
+    var result = Clientes_criar_(sheet, payload);
+    result.ok = true;
+    return result;
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
+  }
 }
 
 function Clientes_BuscarApi_(e) {
-  var p = (e && e.parameter) ? e.parameter : {};
-  var q = Clientes_safeStr_(p.q);
+  try {
+    var p = (e && e.parameter) ? e.parameter : {};
+    var q = Clientes_safeStr_(p.q);
 
-  var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
-  Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
+    var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
+    Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
 
-  var items = Clientes_buscar_(sheet, q);
-  return { ok: true, items: items, message: "OK" };
+    var items = Clientes_buscar_(sheet, q);
+    return { ok: true, items: items, message: "OK" };
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
+  }
 }
 
 function Clientes_EditarApi_(e) {
-  var p = (e && e.parameter) ? e.parameter : {};
-  var rowIndex = Number(p.rowIndex);
-  var payload = Clientes_parseJsonParam_(p.payload);
+  try {
+    var p = (e && e.parameter) ? e.parameter : {};
+    var rowIndex = Number(p.rowIndex);
+    var payload = Clientes_parseJsonParam_(p.payload);
 
-  if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
+    if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
 
-  var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
-  Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
+    var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
+    Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
 
-  Clientes_editar_(sheet, rowIndex, payload);
-  return { ok: true, message: "Cliente atualizado." };
+    Clientes_editar_(sheet, rowIndex, payload);
+    return { ok: true, message: "Cliente atualizado." };
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
+  }
 }
 
 function Clientes_InativarApi_(e) {
-  var p = (e && e.parameter) ? e.parameter : {};
-  var rowIndex = Number(p.rowIndex);
+  try {
+    var p = (e && e.parameter) ? e.parameter : {};
+    var rowIndex = Number(p.rowIndex);
 
-  if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
+    if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
 
-  var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
-  Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
+    var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
+    Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
 
-  Clientes_setStatus_(sheet, rowIndex, "Inativo");
-  return { ok: true, message: "Cliente inativado." };
+    Clientes_setStatus_(sheet, rowIndex, "Inativo");
+    return { ok: true, message: "Cliente inativado." };
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
+  }
 }
 
 function Clientes_AtivarApi_(e) {
-  var p = (e && e.parameter) ? e.parameter : {};
-  var rowIndex = Number(p.rowIndex);
+  try {
+    var p = (e && e.parameter) ? e.parameter : {};
+    var rowIndex = Number(p.rowIndex);
 
-  if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
+    if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
 
-  var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
-  Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
+    var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
+    Clientes_ensureHeader_(sheet, CLIENTES_HEADERS);
 
-  Clientes_setStatus_(sheet, rowIndex, "Ativo");
-  return { ok: true, message: "Cliente reativado." };
+    Clientes_setStatus_(sheet, rowIndex, "Ativo");
+    return { ok: true, message: "Cliente reativado." };
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
+  }
 }
 
 function Clientes_ExcluirApi_(e) {
-  var p = (e && e.parameter) ? e.parameter : {};
-  var rowIndex = Number(p.rowIndex);
+  try {
+    var p = (e && e.parameter) ? e.parameter : {};
+    var rowIndex = Number(p.rowIndex);
 
-  if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
+    if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
 
-  var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
+    var sheet = Clientes_getOrCreateSheet_(CLIENTES_SHEET_NAME);
 
-  sheet.deleteRow(rowIndex);
-  return { ok: true, message: "Cliente excluído." };
+    sheet.deleteRow(rowIndex);
+    return { ok: true, message: "Cliente excluído." };
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
+  }
 }
 
 // ============================================================

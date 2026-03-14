@@ -22,8 +22,8 @@
  * - Categoria.Utils.gs (CAT_* helpers)
  */
 
-var CAT_SHEET_DEFAULT = "Categoria";
-var CAT_HEADERS = [
+const CAT_SHEET_DEFAULT = "Categoria";
+const CAT_HEADERS = [
   "ID_Categoria",
   "Tipo",
   "Categoria",
@@ -38,41 +38,46 @@ var CAT_HEADERS = [
 // DISPATCH
 // ============================================================
 function Categoria_dispatch_(action, p) {
-  p = p || {};
-  var sheetName = CAT_safeStr_(p.sheet) || CAT_SHEET_DEFAULT;
+  try {
+    p = p || {};
+    var sheetName = CAT_safeStr_(p.sheet) || CAT_SHEET_DEFAULT;
 
-  var sheet = CAT_getOrCreateSheet_(sheetName);
-  CAT_ensureHeader_(sheet, CAT_HEADERS);
+    var sheet = CAT_getOrCreateSheet_(sheetName);
+    CAT_ensureHeader_(sheet, CAT_HEADERS);
 
-  if (action === "Categoria.Criar") {
-    var payload = CAT_parseJsonParam_(p.payload);
-    var res = Categoria_criar_(sheet, payload);
-    res.ok = true;
-    return res;
+    if (action === "Categoria.Criar") {
+      var payload = CAT_parseJsonParam_(p.payload);
+      var res = Categoria_criar_(sheet, payload);
+      res.ok = true;
+      return res;
+    }
+
+    if (action === "Categoria.Editar") {
+      var payloadE = CAT_parseJsonParam_(p.payload);
+      var resE = Categoria_editar_(sheet, payloadE);
+      resE.ok = true;
+      return resE;
+    }
+
+    if (action === "Categoria.Listar") {
+      var filtros = CAT_parseJsonParam_(p.filtros);
+      if (!filtros || typeof filtros !== "object") filtros = {};
+      var items = Categoria_listar_(sheet, filtros);
+      return { ok: true, items: items, message: "OK" };
+    }
+
+    if (action === "Categoria.Excluir") {
+      var rowIndex = Number(p.rowIndex);
+      if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
+      sheet.deleteRow(rowIndex);
+      return { ok: true, message: "Categoria excluída." };
+    }
+
+    return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
+
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
   }
-
-  if (action === "Categoria.Editar") {
-    var payloadE = CAT_parseJsonParam_(p.payload);
-    var resE = Categoria_editar_(sheet, payloadE);
-    resE.ok = true;
-    return resE;
-  }
-
-  if (action === "Categoria.Listar") {
-    var filtros = CAT_parseJsonParam_(p.filtros);
-    if (!filtros || typeof filtros !== "object") filtros = {};
-    var items = Categoria_listar_(sheet, filtros);
-    return { ok: true, items: items, message: "OK" };
-  }
-
-  if (action === "Categoria.Excluir") {
-    var rowIndex = Number(p.rowIndex);
-    if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
-    sheet.deleteRow(rowIndex);
-    return { ok: true, message: "Categoria excluída." };
-  }
-
-  return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
 }
 
 // ============================================================
@@ -263,20 +268,8 @@ function CAT_ensureHeader_(sheet, headers) {
   }
 }
 
-function CAT_parseJsonParam_(s) {
-  var raw = (s || "").toString();
-  if (!raw) return {};
-  try { return JSON.parse(raw); } catch (_) { return {}; }
-}
-
-function CAT_indexMap_(headerRow) {
-  var map = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var k = String(headerRow[i] || "").trim();
-    if (k) map[k] = i;
-  }
-  return map;
-}
+function CAT_parseJsonParam_(s) { return Shared_parseJsonParam_(s); }
+function CAT_indexMap_(h) { return Shared_indexMap_(h); }
 
 function CAT_rowEmpty_(row) {
   for (var i = 0; i < row.length; i++) {

@@ -11,8 +11,8 @@
  * - Recorrentes.Gerar (gera lancamentos pendentes para um mes)
  */
 
-var REC_SHEET_NAME = "Recorrentes";
-var REC_HEADERS = [
+const REC_SHEET_NAME = "Recorrentes";
+const REC_HEADERS = [
   "Tipo",
   "Categoria",
   "Descricao",
@@ -29,51 +29,55 @@ var REC_HEADERS = [
 // DISPATCH
 // ============================================================
 function Recorrentes_dispatch_(action, p) {
-  p = p || {};
+  try {
+    p = p || {};
 
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(REC_SHEET_NAME);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(REC_SHEET_NAME);
 
-  // Criar aba se nao existir (exceto para Listar)
-  if (!sheet && action !== "Recorrentes.Listar") {
-    sheet = ss.insertSheet(REC_SHEET_NAME);
-    sheet.getRange(1, 1, 1, REC_HEADERS.length).setValues([REC_HEADERS]);
-    sheet.setFrozenRows(1);
-  }
-
-  if (action === "Recorrentes.Listar") {
-    return Recorrentes_listar_(sheet);
-  }
-
-  if (action === "Recorrentes.Criar") {
-    var payload = REC_parseJson_(p.payload);
-    return Recorrentes_criar_(sheet, payload);
-  }
-
-  if (action === "Recorrentes.Editar") {
-    var payloadEdit = REC_parseJson_(p.payload);
-    return Recorrentes_editar_(sheet, payloadEdit);
-  }
-
-  if (action === "Recorrentes.Excluir") {
-    var rowIndex = parseInt(p.rowIndex, 10);
-    if (!rowIndex || rowIndex < 2) {
-      return { ok: false, code: "VALIDATION_ERROR", message: "rowIndex invalido." };
+    // Criar aba se nao existir (exceto para Listar)
+    if (!sheet && action !== "Recorrentes.Listar") {
+      sheet = ss.insertSheet(REC_SHEET_NAME);
+      sheet.getRange(1, 1, 1, REC_HEADERS.length).setValues([REC_HEADERS]);
+      sheet.setFrozenRows(1);
     }
-    return Recorrentes_excluir_(sheet, rowIndex);
-  }
 
-  if (action === "Recorrentes.Gerar") {
-    var mes = REC_safeStr_(p.mes); // YYYY-MM
-    if (!mes) {
-      // Usar mes atual
-      var now = new Date();
-      mes = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+    if (action === "Recorrentes.Listar") {
+      return Recorrentes_listar_(sheet);
     }
-    return Recorrentes_gerar_(sheet, mes, p.token);
-  }
 
-  return { ok: false, code: "NOT_FOUND", message: "Acao desconhecida: " + action };
+    if (action === "Recorrentes.Criar") {
+      var payload = REC_parseJson_(p.payload);
+      return Recorrentes_criar_(sheet, payload);
+    }
+
+    if (action === "Recorrentes.Editar") {
+      var payloadEdit = REC_parseJson_(p.payload);
+      return Recorrentes_editar_(sheet, payloadEdit);
+    }
+
+    if (action === "Recorrentes.Excluir") {
+      var rowIndex = parseInt(p.rowIndex, 10);
+      if (!rowIndex || rowIndex < 2) {
+        return { ok: false, code: "VALIDATION_ERROR", message: "rowIndex invalido." };
+      }
+      return Recorrentes_excluir_(sheet, rowIndex);
+    }
+
+    if (action === "Recorrentes.Gerar") {
+      var mes = REC_safeStr_(p.mes); // YYYY-MM
+      if (!mes) {
+        var now = new Date();
+        mes = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+      }
+      return Recorrentes_gerar_(sheet, mes, p.token);
+    }
+
+    return { ok: false, code: "NOT_FOUND", message: "Acao desconhecida: " + action };
+
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
+  }
 }
 
 // ============================================================
@@ -126,7 +130,7 @@ function Recorrentes_criar_(sheet, payload) {
 
   sheet.appendRow(row);
 
-  try { AuditLog_log_("Recorrentes.Criar", { descricao: descricao }, payload.token); } catch (_) {}
+  Shared_tryLog_("Recorrentes.Criar", { descricao: descricao }, payload.token);
 
   return { ok: true, message: "Template recorrente criado." };
 }
@@ -164,7 +168,7 @@ function Recorrentes_excluir_(sheet, rowIndex) {
 
   sheet.deleteRow(rowIndex);
 
-  try { AuditLog_log_("Recorrentes.Excluir", { rowIndex: rowIndex }); } catch (_) {}
+  Shared_tryLog_("Recorrentes.Excluir", { rowIndex: rowIndex });
 
   return { ok: true, message: "Template excluido.", rowIndex: rowIndex };
 }
@@ -246,7 +250,7 @@ function Recorrentes_gerar_(sheet, mesYYYYMM, token) {
     });
   }
 
-  try { AuditLog_log_("Recorrentes.Gerar", { mes: mesYYYYMM, gerados: gerados }, token); } catch (_) {}
+  Shared_tryLog_("Recorrentes.Gerar", { mes: mesYYYYMM, gerados: gerados }, token);
 
   return { ok: true, gerados: gerados, message: gerados + " lancamento(s) gerado(s) para " + mesYYYYMM + "." };
 }
@@ -254,15 +258,12 @@ function Recorrentes_gerar_(sheet, mesYYYYMM, token) {
 // ============================================================
 // HELPERS
 // ============================================================
-function REC_safeStr_(v) {
-  if (v === null || v === undefined) return "";
-  return String(v).trim();
-}
+function REC_safeStr_(v) { return Shared_safeStr_(v); }
 
 function REC_parseJson_(v) {
   if (!v) return {};
   if (typeof v === "object") return v;
-  try { return JSON.parse(v); } catch (_) { return {}; }
+  return Shared_parseJsonParam_(v);
 }
 
 function REC_buildDate_(year, month, day) {

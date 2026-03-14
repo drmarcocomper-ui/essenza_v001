@@ -1,11 +1,10 @@
 // login.js — Lógica do formulário de login
-// Requer: config.js (window.APP_CONFIG)
+// Requer: config.js, utils.js, api.js, auth.js
 
 (() => {
   "use strict";
 
   const SCRIPT_URL = window.APP_CONFIG?.SCRIPT_URL || "";
-  const TOKEN_KEY = window.APP_CONFIG?.AUTH?.TOKEN_KEY || "essenza_auth_token";
   let _logging = false;
 
   // DOM
@@ -15,12 +14,10 @@
   const feedback = document.getElementById("loginFeedback");
 
   // ============================
-  // Helpers
+  // Helpers (delegam para módulos compartilhados)
   // ============================
-  function setFeedback(msg, type = "info") {
-    if (!feedback) return;
-    feedback.textContent = msg || "";
-    feedback.dataset.type = type;
+  function setFeedback(msg, type) {
+    window.EssenzaUtils?.setFeedback(feedback, msg, type || "info");
   }
 
   function setLoading(loading) {
@@ -31,60 +28,6 @@
     if (inputSenha) {
       inputSenha.disabled = loading;
     }
-  }
-
-  function getToken() {
-    try {
-      return localStorage.getItem(TOKEN_KEY) || "";
-    } catch (e) {
-      return "";
-    }
-  }
-
-  function setToken(token) {
-    try {
-      localStorage.setItem(TOKEN_KEY, token || "");
-    } catch (e) {
-      // localStorage não disponível
-    }
-  }
-
-  // ============================
-  // JSONP Request
-  // ============================
-  function jsonpRequest(params) {
-    return new Promise((resolve, reject) => {
-      const rnd = crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : Math.floor(Math.random() * 4294967295);
-      const cb = "login_cb_" + Date.now() + "_" + rnd;
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error("Timeout na comunicação com o servidor."));
-      }, 20000);
-
-      let script;
-
-      function cleanup() {
-        clearTimeout(timeout);
-        try { delete window[cb]; } catch (_) {}
-        if (script && script.parentNode) script.parentNode.removeChild(script);
-      }
-
-      window[cb] = (data) => {
-        cleanup();
-        resolve(data);
-      };
-
-      const qs = new URLSearchParams({ ...params, callback: cb }).toString();
-      const url = `${SCRIPT_URL}?${qs}`;
-
-      script = document.createElement("script");
-      script.src = url;
-      script.onerror = () => {
-        cleanup();
-        reject(new Error("Falha na comunicação com o servidor."));
-      };
-      document.head.appendChild(script);
-    });
   }
 
   // ============================
@@ -112,17 +55,16 @@
     setFeedback("Verificando...", "info");
 
     try {
-      const data = await jsonpRequest({
+      const data = await window.EssenzaApi.request({
         action: "Auth.Login",
         password: senha
-      });
+      }, { skipAuth: true });
 
       if (!data) {
         throw new Error("Resposta inválida do servidor.");
       }
 
       if (data.ok !== true) {
-        // Login falhou
         setFeedback(data.message || "Senha incorreta.", "error");
         if (inputSenha) {
           inputSenha.value = "";
@@ -137,10 +79,9 @@
         throw new Error("Token não recebido do servidor.");
       }
 
-      setToken(data.token);
+      window.EssenzaAuth.setToken(data.token);
       setFeedback("Login realizado! Redirecionando...", "success");
 
-      // Redirecionar para dashboard
       setTimeout(() => {
         window.location.href = "dashboard.html";
       }, 500);
@@ -157,19 +98,16 @@
   // Verificar se já está logado
   // ============================
   async function checkExistingSession() {
-    const token = getToken();
-
+    const token = window.EssenzaAuth?.getToken();
     if (!token) return;
 
-    // Verificar se token é válido
     try {
-      const data = await jsonpRequest({
+      const data = await window.EssenzaApi.request({
         action: "Auth.Validate",
         token: token
-      });
+      }, { skipAuth: true });
 
       if (data && data.ok === true && data.valid === true) {
-        // Já está logado, redirecionar
         window.location.href = "dashboard.html";
       }
     } catch (_) {

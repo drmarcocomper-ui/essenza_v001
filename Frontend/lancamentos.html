@@ -16,306 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js" integrity="sha384-b8MpgG2ZzWN6OPAtiB1JiBmDr9MpTt3NKK6KQf61hC/L7X4wJrvoTeVmMFPgp3nL" crossorigin="anonymous"></script>
-  <style>
-    /* Cards de resumo */
-    .resumo-rapido {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .resumo-rapido__card {
-      background: var(--cor-bg);
-      border-radius: var(--raio);
-      box-shadow: var(--sombra);
-      padding: 1rem;
-      text-align: center;
-      border-left: 4px solid var(--cor-primaria);
-    }
-
-    .resumo-rapido__card--entrada { border-left-color: #228b22; }
-    .resumo-rapido__card--saida { border-left-color: #c41e3a; }
-    .resumo-rapido__card--saldo { border-left-color: #4169e1; }
-    .resumo-rapido__card--pendente { border-left-color: #daa520; }
-
-    .resumo-rapido__label {
-      font-size: 0.8rem;
-      color: var(--cor-muted);
-      margin-bottom: 0.25rem;
-    }
-
-    .resumo-rapido__value {
-      font-size: 1.3rem;
-      font-weight: 600;
-    }
-
-    .resumo-rapido__card--entrada .resumo-rapido__value { color: #228b22; }
-    .resumo-rapido__card--saida .resumo-rapido__value { color: #c41e3a; }
-    .resumo-rapido__card--pendente .resumo-rapido__value { color: #daa520; }
-
-    /* Cores na tabela */
-    .table-lancamentos .tipo-entrada { color: #228b22; font-weight: 500; }
-    .table-lancamentos .tipo-saida { color: #c41e3a; font-weight: 500; }
-    .table-lancamentos .status-pago { color: #228b22; }
-    .table-lancamentos .status-pendente { color: #daa520; font-weight: 500; }
-    .table-lancamentos .status-cancelado { color: #999; text-decoration: line-through; }
-    .table-lancamentos .valor-positivo { color: #228b22; font-weight: 600; }
-    .table-lancamentos .valor-negativo { color: #c41e3a; font-weight: 600; }
-
-    /* Formulario em grupos */
-    .form-group {
-      background: var(--cor-bg-alt, #f9f9f9);
-      border-radius: var(--raio);
-      padding: 1rem;
-      margin-bottom: 1rem;
-      border: 1px solid var(--cor-borda);
-    }
-
-    .form-group__title {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--cor-primaria);
-      margin-bottom: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    /* Filtro colapsavel */
-    .card--collapsible .card__body {
-      max-height: 500px;
-      overflow: hidden;
-      transition: max-height 0.3s ease, padding 0.3s ease;
-    }
-
-    .card--collapsible.collapsed .card__body {
-      max-height: 0;
-      padding-top: 0;
-      padding-bottom: 0;
-    }
-
-    .card__toggle {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 1.2rem;
-      color: var(--cor-muted);
-      transition: transform 0.3s;
-    }
-
-    .collapsed .card__toggle {
-      transform: rotate(-90deg);
-    }
-
-    /* Acoes na linha */
-    .table-lancamentos .acoes-linha {
-      display: flex;
-      gap: 0.25rem;
-    }
-
-    .table-lancamentos .btn-acao {
-      padding: 0.25rem 0.5rem;
-      font-size: 0.75rem;
-      border-radius: 4px;
-    }
-
-    /* Destaque linha selecionada */
-    .table-lancamentos tr.selecionada {
-      background: rgba(139, 92, 165, 0.15) !important;
-    }
-
-    /* Botao grande */
-    .btn--large {
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
-    }
-
-    /* Botoes de acao coloridos */
-    .btn--success {
-      background: #228b22;
-      color: white;
-      border: none;
-    }
-    .btn--success:hover {
-      background: #1a6b1a;
-    }
-
-    .btn--warning {
-      background: #daa520;
-      color: white;
-      border: none;
-    }
-    .btn--warning:hover {
-      background: #b8860b;
-    }
-
-    /* Card formulario com destaque */
-    .card-formulario {
-      border: 2px solid var(--cor-primaria);
-      animation: slideDown 0.3s ease;
-    }
-
-    @keyframes slideDown {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    /* Modo edicao */
-    .card-formulario.modo-edicao {
-      border-color: #4169e1;
-    }
-
-    .card-formulario.modo-edicao .card__header {
-      background: rgba(65, 105, 225, 0.1);
-    }
-
-    /* Acoes do formulario */
-    #acoesFormulario {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    /* Tabs de lista */
-    .tabs-lista {
-      display: flex;
-      gap: 0;
-      margin-bottom: 0;
-      border-bottom: 2px solid var(--cor-borda);
-    }
-
-    .tab-lista-btn {
-      padding: 0.6rem 1.2rem;
-      border: none;
-      background: transparent;
-      color: var(--cor-muted);
-      cursor: pointer;
-      font-size: 0.9rem;
-      border-bottom: 3px solid transparent;
-      margin-bottom: -2px;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-
-    .tab-lista-btn:hover {
-      color: var(--cor-texto);
-      background: var(--cor-bg-alt, #f5f5f5);
-    }
-
-    .tab-lista-btn.active {
-      color: var(--cor-primaria);
-      font-weight: 600;
-      border-bottom-color: var(--cor-primaria);
-    }
-
-    .tab-lista-btn .badge {
-      display: inline-block;
-      background: #daa520;
-      color: white;
-      font-size: 0.7rem;
-      padding: 0.1rem 0.4rem;
-      border-radius: 10px;
-      margin-left: 0.3rem;
-      font-weight: 600;
-    }
-
-    /* Seletor de mes */
-    .mes-nav {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
-    }
-
-    .mes-nav .input {
-      width: auto;
-    }
-
-    /* Botao rapido Marcar Pago na tabela */
-    .btn-pago-rapido {
-      padding: 0.2rem 0.5rem;
-      font-size: 0.7rem;
-      background: #228b22;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .btn-pago-rapido:hover {
-      background: #1a6b1a;
-    }
-
-    .btn-editar-rapido {
-      padding: 0.2rem 0.5rem;
-      font-size: 0.7rem;
-      background: #4169e1;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .btn-editar-rapido:hover {
-      background: #3457b2;
-    }
-
-    /* Print */
-    @media print {
-      .app-header, .app-footer, .app-nav, .menu-toggle,
-      .btn, button, .actions, #cardFormulario, .acoes-principais,
-      .tabs-lista, .mes-nav, #paginationLancamentos, .btn-pago-rapido, .btn-editar-rapido,
-      #cardFiltro { display: none !important; }
-      .card { box-shadow: none; border: none; }
-      body { background: white; }
-      .app-main { padding: 0; }
-      .resumo-rapido { margin-top: 0; }
-
-      .print-header {
-        display: block !important;
-        text-align: center;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #333;
-      }
-      .print-header h2 { margin: 0; font-size: 1.2rem; }
-      .print-header p { margin: 0.25rem 0 0; font-size: 0.85rem; color: #666; }
-    }
-
-    .print-header { display: none; }
-
-    /* Mobile */
-    @media (max-width: 768px) {
-      .resumo-rapido {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .resumo-rapido__value {
-        font-size: 1rem;
-      }
-      #acoesFormulario {
-        flex-direction: column;
-      }
-      #acoesFormulario .btn {
-        width: 100%;
-      }
-      .tabs-lista {
-        overflow-x: auto;
-      }
-      .mes-nav {
-        flex-direction: column;
-        align-items: stretch;
-      }
-    }
-  </style>
+    <link rel="stylesheet" href="assets/css/pages.css" />
 </head>
 
 <body>
@@ -335,7 +36,7 @@
         <a class="app-nav__link app-nav__link--active" href="lancamentos.html">Lancamentos</a>
         <a class="app-nav__link" href="resumo.html">Resumo</a>
         <a class="app-nav__link" href="categoria.html">Categoria</a>
-        <button type="button" id="themeToggle" class="theme-toggle" title="Alternar tema">&#127769;</button>
+        <button type="button" id="themeToggle" class="theme-toggle" title="Alternar tema" aria-label="Alternar tema claro/escuro">&#127769;</button>
       </nav>
     </div>
   </header>
@@ -356,7 +57,7 @@
           <h2 class="card__title" id="tituloFormulario">Novo Lancamento</h2>
           <p class="card__desc" id="descFormulario">Preencha os dados do lancamento.</p>
         </div>
-        <button type="button" id="btnFecharForm" class="btn btn--secondary" title="Fechar formulario">&#10005;</button>
+        <button type="button" id="btnFecharForm" class="btn btn--secondary" title="Fechar formulario" aria-label="Fechar formulario">&#10005;</button>
       </div>
 
       <div class="card__body">
@@ -874,10 +575,10 @@
   </footer>
 
   <!-- Modal Confirmacao Exclusao -->
-  <div class="modal-overlay" id="modalExcluir">
+  <div class="modal-overlay" id="modalExcluir" role="dialog" aria-modal="true" aria-labelledby="modalExcluirTitulo">
     <div class="modal">
       <div class="modal__header">
-        <h3 class="modal__title">Confirmar Exclusao</h3>
+        <h3 class="modal__title" id="modalExcluirTitulo">Confirmar Exclusao</h3>
       </div>
       <div class="modal__body">
         <p>Tem certeza que deseja excluir este lancamento?</p>
@@ -893,10 +594,13 @@
   <script src="assets/js/theme.js?v=2"></script>
   <script src="assets/js/config.js?v=2"></script>
   <script src="assets/js/utils.js?v=2"></script>
-  <script src="assets/js/auth.js?v=2"></script>
   <script src="assets/js/api.js?v=2"></script>
+  <script src="assets/js/auth.js?v=2"></script>
   <script src="assets/js/search.js?v=2"></script>
   <script src="assets/js/export.js?v=2"></script>
-  <script src="assets/js/lancamentos.js?v=2" defer></script>
+  <script src="assets/js/lancamentos-form.js?v=3" defer></script>
+  <script src="assets/js/lancamentos-table.js?v=3" defer></script>
+  <script src="assets/js/lancamentos-actions.js?v=3" defer></script>
+  <script src="assets/js/lancamentos.js?v=3" defer></script>
 </body>
 </html>

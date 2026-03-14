@@ -1,57 +1,12 @@
 /**
  * Clientes.Utils.gs — Helpers do módulo Clientes (Cadastro)
  * --------------------------------------------------------
- * Contém apenas utilitários Clientes_*
+ * Redirects para Shared.Utils.gs — manter para compatibilidade de nomes.
  */
-
-// ============================================================
-// JSON
-// ============================================================
-function Clientes_parseJsonParam_(s) {
-  var raw = (s || "").toString();
-  if (!raw) return {};
-  try { return JSON.parse(raw); } catch (_) { return {}; }
-}
-
-// ============================================================
-// STRINGS / NORMALIZE
-// ============================================================
-function Clientes_safeStr_(v) {
-  return String(v == null ? "" : v).trim();
-}
-
-function Clientes_normalize_(s) {
-  return Clientes_safeStr_(s).toLowerCase();
-}
-
-// ============================================================
-// HEADER MAP / ROW MAP
-// ============================================================
-function Clientes_indexMap_(headerRow) {
-  var map = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var k = String(headerRow[i] || "").trim();
-    if (k) map[k] = i;
-  }
-  return map;
-}
-
-function Clientes_rowToObj_(headerRow, row) {
-  var o = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var k = String(headerRow[i] || "").trim();
-    if (k) o[k] = row[i];
-  }
-  return o;
-}
-
-// ============================================================
-// DATE / PAD
-// ============================================================
-function Clientes_pad2_(n) {
-  return String(n).padStart(2, "0");
-}
-
-function Clientes_isoDate_(d) {
-  return d.getFullYear() + "-" + Clientes_pad2_(d.getMonth() + 1) + "-" + Clientes_pad2_(d.getDate());
-}
+function Clientes_parseJsonParam_(s) { return Shared_parseJsonParam_(s); }
+function Clientes_safeStr_(v) { return Shared_safeStr_(v); }
+function Clientes_normalize_(s) { return Shared_normalize_(s); }
+function Clientes_indexMap_(h) { return Shared_indexMap_(h); }
+function Clientes_rowToObj_(h, r) { return Shared_rowToObj_(h, r); }
+function Clientes_pad2_(n) { return Shared_pad2_(n); }
+function Clientes_isoDate_(d) { return Shared_isoDate_(d); }

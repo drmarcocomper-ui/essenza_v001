@@ -1,57 +1,12 @@
 /**
  * Fornecedores.Utils.gs — Helpers do módulo Fornecedores
  * --------------------------------------------------------
- * Contém apenas utilitários Fornecedores_*
+ * Redirects para Shared.Utils.gs — manter para compatibilidade de nomes.
  */
-
-// ============================================================
-// JSON
-// ============================================================
-function Fornecedores_parseJsonParam_(s) {
-  var raw = (s || "").toString();
-  if (!raw) return {};
-  try { return JSON.parse(raw); } catch (_) { return {}; }
-}
-
-// ============================================================
-// STRINGS / NORMALIZE
-// ============================================================
-function Fornecedores_safeStr_(v) {
-  return String(v == null ? "" : v).trim();
-}
-
-function Fornecedores_normalize_(s) {
-  return Fornecedores_safeStr_(s).toLowerCase();
-}
-
-// ============================================================
-// HEADER MAP / ROW MAP
-// ============================================================
-function Fornecedores_indexMap_(headerRow) {
-  var map = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var k = String(headerRow[i] || "").trim();
-    if (k) map[k] = i;
-  }
-  return map;
-}
-
-function Fornecedores_rowToObj_(headerRow, row) {
-  var o = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var k = String(headerRow[i] || "").trim();
-    if (k) o[k] = row[i];
-  }
-  return o;
-}
-
-// ============================================================
-// DATE / PAD
-// ============================================================
-function Fornecedores_pad2_(n) {
-  return String(n).padStart(2, "0");
-}
-
-function Fornecedores_isoDate_(d) {
-  return d.getFullYear() + "-" + Fornecedores_pad2_(d.getMonth() + 1) + "-" + Fornecedores_pad2_(d.getDate());
-}
+function Fornecedores_parseJsonParam_(s) { return Shared_parseJsonParam_(s); }
+function Fornecedores_safeStr_(v) { return Shared_safeStr_(v); }
+function Fornecedores_normalize_(s) { return Shared_normalize_(s); }
+function Fornecedores_indexMap_(h) { return Shared_indexMap_(h); }
+function Fornecedores_rowToObj_(h, r) { return Shared_rowToObj_(h, r); }
+function Fornecedores_pad2_(n) { return Shared_pad2_(n); }
+function Fornecedores_isoDate_(d) { return Shared_isoDate_(d); }

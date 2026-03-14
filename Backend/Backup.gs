@@ -8,7 +8,7 @@
  * - Registry.gs (registro da rota)
  */
 
-var BACKUP_SHEETS = ["Cadastro", "Lancamentos", "Categoria", "Fornecedores"];
+const BACKUP_SHEETS = ["Cadastro", "Lancamentos", "Categoria", "Fornecedores"];
 
 // ============================================================
 // DISPATCH

@@ -10,17 +10,21 @@
  * - Registry.gs
  */
 
-var BUSCA_MAX_RESULTS = 20; // máximo por tipo
+const BUSCA_MAX_RESULTS = 20; // máximo por tipo
 
 /**
  * Dispatcher
  */
 function Busca_dispatch_(action, e) {
-  if (action === "Busca.Global") {
-    return Busca_GlobalApi_(e);
-  }
+  try {
+    if (action === "Busca.Global") {
+      return Busca_GlobalApi_(e);
+    }
 
-  return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
+    return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
+  }
 }
 
 /**
@@ -223,10 +227,4 @@ function Busca_normalize_(s) {
     .trim();
 }
 
-function Busca_indexMap_(header) {
-  var m = {};
-  for (var i = 0; i < header.length; i++) {
-    m[String(header[i]).trim()] = i;
-  }
-  return m;
-}
+function Busca_indexMap_(h) { return Shared_indexMap_(h); }

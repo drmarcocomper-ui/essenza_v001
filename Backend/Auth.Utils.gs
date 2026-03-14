@@ -12,8 +12,8 @@
 // ============================
 // Configuração
 // ============================
-var AUTH_SESSION_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 horas
-var AUTH_TOKEN_PREFIX = "AUTH_TOKEN_";
+const AUTH_SESSION_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 horas
+const AUTH_TOKEN_PREFIX = "AUTH_TOKEN_";
 
 // ============================
 // SHA-256

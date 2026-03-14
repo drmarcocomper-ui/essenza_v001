@@ -1,11 +1,10 @@
 // auth.js — Utilitários de autenticação (compartilhado)
-// Requer: config.js (window.APP_CONFIG)
-// Deve ser carregado ANTES dos scripts de página
+// Requer: config.js (window.APP_CONFIG), api.js (window.EssenzaApi)
+// Deve ser carregado APÓS api.js e ANTES dos scripts de página
 
 (() => {
   "use strict";
 
-  const SCRIPT_URL = window.APP_CONFIG?.SCRIPT_URL || "";
   const TOKEN_KEY = window.APP_CONFIG?.AUTH?.TOKEN_KEY || "essenza_auth_token";
   const LOGIN_PAGE = window.APP_CONFIG?.AUTH?.LOGIN_PAGE || "login.html";
 
@@ -37,44 +36,6 @@
   }
 
   // ============================
-  // JSONP Request (interno)
-  // ============================
-  function jsonpRequest(params) {
-    return new Promise((resolve, reject) => {
-      const rnd = crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : Math.floor(Math.random() * 4294967295);
-      const cb = "auth_cb_" + Date.now() + "_" + rnd;
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error("Timeout na verificação de autenticação."));
-      }, 15000);
-
-      let script;
-
-      function cleanup() {
-        clearTimeout(timeout);
-        try { delete window[cb]; } catch (_) {}
-        if (script && script.parentNode) script.parentNode.removeChild(script);
-      }
-
-      window[cb] = (data) => {
-        cleanup();
-        resolve(data);
-      };
-
-      const qs = new URLSearchParams({ ...params, callback: cb }).toString();
-      const url = `${SCRIPT_URL}?${qs}`;
-
-      script = document.createElement("script");
-      script.src = url;
-      script.onerror = () => {
-        cleanup();
-        reject(new Error("Falha na requisição de autenticação."));
-      };
-      document.head.appendChild(script);
-    });
-  }
-
-  // ============================
   // Verificar Sessão (Server-side)
   // ============================
   async function validateSession() {
@@ -85,10 +46,10 @@
     }
 
     try {
-      const data = await jsonpRequest({
+      const data = await window.EssenzaApi.request({
         action: "Auth.Validate",
         token: token
-      });
+      }, { skipAuth: true, timeout: 15000 });
 
       if (data && data.ok === true && data.valid === true) {
         return { valid: true };
@@ -97,9 +58,8 @@
       // Servidor respondeu explicitamente que token e invalido
       return { valid: false, reason: data?.message || "invalid" };
     } catch (err) {
-      // Falha de rede/timeout — token existe, permitir acesso
-      // (evita loop de redirect quando servidor esta lento)
-      return { valid: true, reason: "offline_fallback" };
+      // Falha de rede/timeout — não permitir acesso sem validação
+      return { valid: false, reason: "network_error" };
     }
   }
 
@@ -125,12 +85,12 @@
     const token = getToken();
 
     // Fire & forget - chamar logout no servidor
-    if (token && SCRIPT_URL) {
+    if (token && window.EssenzaApi) {
       try {
-        jsonpRequest({
+        window.EssenzaApi.request({
           action: "Auth.Logout",
           token: token
-        }).catch(() => {}); // Ignorar erros
+        }, { skipAuth: true }).catch(() => {});
       } catch (_) {}
     }
 
@@ -165,14 +125,14 @@
     // Verificar se já existe
     if (nav.querySelector(".app-nav__link--logout")) return;
 
-    const btn = document.createElement("a");
-    btn.href = "#";
+    const btn = document.createElement("button");
+    btn.type = "button";
     btn.className = "app-nav__link app-nav__link--logout";
     btn.textContent = "Sair";
     btn.style.marginLeft = "auto";
+    btn.setAttribute("aria-label", "Sair do sistema");
 
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
+    btn.addEventListener("click", () => {
       logout();
     });
 

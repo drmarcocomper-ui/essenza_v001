@@ -13,8 +13,8 @@
  * - Lancamentos.Utils.gs (helpers LANC_*)
  */
 
-var LANC_SHEET_DEFAULT = "Lancamentos";
-var LANC_HEADERS = [
+const LANC_SHEET_DEFAULT = "Lancamentos";
+const LANC_HEADERS = [
   "Data_Competencia",
   "Data_Caixa",
   "Tipo",
@@ -37,83 +37,88 @@ var LANC_HEADERS = [
 // DISPATCH
 // ============================================================
 function Lancamentos_dispatch_(action, p) {
-  p = p || {};
-  var sheetName = LANC_safeStr_(p.sheet) || LANC_SHEET_DEFAULT;
+  try {
+    p = p || {};
+    var sheetName = LANC_safeStr_(p.sheet) || LANC_SHEET_DEFAULT;
 
-  var sheet = LANC_getOrCreateSheet_(sheetName);
-  LANC_ensureHeader_(sheet, LANC_HEADERS);
+    var sheet = LANC_getOrCreateSheet_(sheetName);
+    LANC_ensureHeader_(sheet, LANC_HEADERS);
 
-  if (action === "Lancamentos.Criar") {
-    var payload = LANC_parseJsonParam_(p.payload);
-    var res = Lancamentos_criar_(sheet, payload);
-    res.ok = true;
-    try { AuditLog_log_("Lancamentos.Criar", { parcelas: res.parcelas || 1 }, p.token); } catch (_) {}
-    return res;
-  }
-
-  if (action === "Lancamentos.Editar") {
-    var payloadEdit = LANC_parseJsonParam_(p.payload);
-    var resEdit = Lancamentos_editar_(sheet, payloadEdit);
-    resEdit.ok = true;
-    try { AuditLog_log_("Lancamentos.Editar", { rowIndex: payloadEdit.rowIndex }, p.token); } catch (_) {}
-    return resEdit;
-  }
-
-  if (action === "Lancamentos.PorCliente") {
-    var filtrosCliente = LANC_parseJsonParam_(p.filtros);
-    if (!filtrosCliente || typeof filtrosCliente !== "object") filtrosCliente = {};
-    var resultCliente = Lancamentos_porCliente_(sheet, filtrosCliente);
-    return {
-      ok: true,
-      items: resultCliente.items,
-      total: resultCliente.total,
-      message: "OK"
-    };
-  }
-
-  if (action === "Lancamentos.Excluir") {
-    var rowIndex = parseInt(p.rowIndex, 10);
-    if (!rowIndex || rowIndex < 2) {
-      return { ok: false, code: "VALIDATION_ERROR", message: "rowIndex inválido." };
+    if (action === "Lancamentos.Criar") {
+      var payload = LANC_parseJsonParam_(p.payload);
+      var res = Lancamentos_criar_(sheet, payload);
+      res.ok = true;
+      Shared_tryLog_("Lancamentos.Criar", { parcelas: res.parcelas || 1 }, p.token);
+      return res;
     }
-    var resExcluir = Lancamentos_excluir_(sheet, rowIndex);
-    resExcluir.ok = true;
-    try { AuditLog_log_("Lancamentos.Excluir", { rowIndex: rowIndex }, p.token); } catch (_) {}
-    return resExcluir;
+
+    if (action === "Lancamentos.Editar") {
+      var payloadEdit = LANC_parseJsonParam_(p.payload);
+      var resEdit = Lancamentos_editar_(sheet, payloadEdit);
+      resEdit.ok = true;
+      Shared_tryLog_("Lancamentos.Editar", { rowIndex: payloadEdit.rowIndex }, p.token);
+      return resEdit;
+    }
+
+    if (action === "Lancamentos.PorCliente") {
+      var filtrosCliente = LANC_parseJsonParam_(p.filtros);
+      if (!filtrosCliente || typeof filtrosCliente !== "object") filtrosCliente = {};
+      var resultCliente = Lancamentos_porCliente_(sheet, filtrosCliente);
+      return {
+        ok: true,
+        items: resultCliente.items,
+        total: resultCliente.total,
+        message: "OK"
+      };
+    }
+
+    if (action === "Lancamentos.Excluir") {
+      var rowIndex = parseInt(p.rowIndex, 10);
+      if (!rowIndex || rowIndex < 2) {
+        return { ok: false, code: "VALIDATION_ERROR", message: "rowIndex inválido." };
+      }
+      var resExcluir = Lancamentos_excluir_(sheet, rowIndex);
+      resExcluir.ok = true;
+      Shared_tryLog_("Lancamentos.Excluir", { rowIndex: rowIndex }, p.token);
+      return resExcluir;
+    }
+
+    if (action === "Lancamentos.Listar") {
+      var filtros = LANC_parseJsonParam_(p.filtros);
+      if (!filtros || typeof filtros !== "object") filtros = LANC_parseJsonParam_(p.filtro); // fallback: singular
+      if (!filtros || typeof filtros !== "object") filtros = {};
+
+      if (LANC_safeStr_(p.fDataIni)) filtros.fDataIni = p.fDataIni;
+      if (LANC_safeStr_(p.fDataFim)) filtros.fDataFim = p.fDataFim;
+      if (LANC_safeStr_(p.fTipo)) filtros.fTipo = p.fTipo;
+      if (LANC_safeStr_(p.fStatus)) filtros.fStatus = p.fStatus;
+      if (LANC_safeStr_(p.fCategoria)) filtros.fCategoria = p.fCategoria;
+      if (LANC_safeStr_(p.fFormaPagamento)) filtros.fFormaPagamento = p.fFormaPagamento;
+      if (LANC_safeStr_(p.fInstituicao)) filtros.fInstituicao = p.fInstituicao;
+      if (LANC_safeStr_(p.fTitularidade)) filtros.fTitularidade = p.fTitularidade;
+      if (LANC_safeStr_(p.q)) filtros.q = p.q;
+
+      // Paginação
+      var page = parseInt(p.page, 10) || 1;
+      var limit = parseInt(p.limit, 10) || 50;
+      if (page < 1) page = 1;
+      if (limit < 1) limit = 50;
+      if (limit > 200) limit = 200;
+
+      var result = Lancamentos_listar_(sheet, filtros, page, limit);
+      return {
+        ok: true,
+        items: result.items,
+        pagination: result.pagination,
+        message: "OK"
+      };
+    }
+
+    return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
+
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
   }
-
-  if (action === "Lancamentos.Listar") {
-    var filtros = LANC_parseJsonParam_(p.filtros);
-    if (!filtros || typeof filtros !== "object") filtros = LANC_parseJsonParam_(p.filtro);
-    if (!filtros || typeof filtros !== "object") filtros = {};
-
-    if (LANC_safeStr_(p.fDataIni)) filtros.fDataIni = p.fDataIni;
-    if (LANC_safeStr_(p.fDataFim)) filtros.fDataFim = p.fDataFim;
-    if (LANC_safeStr_(p.fTipo)) filtros.fTipo = p.fTipo;
-    if (LANC_safeStr_(p.fStatus)) filtros.fStatus = p.fStatus;
-    if (LANC_safeStr_(p.fCategoria)) filtros.fCategoria = p.fCategoria;
-    if (LANC_safeStr_(p.fFormaPagamento)) filtros.fFormaPagamento = p.fFormaPagamento;
-    if (LANC_safeStr_(p.fInstituicao)) filtros.fInstituicao = p.fInstituicao;
-    if (LANC_safeStr_(p.fTitularidade)) filtros.fTitularidade = p.fTitularidade;
-    if (LANC_safeStr_(p.q)) filtros.q = p.q;
-
-    // Paginação
-    var page = parseInt(p.page, 10) || 1;
-    var limit = parseInt(p.limit, 10) || 50;
-    if (page < 1) page = 1;
-    if (limit < 1) limit = 50;
-    if (limit > 200) limit = 200;
-
-    var result = Lancamentos_listar_(sheet, filtros, page, limit);
-    return {
-      ok: true,
-      items: result.items,
-      pagination: result.pagination,
-      message: "OK"
-    };
-  }
-
-  return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
 }
 
 // ============================================================

@@ -16,19 +16,19 @@
 // ============================================================
 /**
  * Execute esta função para configurar a senha do login.
- * TROQUE "essenza2025" pela senha que você deseja usar.
+ * Antes, defina a propriedade de script "SENHA_INICIAL" com a senha desejada.
+ * (Configurações do projeto > Propriedades do script)
  */
 function ConfigurarSenha() {
-  var SENHA = "essenza2025";  // <-- TROQUE AQUI pela sua senha
+  var SENHA = PropertiesService.getScriptProperties().getProperty("SENHA_INICIAL");
 
   if (!SENHA || SENHA.length < 6) {
-    Logger.log("ERRO: A senha deve ter pelo menos 6 caracteres.");
+    Logger.log("ERRO: Defina a propriedade de script 'SENHA_INICIAL' com pelo menos 6 caracteres.");
     return;
   }
 
   Auth_SetupPassword_(SENHA);
-  Logger.log("✅ Senha configurada com sucesso!");
-  Logger.log("Agora você pode fazer login com essa senha.");
+  Logger.log("Senha configurada com sucesso! Remova a propriedade SENHA_INICIAL agora.");
 }
 
 /**

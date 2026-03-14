@@ -61,6 +61,7 @@
   }
 
   function applyAccent(hex) {
+    if (hex && !/^#[0-9a-fA-F]{6}$/.test(hex)) hex = "";
     if (!hex) {
       document.documentElement.style.removeProperty("--cor-primaria");
       document.documentElement.style.removeProperty("--cor-secundaria");
@@ -100,7 +101,14 @@
 
     var wrap = document.createElement("span");
     wrap.className = "accent-picker-wrap";
-    wrap.innerHTML = '<input type="color" id="accentPicker" class="accent-picker" title="Cor do tema" value="' + (getStoredAccent() || "#7b4b94") + '" />';
+    var pickerInput = document.createElement("input");
+    pickerInput.type = "color";
+    pickerInput.id = "accentPicker";
+    pickerInput.className = "accent-picker";
+    pickerInput.title = "Cor do tema";
+    var storedColor = getStoredAccent() || "#7b4b94";
+    pickerInput.value = /^#[0-9a-fA-F]{6}$/.test(storedColor) ? storedColor : "#7b4b94";
+    wrap.appendChild(pickerInput);
 
     var themeBtn = document.getElementById("themeToggle");
     if (themeBtn && themeBtn.parentNode === nav) {
@@ -178,15 +186,4 @@
 
   // Run immediately
   init();
-
-  // Service Worker: desativado temporariamente — limpar caches antigos
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(regs) {
-      regs.forEach(function(r) { r.unregister(); });
-    }).then(function() {
-      return caches.keys();
-    }).then(function(keys) {
-      return Promise.all(keys.map(function(k) { return caches.delete(k); }));
-    }).catch(function() {});
-  }
 })();

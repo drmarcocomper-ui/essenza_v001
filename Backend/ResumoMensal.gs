@@ -9,7 +9,7 @@
  * - ResumoMensal.Utils.gs (RM_*)
  */
 
-var RM_SHEET_LANC = "Lancamentos";
+const RM_SHEET_LANC = "Lancamentos";
 
 function ResumoMensal_CalcularApi_(e) {
   var mes = "";

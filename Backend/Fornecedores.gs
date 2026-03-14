@@ -12,9 +12,9 @@
  * - Fornecedores.Utils.gs (Fornecedores_* helpers)
  */
 
-var FORNECEDORES_SHEET_NAME = "Fornecedores";
+const FORNECEDORES_SHEET_NAME = "Fornecedores";
 
-var FORNECEDORES_HEADERS = [
+const FORNECEDORES_HEADERS = [
   "ID_Fornecedor",
   "NomeFornecedor",
   "Telefone",
@@ -30,31 +30,43 @@ var FORNECEDORES_HEADERS = [
 // API WRAPPERS (chamadas pelo Registry)
 // ============================================================
 function Fornecedores_GerarIDApi_(e) {
-  var id = Fornecedores_gerarIdSequencial_("FORNECEDORES_SEQ");
-  return { ok: true, id: id, message: "ID gerado." };
+  try {
+    var id = Fornecedores_gerarIdSequencial_("FORNECEDORES_SEQ");
+    return { ok: true, id: id, message: "ID gerado." };
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
+  }
 }
 
 function Fornecedores_CriarApi_(e) {
-  var p = (e && e.parameter) ? e.parameter : {};
-  var payload = Fornecedores_parseJsonParam_(p.payload);
+  try {
+    var p = (e && e.parameter) ? e.parameter : {};
+    var payload = Fornecedores_parseJsonParam_(p.payload);
 
-  var sheet = Fornecedores_getOrCreateSheet_(FORNECEDORES_SHEET_NAME);
-  Fornecedores_ensureHeader_(sheet, FORNECEDORES_HEADERS);
+    var sheet = Fornecedores_getOrCreateSheet_(FORNECEDORES_SHEET_NAME);
+    Fornecedores_ensureHeader_(sheet, FORNECEDORES_HEADERS);
 
-  var result = Fornecedores_criar_(sheet, payload);
-  result.ok = true;
-  return result;
+    var result = Fornecedores_criar_(sheet, payload);
+    result.ok = true;
+    return result;
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
+  }
 }
 
 function Fornecedores_BuscarApi_(e) {
-  var p = (e && e.parameter) ? e.parameter : {};
-  var q = Fornecedores_safeStr_(p.q);
+  try {
+    var p = (e && e.parameter) ? e.parameter : {};
+    var q = Fornecedores_safeStr_(p.q);
 
-  var sheet = Fornecedores_getOrCreateSheet_(FORNECEDORES_SHEET_NAME);
-  Fornecedores_ensureHeader_(sheet, FORNECEDORES_HEADERS);
+    var sheet = Fornecedores_getOrCreateSheet_(FORNECEDORES_SHEET_NAME);
+    Fornecedores_ensureHeader_(sheet, FORNECEDORES_HEADERS);
 
-  var items = Fornecedores_buscar_(sheet, q);
-  return { ok: true, items: items, message: "OK" };
+    var items = Fornecedores_buscar_(sheet, q);
+    return { ok: true, items: items, message: "OK" };
+  } catch (err) {
+    return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
+  }
 }
 
 // ============================================================

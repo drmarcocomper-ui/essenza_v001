@@ -12,132 +12,8 @@
   <title>Categorias | Essenza</title>
 
   <link rel="stylesheet" href="assets/css/style.css" />
-  <style>
-    /* Resumo */
-    .resumo-categorias {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
+    <link rel="stylesheet" href="assets/css/pages.css" />
 
-    .resumo-categorias__card {
-      background: var(--cor-bg);
-      border-radius: var(--raio);
-      box-shadow: var(--sombra);
-      padding: 1rem;
-      text-align: center;
-      border-left: 4px solid var(--cor-primaria);
-    }
-
-    .resumo-categorias__card--total { border-left-color: #4169e1; }
-    .resumo-categorias__card--entradas { border-left-color: #228b22; }
-    .resumo-categorias__card--saidas { border-left-color: #c41e3a; }
-    .resumo-categorias__card--inativos { border-left-color: #999; }
-
-    .resumo-categorias__label {
-      font-size: 0.8rem;
-      color: var(--cor-muted);
-      margin-bottom: 0.25rem;
-    }
-
-    .resumo-categorias__value {
-      font-size: 1.5rem;
-      font-weight: 600;
-    }
-
-    /* Botão grande */
-    .btn--large {
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
-    }
-
-    /* Botões de ação */
-    .btn--success {
-      background: #228b22;
-      color: white;
-      border: none;
-    }
-    .btn--success:hover { background: #1a6b1a; }
-
-    .btn--warning {
-      background: #daa520;
-      color: white;
-      border: none;
-    }
-    .btn--warning:hover { background: #b8860b; }
-
-    /* Card formulário */
-    .card-formulario {
-      border: 2px solid var(--cor-primaria);
-      animation: slideDown 0.3s ease;
-    }
-
-    @keyframes slideDown {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .card-formulario.modo-edicao {
-      border-color: #4169e1;
-    }
-
-    .card-formulario.modo-edicao .card__header {
-      background: rgba(65, 105, 225, 0.1);
-    }
-
-    /* Formulário em grupos */
-    .form-group {
-      background: var(--cor-bg-alt, #f9f9f9);
-      border-radius: var(--raio);
-      padding: 1rem;
-      margin-bottom: 1rem;
-      border: 1px solid var(--cor-borda);
-    }
-
-    .form-group__title {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--cor-primaria);
-      margin-bottom: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    /* Ações do formulário */
-    #acoesFormulario {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    /* Categoria inativa na tabela */
-    .categoria-inativa {
-      opacity: 0.6;
-    }
-
-    /* Linha selecionada */
-    .table tr.selecionada {
-      background: rgba(139, 92, 165, 0.15) !important;
-    }
-
-    /* Cores por tipo */
-    .tipo-entrada { color: #228b22; font-weight: 500; }
-    .tipo-saida { color: #c41e3a; font-weight: 500; }
-
-    /* Mobile */
-    @media (max-width: 768px) {
-      .resumo-categorias {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      #acoesFormulario {
-        flex-direction: column;
-      }
-      #acoesFormulario .btn {
-        width: 100%;
-      }
-    }
-  </style>
 </head>
 
 <body>
@@ -157,7 +33,7 @@
         <a class="app-nav__link" href="lancamentos.html">Lançamentos</a>
         <a class="app-nav__link" href="resumo.html">Resumo</a>
         <a class="app-nav__link app-nav__link--active" href="categoria.html">Categorias</a>
-        <button type="button" id="themeToggle" class="theme-toggle" title="Alternar tema">🌙</button>
+        <button type="button" id="themeToggle" class="theme-toggle" title="Alternar tema" aria-label="Alternar tema claro/escuro">🌙</button>
       </nav>
     </div>
   </header>
@@ -320,8 +196,8 @@
   <script src="assets/js/theme.js"></script>
   <script src="assets/js/config.js"></script>
   <script src="assets/js/utils.js"></script>
-  <script src="assets/js/auth.js"></script>
   <script src="assets/js/api.js"></script>
+  <script src="assets/js/auth.js"></script>
   <script src="assets/js/categoria.js" defer></script>
 </body>
 </html>

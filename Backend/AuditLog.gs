@@ -5,8 +5,8 @@
  * Fire-and-forget: erros de logging nunca quebram o fluxo principal.
  */
 
-var AUDIT_SHEET_NAME = "AuditLog";
-var AUDIT_HEADERS = ["Timestamp", "Action", "User", "Details"];
+const AUDIT_SHEET_NAME = "AuditLog";
+const AUDIT_HEADERS = ["Timestamp", "Action", "User", "Details"];
 
 /**
  * Registra uma entrada no log de auditoria.
