@@ -458,6 +458,19 @@
     }
 
     // ============================================================
+    // AUTO-FILL MES A RECEBER
+    // ============================================================
+    function bindAutoMesReceber() {
+      if (!el.Data_Competencia || !el.Mes_a_receber) return;
+      el.Data_Competencia.addEventListener("change", function() {
+        var dc = (el.Data_Competencia.value || "").trim();
+        if (dc && /^\d{4}-\d{2}/.test(dc)) {
+          el.Mes_a_receber.value = dc.substring(0, 7);
+        }
+      });
+    }
+
+    // ============================================================
     // MASCARA DE VALOR (R$ 0,00)
     // ============================================================
     function formatValorBR(raw) {
@@ -495,7 +508,7 @@
       carregarCategoriasAtivas, carregarTodasCategorias,
       bindCategoriaPadrao, bindAutocompleteClientes, bindAutocompleteFornecedores,
       clearClientesDatalist, clearFornecedoresDatalist,
-      mostrarBotoesEdicao, bindMascaraValor,
+      mostrarBotoesEdicao, bindMascaraValor, bindAutoMesReceber,
     };
   }
 
