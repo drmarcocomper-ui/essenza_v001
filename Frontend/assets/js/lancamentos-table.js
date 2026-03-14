@@ -5,7 +5,7 @@
 
   function register(ctx) {
     const { el, dom, state, helpers, form } = ctx;
-    const { escapeHtml, hojeISO, formatMoneyBR, toNumberBR, formatDateBR, formatMesDisplay, getMesAtualYYYYMM, setFeedback, skeletonRows, showToast, jsonpRequest, toISODate, requireScriptUrl, SHEET_NAME } = helpers;
+    const { escapeHtml, hojeISO, formatMoneyBR, toNumberBR, formatDateBR, formatMesDisplay, getMesAtualYYYYMM, setFeedback, skeletonRows, showToast, jsonpRequest, toISODate, parseToYYYYMM, requireScriptUrl, SHEET_NAME } = helpers;
 
     // ============================================================
     // RESUMO RAPIDO
@@ -87,7 +87,7 @@
           <td title="${escapeHtml(it.Descricao || "")}">${escapeHtml((it.Descricao || "").substring(0, 25))}${(it.Descricao || "").length > 25 ? "..." : ""}</td>
           <td>${escapeHtml(getClienteFornecedor(it))}</td>
           <td class="${valorClass}">${escapeHtml(formatMoneyBR(it.Valor))}</td>
-          <td>${escapeHtml(it.Mes_a_receber ? formatMesDisplay(toISODate(it.Mes_a_receber).substring(0, 7)) : "")}</td>
+          <td>${escapeHtml(it.Mes_a_receber ? formatMesDisplay(parseToYYYYMM(it.Mes_a_receber)) : "")}</td>
           <td class="acoes-linha"></td>
         `;
         const tdAcoes = tr.querySelector(".acoes-linha");

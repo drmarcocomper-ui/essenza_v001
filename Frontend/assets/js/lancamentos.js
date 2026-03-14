@@ -35,6 +35,29 @@
     return "";
   }
 
+  const MESES_PT = {
+    "janeiro":1,"fevereiro":2,"março":3,"marco":3,"abril":4,"maio":5,"junho":6,
+    "julho":7,"agosto":8,"setembro":9,"outubro":10,"novembro":11,"dezembro":12,
+    "jan":1,"fev":2,"mar":3,"abr":4,"mai":5,"jun":6,
+    "jul":7,"ago":8,"set":9,"out":10,"nov":11,"dez":12
+  };
+
+  function parseToYYYYMM(v) {
+    if (!v) return "";
+    const s = String(v).trim();
+    if (/^\d{4}-\d{2}$/.test(s)) return s;
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 7);
+    const mExtenso = s.toLowerCase().match(/^(\w+)\s*(?:de\s*)?[\/\s]\s*(\d{4})$/);
+    if (mExtenso && MESES_PT[mExtenso[1]]) {
+      return mExtenso[2] + "-" + String(MESES_PT[mExtenso[1]]).padStart(2, "0");
+    }
+    const mShort = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
+    if (mShort) return mShort[2] + "-" + mShort[1].padStart(2, "0");
+    const iso = toISODate(s);
+    if (iso) return iso.substring(0, 7);
+    return "";
+  }
+
   function parseParcelCount(raw) {
     const s = String(raw ?? "").trim();
     if (!s) return 0;
@@ -160,7 +183,7 @@
     helpers: {
       escapeHtml, hojeISO, formatMoneyBR, toNumberBR: toNumberUtil, formatDateBR: formatDateBRUtil,
       formatMesDisplay, getMesAtualYYYYMM, setFeedback, skeletonRows, showToast,
-      jsonpRequest, toISODate, parseParcelCount, requireScriptUrl, SHEET_NAME,
+      jsonpRequest, toISODate, parseToYYYYMM, parseParcelCount, requireScriptUrl, SHEET_NAME,
     },
   };
 

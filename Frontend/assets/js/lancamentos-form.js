@@ -5,39 +5,7 @@
 
   function register(ctx) {
     const { el, dom, state, helpers } = ctx;
-    const { escapeHtml, hojeISO, formatMoneyBR, toNumberBR, formatDateBR, formatMesDisplay, getMesAtualYYYYMM, setFeedback, skeletonRows, showToast, jsonpRequest, toISODate, parseParcelCount, requireScriptUrl, SHEET_NAME } = helpers;
-
-    // ============================================================
-    // PARSE MES (qualquer formato → YYYY-MM)
-    // ============================================================
-    const MESES_PT = {
-      "janeiro":1,"fevereiro":2,"março":3,"marco":3,"abril":4,"maio":5,"junho":6,
-      "julho":7,"agosto":8,"setembro":9,"outubro":10,"novembro":11,"dezembro":12,
-      "jan":1,"fev":2,"mar":3,"abr":4,"mai":5,"jun":6,
-      "jul":7,"ago":8,"set":9,"out":10,"nov":11,"dez":12
-    };
-
-    function parseToYYYYMM(v) {
-      if (!v) return "";
-      const s = String(v).trim();
-      // YYYY-MM
-      if (/^\d{4}-\d{2}$/.test(s)) return s;
-      // YYYY-MM-DD
-      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 7);
-      // "março de 2026", "Março 2026", "março/2026"
-      const mExtenso = s.toLowerCase().match(/^(\w+)\s*(?:de\s*)?[\/\s]\s*(\d{4})$/);
-      if (mExtenso) {
-        const mes = MESES_PT[mExtenso[1]];
-        if (mes) return mExtenso[2] + "-" + String(mes).padStart(2, "0");
-      }
-      // "Mar/2026", "03/2026"
-      const mShort = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
-      if (mShort) return mShort[2] + "-" + mShort[1].padStart(2, "0");
-      // Date object ou ISO string
-      const iso = toISODate(s);
-      if (iso) return iso.substring(0, 7);
-      return "";
-    }
+    const { escapeHtml, hojeISO, formatMoneyBR, toNumberBR, formatDateBR, formatMesDisplay, getMesAtualYYYYMM, setFeedback, skeletonRows, showToast, jsonpRequest, toISODate, parseToYYYYMM, parseParcelCount, requireScriptUrl, SHEET_NAME } = helpers;
 
     // ============================================================
     // DESCRICOES (datalist)
@@ -330,6 +298,7 @@
       state.selectedRowIndex = null;
       state.ultimaDescricaoAuto = "";
       if (el.Data_Competencia) el.Data_Competencia.value = hojeISO();
+      if (el.Mes_a_receber) el.Mes_a_receber.value = getMesAtualYYYYMM();
       setFeedback(dom.feedbackSalvar, "", "info");
       clearClientesDatalist();
       clearFornecedoresDatalist();
@@ -460,14 +429,23 @@
     // ============================================================
     // AUTO-FILL MES A RECEBER
     // ============================================================
+    function autoFillMesReceber() {
+      if (!el.Mes_a_receber) return;
+      // Prioridade: Data_Caixa > Data_Competencia
+      var ref = (el.Data_Caixa?.value || "").trim() || (el.Data_Competencia?.value || "").trim();
+      if (ref && /^\d{4}-\d{2}/.test(ref)) {
+        el.Mes_a_receber.value = ref.substring(0, 7);
+      }
+    }
+
     function bindAutoMesReceber() {
-      if (!el.Data_Competencia || !el.Mes_a_receber) return;
-      el.Data_Competencia.addEventListener("change", function() {
-        var dc = (el.Data_Competencia.value || "").trim();
-        if (dc && /^\d{4}-\d{2}/.test(dc)) {
-          el.Mes_a_receber.value = dc.substring(0, 7);
-        }
-      });
+      if (!el.Mes_a_receber) return;
+      if (el.Data_Competencia) {
+        el.Data_Competencia.addEventListener("change", autoFillMesReceber);
+      }
+      if (el.Data_Caixa) {
+        el.Data_Caixa.addEventListener("change", autoFillMesReceber);
+      }
     }
 
     // ============================================================

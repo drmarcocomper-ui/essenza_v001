@@ -5,7 +5,7 @@
 
   function register(ctx) {
     const { el, dom, state, helpers, form, table } = ctx;
-    const { escapeHtml, hojeISO, formatMoneyBR, toNumberBR, formatDateBR, formatMesDisplay, getMesAtualYYYYMM, setFeedback, skeletonRows, showToast, jsonpRequest, toISODate, parseParcelCount, requireScriptUrl, SHEET_NAME } = helpers;
+    const { escapeHtml, hojeISO, formatMoneyBR, toNumberBR, formatDateBR, formatMesDisplay, getMesAtualYYYYMM, setFeedback, skeletonRows, showToast, jsonpRequest, toISODate, parseToYYYYMM, parseParcelCount, requireScriptUrl, SHEET_NAME } = helpers;
 
     // ============================================================
     // RECORRENTES
