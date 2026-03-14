@@ -287,6 +287,7 @@
 
   function fillFormFromItem(it) {
     if (!it) return;
+    console.log("[cadastro] fillForm keys:", Object.keys(it), "Municipio:", it.Municipio, "Bairro:", it.Bairro);
 
     clienteAtual = it;
 
