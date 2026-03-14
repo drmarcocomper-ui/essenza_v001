@@ -308,6 +308,7 @@
   form.bindAutocompleteClientes();
   form.bindAutocompleteFornecedores();
   form.bindCategoriaPadrao();
+  form.bindMascaraValor();
   table.bindSortHeaders();
   form.atualizarVisibilidadeCampos();
 

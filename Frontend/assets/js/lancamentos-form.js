@@ -348,8 +348,21 @@
           el[k].value = it.NomeCliente || it[k] || "";
         } else if (k === "ID_Fornecedor") {
           el[k].value = it.NomeFornecedor || it[k] || "";
-        } else if (k === "Data_Competencia" || k === "Data_Caixa" || k === "Mes_a_receber") {
+        } else if (k === "Mes_a_receber") {
+          // input type="month" espera YYYY-MM
+          const raw = String(it[k] ?? "").trim();
+          if (/^\d{4}-\d{2}$/.test(raw)) {
+            el[k].value = raw;
+          } else if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+            el[k].value = raw.substring(0, 7);
+          } else {
+            el[k].value = toISODate(raw).substring(0, 7);
+          }
+        } else if (k === "Data_Competencia" || k === "Data_Caixa") {
           el[k].value = toISODate(it[k]);
+        } else if (k === "Valor") {
+          var rawVal = String(it[k] ?? "").trim();
+          el[k].value = rawVal ? formatValorBR(rawVal) : "";
         } else {
           el[k].value = it[k] ?? "";
         }
@@ -420,6 +433,36 @@
       return true;
     }
 
+    // ============================================================
+    // MASCARA DE VALOR (R$ 0,00)
+    // ============================================================
+    function formatValorBR(raw) {
+      // Remove tudo exceto dígitos
+      var digits = raw.replace(/\D/g, "");
+      if (!digits) return "";
+      // Garante pelo menos 3 dígitos (0,0X → 00X)
+      digits = digits.replace(/^0+/, "") || "0";
+      while (digits.length < 3) digits = "0" + digits;
+      // Insere vírgula antes dos 2 últimos
+      var intPart = digits.slice(0, -2);
+      var decPart = digits.slice(-2);
+      // Insere pontos de milhar
+      intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return intPart + "," + decPart;
+    }
+
+    function bindMascaraValor() {
+      if (!el.Valor) return;
+      el.Valor.addEventListener("input", function() {
+        var pos = el.Valor.selectionStart;
+        var oldLen = el.Valor.value.length;
+        el.Valor.value = formatValorBR(el.Valor.value);
+        var newLen = el.Valor.value.length;
+        // Ajusta cursor
+        el.Valor.setSelectionRange(pos + (newLen - oldLen), pos + (newLen - oldLen));
+      });
+    }
+
     // Expose
     ctx.form = {
       getTipoAtual, clearForm, abrirFormulario, fecharFormulario, fillForm,
@@ -428,7 +471,7 @@
       carregarCategoriasAtivas, carregarTodasCategorias,
       bindCategoriaPadrao, bindAutocompleteClientes, bindAutocompleteFornecedores,
       clearClientesDatalist, clearFornecedoresDatalist,
-      mostrarBotoesEdicao,
+      mostrarBotoesEdicao, bindMascaraValor,
     };
   }
 
