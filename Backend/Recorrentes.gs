@@ -59,7 +59,7 @@ function Recorrentes_dispatch_(action, p) {
     if (action === "Recorrentes.Excluir") {
       var rowIndex = parseInt(p.rowIndex, 10);
       if (!rowIndex || rowIndex < 2) {
-        return { ok: false, code: "VALIDATION_ERROR", message: "rowIndex invalido." };
+        return { ok: false, code: "VALIDATION_ERROR", message: "rowIndex inválido." };
       }
       return Recorrentes_excluir_(sheet, rowIndex);
     }
@@ -73,7 +73,7 @@ function Recorrentes_dispatch_(action, p) {
       return Recorrentes_gerar_(sheet, mes, p.token);
     }
 
-    return { ok: false, code: "NOT_FOUND", message: "Acao desconhecida: " + action };
+    return { ok: false, code: "NOT_FOUND", message: "Ação desconhecida: " + action };
 
   } catch (err) {
     return { ok: false, code: "VALIDATION_ERROR", message: String(err && err.message ? err.message : err) };
@@ -117,8 +117,8 @@ function Recorrentes_criar_(sheet, payload) {
   var frequencia = REC_safeStr_(payload.Frequencia) || "Mensal";
   var tipo = REC_safeStr_(payload.Tipo) || "Saida";
 
-  if (!descricao) throw new Error("Descricao e obrigatorio.");
-  if (!valor) throw new Error("Valor e obrigatorio.");
+  if (!descricao) throw new Error("Descrição é obrigatória.");
+  if (!valor) throw new Error("Valor é obrigatório.");
 
   var row = REC_HEADERS.map(function(h) {
     if (h === "Valor") return valor;
@@ -140,7 +140,7 @@ function Recorrentes_editar_(sheet, payload) {
   var rowIndex = parseInt(payload.rowIndex, 10);
   var data = payload.data || payload;
 
-  if (!rowIndex || rowIndex < 2) throw new Error("rowIndex invalido.");
+  if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
 
   var header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   var idx = {};
@@ -161,16 +161,16 @@ function Recorrentes_editar_(sheet, payload) {
 
 function Recorrentes_excluir_(sheet, rowIndex) {
   rowIndex = Number(rowIndex || 0);
-  if (!rowIndex || rowIndex < 2) throw new Error("rowIndex invalido.");
+  if (!rowIndex || rowIndex < 2) throw new Error("rowIndex inválido.");
 
   var lastRow = sheet.getLastRow();
-  if (rowIndex > lastRow) throw new Error("Linha nao encontrada: " + rowIndex);
+  if (rowIndex > lastRow) throw new Error("Linha não encontrada: " + rowIndex);
 
   sheet.deleteRow(rowIndex);
 
   Shared_tryLog_("Recorrentes.Excluir", { rowIndex: rowIndex });
 
-  return { ok: true, message: "Template excluido.", rowIndex: rowIndex };
+  return { ok: true, message: "Template excluído.", rowIndex: rowIndex };
 }
 
 /**
@@ -252,7 +252,7 @@ function Recorrentes_gerar_(sheet, mesYYYYMM, token) {
 
   Shared_tryLog_("Recorrentes.Gerar", { mes: mesYYYYMM, gerados: gerados }, token);
 
-  return { ok: true, gerados: gerados, message: gerados + " lancamento(s) gerado(s) para " + mesYYYYMM + "." };
+  return { ok: true, gerados: gerados, message: gerados + " lançamento(s) gerado(s) para " + mesYYYYMM + "." };
 }
 
 // ============================================================

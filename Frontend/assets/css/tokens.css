@@ -9,6 +9,9 @@
 
   --raio:10px;
   --sombra:0 8px 20px rgba(0,0,0,.06);
+
+  --bp-mobile:768px;
+  --bp-tablet:900px;
 }
 
 /* Dark Mode */

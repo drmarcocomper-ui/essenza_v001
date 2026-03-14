@@ -151,7 +151,7 @@ function Lancamentos_criar_(sheet, payload) {
 
   if (!dcRaw) throw new Error("Data_Competencia é obrigatório.");
   if (!tipo) throw new Error("Tipo é obrigatório.");
-  if (!desc) throw new Error("Descricao é obrigatório.");
+  if (!desc) throw new Error("Descrição é obrigatória.");
   if (valorRaw === null || valorRaw === undefined || String(valorRaw).trim() === "") throw new Error("Valor é obrigatório.");
   if (!statusRaw) throw new Error("Status é obrigatório.");
 

@@ -1,0 +1,37 @@
+{
+  "env": {
+    "browser": true,
+    "es2020": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "script"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "no-undef": "warn",
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
+    "no-var": "warn",
+    "prefer-const": "warn",
+    "no-console": ["warn", { "allow": ["error", "warn"] }]
+  },
+  "overrides": [
+    {
+      "files": ["Backend/**/*.gs"],
+      "env": {
+        "browser": false
+      },
+      "globals": {
+        "SpreadsheetApp": "readonly",
+        "PropertiesService": "readonly",
+        "CacheService": "readonly",
+        "LockService": "readonly",
+        "ContentService": "readonly",
+        "Utilities": "readonly",
+        "Logger": "readonly",
+        "Session": "readonly",
+        "UrlFetchApp": "readonly"
+      }
+    }
+  ]
+}

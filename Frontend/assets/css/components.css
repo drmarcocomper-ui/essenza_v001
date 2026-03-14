@@ -67,6 +67,12 @@
   font-weight:600;
 }
 
+.app-nav__link--logout{
+  font-family:inherit;
+  cursor:pointer;
+  line-height:inherit;
+}
+
 /* BANNER */
 .banner{
   background: linear-gradient(135deg, var(--cor-primaria), #9a6fb3);
