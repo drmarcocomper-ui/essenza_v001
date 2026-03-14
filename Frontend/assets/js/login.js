@@ -116,6 +116,24 @@
   }
 
   // ============================
+  // Toggle visibilidade da senha
+  // ============================
+  function bindToggleSenha() {
+    const btn = document.getElementById("btnToggleSenha");
+    if (!btn || !inputSenha) return;
+    const iconEye = btn.querySelector(".icon-eye");
+    const iconEyeOff = btn.querySelector(".icon-eye-off");
+
+    btn.addEventListener("click", () => {
+      const showing = inputSenha.type === "text";
+      inputSenha.type = showing ? "password" : "text";
+      btn.setAttribute("aria-label", showing ? "Mostrar senha" : "Ocultar senha");
+      if (iconEye) iconEye.style.display = showing ? "" : "none";
+      if (iconEyeOff) iconEyeOff.style.display = showing ? "none" : "";
+    });
+  }
+
+  // ============================
   // Bind Events
   // ============================
   function bind() {
@@ -125,6 +143,7 @@
         doLogin();
       });
     }
+    bindToggleSenha();
   }
 
   // ============================
