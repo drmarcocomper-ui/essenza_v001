@@ -240,6 +240,7 @@ function Lancamentos_editar_(sheet, payload) {
   if (data.Valor !== undefined) data.Valor = LANC_parseNumber_(data.Valor);
   if (data.Data_Competencia) data.Data_Competencia = LANC_normalizeIsoDate_(data.Data_Competencia);
   if (data.Data_Caixa) data.Data_Caixa = LANC_normalizeIsoDate_(data.Data_Caixa);
+  if (data.Mes_a_receber) data.Mes_a_receber = LANC_normalizeYYYYMM_(data.Mes_a_receber);
 
   var header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   var idx = LANC_indexMap_(header);
@@ -593,7 +594,7 @@ function LANC_buildRowObj_(payload, dc, dcaixa, parcelamentoStr, valorNum, statu
     Valor: Number(valorNum || 0),
     Status: LANC_safeStr_(statusStr),
     Observacoes: LANC_safeStr_(payload.Observacoes),
-    Mes_a_receber: LANC_safeStr_(mesAReceber || payload.Mes_a_receber),
+    Mes_a_receber: LANC_normalizeYYYYMM_(mesAReceber || payload.Mes_a_receber),
   };
 }
 

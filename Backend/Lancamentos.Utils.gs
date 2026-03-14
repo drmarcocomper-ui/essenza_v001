@@ -9,6 +9,51 @@ function LANC_normalize_(s) { return Shared_normalize_(s); }
 function LANC_indexMap_(h) { return Shared_indexMap_(h); }
 function LANC_rowToObj_(h, r) { return Shared_rowToObj_(h, r); }
 
+/**
+ * Normaliza Mes_a_receber para YYYY-MM.
+ * Aceita: YYYY-MM, YYYY-MM-DD, Date, "março de 2026", "03/2026", etc.
+ */
+function LANC_normalizeYYYYMM_(v) {
+  if (!v) return "";
+
+  // Date object
+  if (Object.prototype.toString.call(v) === "[object Date]" && !isNaN(v.getTime())) {
+    return v.getFullYear() + "-" + String(v.getMonth() + 1).padStart(2, "0");
+  }
+
+  var s = LANC_safeStr_(v);
+  if (!s) return "";
+
+  // Já está em YYYY-MM
+  if (/^\d{4}-\d{2}$/.test(s)) return s;
+
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 7);
+
+  // MM/YYYY ou 03/2026
+  var mSlash = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
+  if (mSlash) return mSlash[2] + "-" + mSlash[1].padStart(2, "0");
+
+  // "março de 2026", "Março 2026", "março/2026"
+  var meses = {
+    "janeiro":1,"fevereiro":2,"marco":3,"março":3,"abril":4,"maio":5,"junho":6,
+    "julho":7,"agosto":8,"setembro":9,"outubro":10,"novembro":11,"dezembro":12,
+    "jan":1,"fev":2,"mar":3,"abr":4,"mai":5,"jun":6,
+    "jul":7,"ago":8,"set":9,"out":10,"nov":11,"dez":12
+  };
+  var lower = s.toLowerCase().replace(/\s+/g, " ").trim();
+  var mExtenso = lower.match(/^(\w+)\s*(?:de\s*)?[\/\s]\s*(\d{4})$/);
+  if (mExtenso && meses[mExtenso[1]]) {
+    return mExtenso[2] + "-" + String(meses[mExtenso[1]]).padStart(2, "0");
+  }
+
+  // Fallback: tentar parsear como data
+  var d = LANC_parseAnyToDate_(s);
+  if (d) return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+
+  return s;
+}
+
 function LANC_parseNumber_(v) {
   var s = LANC_safeStr_(v);
   if (!s) return 0;
