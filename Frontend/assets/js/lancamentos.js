@@ -148,6 +148,8 @@
     ultimaDescricaoAuto: "",
     _saving: false,
     itemAtualEdicao: null,
+    _clientesMap: {},
+    _fornecedoresMap: {},
   };
 
   // ---------- Build context ----------

@@ -182,12 +182,14 @@
     function renderClientesDatalist(items) {
       if (!dom.datalistClientes) return;
       dom.datalistClientes.innerHTML = "";
-      const nomes = new Set();
+      state._clientesMap = {};
       (items || []).forEach((it) => {
         const nome = String(it?.NomeSugestao || it?.NomeCliente || "").trim();
-        if (nome) nomes.add(nome);
+        const id = String(it?.ID_Cliente || "").trim();
+        if (nome && id) state._clientesMap[nome] = id;
       });
-      [...nomes].slice(0, 50).forEach((nome) => {
+      const nomes = Object.keys(state._clientesMap);
+      nomes.slice(0, 50).forEach((nome) => {
         const opt = document.createElement("option");
         opt.value = nome;
         dom.datalistClientes.appendChild(opt);
@@ -235,12 +237,14 @@
     function renderFornecedoresDatalist(items) {
       if (!dom.datalistFornecedores) return;
       dom.datalistFornecedores.innerHTML = "";
-      const nomes = new Set();
+      state._fornecedoresMap = {};
       (items || []).forEach((it) => {
         const nome = String(it?.NomeFornecedor || "").trim();
-        if (nome) nomes.add(nome);
+        const id = String(it?.ID_Fornecedor || "").trim();
+        if (nome && id) state._fornecedoresMap[nome] = id;
       });
-      [...nomes].slice(0, 50).forEach((nome) => {
+      const nomes = Object.keys(state._fornecedoresMap);
+      nomes.slice(0, 50).forEach((nome) => {
         const opt = document.createElement("option");
         opt.value = nome;
         dom.datalistFornecedores.appendChild(opt);
@@ -362,6 +366,27 @@
       mostrarBotoesEdicao(it);
     }
 
+    function resolveClienteId(inputValue) {
+      const v = (inputValue || "").trim();
+      if (!v) return "";
+      // Se já é um ID (ex: CL-20260208-0010), retorna direto
+      if (/^CL-/.test(v)) return v;
+      // Busca no mapa nome→ID
+      if (state._clientesMap && state._clientesMap[v]) return state._clientesMap[v];
+      // Se veio de edição, usa o ID original
+      if (state.itemAtualEdicao?.ID_Cliente) return state.itemAtualEdicao.ID_Cliente;
+      return v;
+    }
+
+    function resolveFornecedorId(inputValue) {
+      const v = (inputValue || "").trim();
+      if (!v) return "";
+      if (/^FN-/.test(v)) return v;
+      if (state._fornecedoresMap && state._fornecedoresMap[v]) return state._fornecedoresMap[v];
+      if (state.itemAtualEdicao?.ID_Fornecedor) return state.itemAtualEdicao.ID_Fornecedor;
+      return v;
+    }
+
     function buildLancPayload() {
       return {
         Data_Competencia: (el.Data_Competencia?.value || "").trim(),
@@ -370,8 +395,8 @@
         Origem: (el.Origem?.value || "").trim(),
         Categoria: (el.Categoria?.value || "").trim(),
         Descricao: (el.Descricao?.value || "").trim(),
-        ID_Cliente: (el.ID_Cliente?.value || "").trim(),
-        ID_Fornecedor: (el.ID_Fornecedor?.value || "").trim(),
+        ID_Cliente: resolveClienteId(el.ID_Cliente?.value),
+        ID_Fornecedor: resolveFornecedorId(el.ID_Fornecedor?.value),
         Forma_Pagamento: (el.Forma_Pagamento?.value || "").trim(),
         Instituicao_Financeira: (el.Instituicao_Financeira?.value || "").trim(),
         Titularidade: (el.Titularidade?.value || "").trim(),
